@@ -203,7 +203,12 @@ func runHyperfleetDelete(r *rosa.Runtime) {
 			}
 		}
 
-		commands := buildCommand(r, foundOperatorRoles, policyMap, arbitraryPolicyMap, managedPolicies, policiesOutput)
+		commands, err := buildCommand(r, foundOperatorRoles, policyMap, arbitraryPolicyMap, managedPolicies, policiesOutput)
+		if err != nil {
+			r.Reporter.Errorf("%v", err)
+			hfExitFn(1)
+			return
+		}
 		if r.Reporter.IsTerminal() {
 			r.Reporter.Infof("Run the following commands to delete the Operator roles and policies:\n")
 		}

@@ -46,6 +46,13 @@ Parameters:
     Type: String
     Description: CIDR block for the VPC
     Default: '10.0.0.0/16'
+  SingleNatGateway:
+    Type: String
+    Description: Share one NAT gateway across AZs; other AZs lose internet access if its AZ is unavailable
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
 
 Conditions:
   AZ1Explicit: !Not [!Equals [!Ref AZ1, ""]]
@@ -65,6 +72,15 @@ Conditions:
   Two:   !Or [!And [!Condition ExplicitAZs, !Condition AZ2Explicit], !And [!Condition NoExplicitAZs, !Condition AZ2Implicit]]
   Three: !Or [!And [!Condition ExplicitAZs, !Condition AZ3Explicit], !And [!Condition NoExplicitAZs, !Condition AZ3Implicit]]
   Four:  !Or [!And [!Condition ExplicitAZs, !Condition AZ4Explicit], !And [!Condition NoExplicitAZs, !Condition AZ4Implicit]]
+
+  UseSingleNat: !Equals [!Ref SingleNatGateway, 'true']
+  UseMultiNat: !Not [!Condition UseSingleNat]
+  NoAZ1: !Not [!Condition One]
+  NoAZ2: !Not [!Condition Two]
+  NoAZ3: !Not [!Condition Three]
+  CreateNat2: !Or [!And [!Condition Two, !Condition UseMultiNat], !And [!Condition Two, !Condition UseSingleNat, !Condition NoAZ1]]
+  CreateNat3: !Or [!And [!Condition Three, !Condition UseMultiNat], !And [!Condition Three, !Condition UseSingleNat, !Condition NoAZ1, !Condition NoAZ2]]
+  CreateNat4: !Or [!And [!Condition Four, !Condition UseMultiNat], !And [!Condition Four, !Condition UseSingleNat, !Condition NoAZ1, !Condition NoAZ2, !Condition NoAZ3]]
 
 Resources:
   VPC:
@@ -291,7 +307,7 @@ Resources:
           Value: 'ROSA'
 
   ElasticIP2:
-    Condition: Two
+    Condition: CreateNat2
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -306,7 +322,7 @@ Resources:
           Value: 'ROSA'
 
   ElasticIP3:
-    Condition: Three
+    Condition: CreateNat3
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -321,7 +337,7 @@ Resources:
           Value: 'ROSA'
 
   ElasticIP4:
-    Condition: Four
+    Condition: CreateNat4
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -352,7 +368,7 @@ Resources:
           Value: 'ROSA'
 
   NATGateway2:
-    Condition: Two
+    Condition: CreateNat2
     Type: 'AWS::EC2::NatGateway'
     Properties:
       AllocationId: !GetAtt ElasticIP2.AllocationId
@@ -368,7 +384,7 @@ Resources:
           Value: 'ROSA'
 
   NATGateway3:
-    Condition: Three
+    Condition: CreateNat3
     Type: 'AWS::EC2::NatGateway'
     Properties:
       AllocationId: !GetAtt ElasticIP3.AllocationId
@@ -384,7 +400,7 @@ Resources:
           Value: 'ROSA'
 
   NATGateway4:
-    Condition: Four
+    Condition: CreateNat4
     Type: 'AWS::EC2::NatGateway'
     Properties:
       AllocationId: !GetAtt ElasticIP4.AllocationId
@@ -495,7 +511,13 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable2
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NATGateway2
+      NatGatewayId: !If
+        - UseSingleNat
+        - !If
+          - One
+          - !Ref NATGateway1
+          - !Ref NATGateway2
+        - !Ref NATGateway2
 
   PrivateRoute3:
     Type: AWS::EC2::Route
@@ -503,7 +525,16 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable3
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NATGateway3
+      NatGatewayId: !If
+        - UseSingleNat
+        - !If
+          - One
+          - !Ref NATGateway1
+          - !If
+            - Two
+            - !Ref NATGateway2
+            - !Ref NATGateway3
+        - !Ref NATGateway3
 
   PrivateRoute4:
     Type: AWS::EC2::Route
@@ -511,7 +542,19 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable4
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NATGateway4
+      NatGatewayId: !If
+        - UseSingleNat
+        - !If
+          - One
+          - !Ref NATGateway1
+          - !If
+            - Two
+            - !Ref NATGateway2
+            - !If
+              - Three
+              - !Ref NATGateway3
+              - !Ref NATGateway4
+        - !Ref NATGateway4
 
   PublicSubnetRouteTableAssociation1:
     Condition: One
@@ -702,21 +745,21 @@ Outputs:
       Name: !Sub "${Name}-EIP1-AllocationId"
 
   EIP2AllocationId:
-    Condition: Two
+    Condition: CreateNat2
     Description: Allocation ID for ElasticIP2
     Value: !GetAtt ElasticIP2.AllocationId
     Export:
       Name: !Sub "${Name}-EIP2-AllocationId"
 
   EIP3AllocationId:
-    Condition: Three
+    Condition: CreateNat3
     Description: Allocation ID for ElasticIP3
     Value: !GetAtt ElasticIP3.AllocationId
     Export:
       Name: !Sub "${Name}-EIP3-AllocationId"
 
   EIP4AllocationId:
-    Condition: Four
+    Condition: CreateNat4
     Description: Allocation ID for ElasticIP4
     Value: !GetAtt ElasticIP4.AllocationId
     Export:
@@ -724,7 +767,7 @@ Outputs:
 
   NatGatewayId:
     Description: The NAT Gateway IDs
-    Value: !Join [",", [!If [One, !Ref NATGateway1, !Ref "AWS::NoValue"], !If [Two, !Ref NATGateway2, !Ref "AWS::NoValue"], !If [Three, !Ref NATGateway3, !Ref "AWS::NoValue"], !If [Four, !Ref NATGateway4, !Ref "AWS::NoValue"]]]
+    Value: !Join [",", [!If [One, !Ref NATGateway1, !Ref "AWS::NoValue"], !If [CreateNat2, !Ref NATGateway2, !Ref "AWS::NoValue"], !If [CreateNat3, !Ref NATGateway3, !Ref "AWS::NoValue"], !If [CreateNat4, !Ref NATGateway4, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-NatGatewayId"
 

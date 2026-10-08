@@ -27,6 +27,7 @@ var _ = Describe("runWithRuntime", func() {
 		t = test.NewTestRuntime()
 		args = struct {
 			prefix                     string
+			hostedCp                   bool
 			deleteHcpSharedVpcPolicies bool
 		}{}
 		interactive.SetEnabled(false)

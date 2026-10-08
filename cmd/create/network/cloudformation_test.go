@@ -12,31 +12,39 @@ import (
 )
 
 var _ = Describe("CloudFormationTemplateFile", func() {
-	It("matches the standalone template file used for source builds", func() {
-		fileContent, err := os.ReadFile("templates/rosa-quickstart-default-vpc/cloudformation.yaml")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(strings.TrimSpace(CloudFormationTemplateFile)).To(Equal(strings.TrimSpace(string(fileContent))))
+	It("matches the standalone template files used for source builds", func() {
+		for _, template := range []struct {
+			path    string
+			content string
+		}{
+			{"templates/rosa-quickstart-default-vpc/cloudformation.yaml", CloudFormationTemplateFile},
+			{"templates/rosa-quickstart-hcp-vpc/cloudformation.yaml", CloudFormationHCPTemplateFile},
+		} {
+			fileContent, err := os.ReadFile(template.path)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.TrimSpace(template.content)).To(Equal(strings.TrimSpace(string(fileContent))), template.path)
+		}
 	})
 
-	DescribeTable("routes each private subnet through the NAT Gateway in its own Availability Zone",
-		func(n string, condition string) {
+	DescribeTable("uses per-AZ route tables and supports single-NAT routing",
+		func(n, azCondition, natCondition, natGatewayReference string) {
 			Expect(CloudFormationTemplateFile).To(ContainSubstring(
-				"  NATGateway" + n + ":\n    Condition: " + condition + "\n"))
+				"  NATGateway" + n + ":\n    Condition: " + natCondition + "\n"))
 			Expect(CloudFormationTemplateFile).To(ContainSubstring(
-				"  PrivateRouteTable" + n + ":\n    Type: AWS::EC2::RouteTable\n    Condition: " + condition + "\n"))
+				"  PrivateRouteTable" + n + ":\n    Type: AWS::EC2::RouteTable\n    Condition: " + azCondition + "\n"))
 			Expect(CloudFormationTemplateFile).To(ContainSubstring(
-				"  PrivateRoute" + n + ":\n    Type: AWS::EC2::Route\n    Condition: " + condition +
+				"  PrivateRoute" + n + ":\n    Type: AWS::EC2::Route\n    Condition: " + azCondition +
 					"\n    Properties:\n      RouteTableId: !Ref PrivateRouteTable" + n +
-					"\n      DestinationCidrBlock: 0.0.0.0/0\n      NatGatewayId: !Ref NATGateway" + n + "\n"))
+					"\n      DestinationCidrBlock: 0.0.0.0/0\n      NatGatewayId: " + natGatewayReference + "\n"))
 			Expect(CloudFormationTemplateFile).To(ContainSubstring(
-				"  PrivateSubnetRouteTableAssociation" + n + ":\n    Condition: " + condition +
+				"  PrivateSubnetRouteTableAssociation" + n + ":\n    Condition: " + azCondition +
 					"\n    Type: AWS::EC2::SubnetRouteTableAssociation\n    Properties:\n      SubnetId: !Ref SubnetPrivate" +
 					n + "\n      RouteTableId: !Ref PrivateRouteTable" + n + "\n"))
 		},
-		Entry("AZ1", "1", "One"),
-		Entry("AZ2", "2", "Two"),
-		Entry("AZ3", "3", "Three"),
-		Entry("AZ4", "4", "Four"),
+		Entry("AZ1", "1", "One", "One", "!Ref NATGateway1"),
+		Entry("AZ2", "2", "Two", "CreateNat2", "!If\n        - UseSingleNat\n        - !If\n          - One\n          - !Ref NATGateway1\n          - !Ref NATGateway2\n        - !Ref NATGateway2"),
+		Entry("AZ3", "3", "Three", "CreateNat3", "!If\n        - UseSingleNat\n        - !If\n          - One\n          - !Ref NATGateway1\n          - !If\n            - Two\n            - !Ref NATGateway2\n            - !Ref NATGateway3\n        - !Ref NATGateway3"),
+		Entry("AZ4", "4", "Four", "CreateNat4", "!If\n        - UseSingleNat\n        - !If\n          - One\n          - !Ref NATGateway1\n          - !If\n            - Two\n            - !Ref NATGateway2\n            - !If\n              - Three\n              - !Ref NATGateway3\n              - !Ref NATGateway4\n        - !Ref NATGateway4"),
 	)
 
 	It("guards every private route table reference so unconfigured AZs are never referenced", func() {
