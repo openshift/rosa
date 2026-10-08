@@ -119,6 +119,7 @@ var _ = Describe("runHyperfleet", func() {
 			networkType         string
 			noCni               bool
 			version             string
+			tags                []string
 		}
 		exited bool
 		t      *test.TestingRuntime
@@ -133,6 +134,7 @@ var _ = Describe("runHyperfleet", func() {
 		origArgs.networkType = args.networkType
 		origArgs.noCni = args.noCni
 		origArgs.version = args.version
+		origArgs.tags = args.tags
 
 		exited = false
 		hfExitFn = func(int) { exited = true }
@@ -143,6 +145,8 @@ var _ = Describe("runHyperfleet", func() {
 		args.networkType = ""
 		args.noCni = false
 		args.version = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+		args.tags = nil
+		hfClusterInput.Tags = ""
 
 		t = test.NewTestRuntime()
 		t.RosaRuntime.Creator = &pkgaws.Creator{
@@ -161,6 +165,8 @@ var _ = Describe("runHyperfleet", func() {
 		args.networkType = origArgs.networkType
 		args.noCni = origArgs.noCni
 		args.version = origArgs.version
+		args.tags = origArgs.tags
+		hfClusterInput.Tags = ""
 	})
 
 	stubSubnets := func(vpcID, az string) {
@@ -201,6 +207,80 @@ var _ = Describe("runHyperfleet", func() {
 			"role ARNs must use the GovCloud partition")
 		Expect(rolesRef.NodePoolManagementARN).To(HavePrefix("arn:aws-us-gov:iam::"),
 			"role ARNs must use the GovCloud partition")
+	})
+
+	It("sends user defined AWS tags as spec.tags", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf := hfmocks.NewMockInterface(ctrl)
+		v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
+		clusters := hfmocks.NewMockClusterInterface(ctrl)
+		hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
+		v1.EXPECT().Clusters().Return(clusters).AnyTimes()
+
+		var capturedCluster *v1alpha1.Cluster
+		clusters.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, c *v1alpha1.Cluster, _ interface{}) (*v1alpha1.Cluster, error) {
+				capturedCluster = c
+				return &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{UID: types.UID("cluster-uid")}}, nil
+			})
+
+		args.tags = []string{"cost-center:eng", "owner:platform"}
+		stubSubnets("vpc-123", "us-gov-east-1a")
+		t.RosaRuntime.HyperFleetClient = hf
+
+		runHyperfleet(t.RosaRuntime)
+
+		Expect(exited).To(BeFalse())
+		Expect(capturedCluster).NotTo(BeNil())
+		Expect(capturedCluster.Spec.Tags).To(Equal(map[string]string{
+			"cost-center": "eng",
+			"owner":       "platform",
+		}))
+	})
+
+	It("leaves spec.tags unset when no tags are supplied", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf := hfmocks.NewMockInterface(ctrl)
+		v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
+		clusters := hfmocks.NewMockClusterInterface(ctrl)
+		hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
+		v1.EXPECT().Clusters().Return(clusters).AnyTimes()
+
+		var capturedCluster *v1alpha1.Cluster
+		clusters.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, c *v1alpha1.Cluster, _ interface{}) (*v1alpha1.Cluster, error) {
+				capturedCluster = c
+				return &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{UID: types.UID("cluster-uid")}}, nil
+			})
+
+		stubSubnets("vpc-123", "us-gov-east-1a")
+		t.RosaRuntime.HyperFleetClient = hf
+
+		runHyperfleet(t.RosaRuntime)
+
+		Expect(exited).To(BeFalse())
+		Expect(capturedCluster).NotTo(BeNil())
+		Expect(capturedCluster.Spec.Tags).To(BeEmpty())
+	})
+
+	It("exits when more tags than the Platform API allows are supplied", func() {
+		tags := make([]string, maxHyperfleetClusterTags+1)
+		for i := range tags {
+			tags[i] = fmt.Sprintf("tag%d:value", i)
+		}
+		args.tags = tags
+		stubSubnets("vpc-123", "us-gov-east-1a")
+
+		runHyperfleet(t.RosaRuntime)
+		Expect(exited).To(BeTrue())
+	})
+
+	It("exits when a tag is malformed", func() {
+		args.tags = []string{"no-delimiter"}
+		stubSubnets("vpc-123", "us-gov-east-1a")
+
+		runHyperfleet(t.RosaRuntime)
+		Expect(exited).To(BeTrue())
 	})
 
 	It("exits when cluster name is missing", func() {
@@ -288,5 +368,54 @@ var _ = Describe("runHyperfleet", func() {
 
 		runHyperfleet(t.RosaRuntime)
 		Expect(exited).To(BeTrue())
+	})
+})
+
+var _ = Describe("parseHyperfleetClusterTags", func() {
+	It("returns nil for no tags", func() {
+		tags, err := parseHyperfleetClusterTags(nil)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(tags).To(BeNil())
+	})
+
+	It("parses colon delimited tags", func() {
+		tags, err := parseHyperfleetClusterTags([]string{"cost-center:eng", "owner:platform"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(tags).To(Equal(map[string]string{"cost-center": "eng", "owner": "platform"}))
+	})
+
+	It("parses space delimited tags", func() {
+		tags, err := parseHyperfleetClusterTags([]string{"cost-center eng", "owner platform"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(tags).To(Equal(map[string]string{"cost-center": "eng", "owner": "platform"}))
+	})
+
+	It("accepts the maximum supported number of tags", func() {
+		input := make([]string, maxHyperfleetClusterTags)
+		for i := range input {
+			input[i] = fmt.Sprintf("tag%d:value", i)
+		}
+		tags, err := parseHyperfleetClusterTags(input)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(tags).To(HaveLen(maxHyperfleetClusterTags))
+	})
+
+	It("rejects more tags than the Platform API allows", func() {
+		input := make([]string, maxHyperfleetClusterTags+1)
+		for i := range input {
+			input[i] = fmt.Sprintf("tag%d:value", i)
+		}
+		_, err := parseHyperfleetClusterTags(input)
+		Expect(err).To(MatchError(ContainSubstring("a maximum of 23 tags is supported")))
+	})
+
+	It("rejects duplicate tag keys", func() {
+		_, err := parseHyperfleetClusterTags([]string{"owner:a", "owner:b"})
+		Expect(err).To(MatchError(ContainSubstring("user tag keys must be unique")))
+	})
+
+	It("rejects a tag without a delimiter", func() {
+		_, err := parseHyperfleetClusterTags([]string{"no-delimiter"})
+		Expect(err).To(HaveOccurred())
 	})
 })

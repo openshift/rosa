@@ -270,6 +270,12 @@ func hfClusterToMap(
 				awsMap["ec2_metadata_http_tokens"] = tokens
 			}
 		}
+		// Customer AWS tags live on spec.tags in the Platform API, but are reported
+		// under "aws" to match the OCM-based cluster describe output, where they
+		// come from the cluster's AWS object.
+		if len(c.Spec.Tags) > 0 {
+			awsMap["tags"] = c.Spec.Tags
+		}
 		m["aws"] = awsMap
 	}
 

@@ -112,6 +112,28 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 		Expect(func() { runHyperfleetEdit(t.RosaRuntime, makeExpirationCmd(false)) }).To(Panic())
 	})
 
+	It("rejects --tags because AWS tags are immutable after creation", func() {
+		var exitCode int
+		orig := exitFn
+		exitFn = func(code int) { exitCode = code; panic("exit") }
+		DeferCleanup(func() { exitFn = orig })
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters := newEditClusterMocks(ctrl)
+		// ResolveClusterUID is called before PreRequest validates flags.
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		cmd := makeExpirationCmd(true)
+		cmd.Flags().String("tags", "", "")
+		Expect(cmd.Flags().Set("tags", `{"owner":"platform"}`)).To(Succeed())
+
+		Expect(func() { runHyperfleetEdit(t.RosaRuntime, cmd) }).To(Panic())
+		Expect(exitCode).To(Equal(1))
+	})
+
 	It("fails when cluster cannot be resolved", func() {
 		orig := exitFn
 		exitFn = func(_ int) { panic("exit") }

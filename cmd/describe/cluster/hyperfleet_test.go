@@ -123,6 +123,28 @@ var _ = Describe("hfClusterToMap", func() {
 		Expect(m["scheduler_profile"]).To(Equal("HighNodeUtilization"))
 	})
 
+	It("reports customer AWS tags under aws.tags", func() {
+		c := buildCluster()
+		c.Spec.Tags = map[string]string{"test-tag": "tagvalue", "qe-managed": "true"}
+		m := hfClusterToMap(c, nil, nil, "")
+
+		awsMap, ok := m["aws"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(awsMap["tags"]).To(Equal(map[string]string{
+			"test-tag":   "tagvalue",
+			"qe-managed": "true",
+		}))
+	})
+
+	It("omits aws.tags when the cluster has no customer tags", func() {
+		c := buildCluster()
+		m := hfClusterToMap(c, nil, nil, "")
+
+		awsMap, ok := m["aws"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(awsMap).NotTo(HaveKey("tags"))
+	})
+
 	It("maps spec fields", func() {
 		c := buildCluster()
 		m := hfClusterToMap(c, nil, nil, "")
