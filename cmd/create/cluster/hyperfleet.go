@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -13,10 +14,17 @@ import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/rosa"
 )
+
+// maxHyperfleetClusterTags is the number of customer AWS tags the Platform API
+// accepts on spec.tags. HyperShift caps platform.aws.resourceTags at 25 entries
+// and the operator injects 2 system tags (red-hat-managed and
+// kubernetes.io/cluster/<id>), leaving 23 for the customer.
+const maxHyperfleetClusterTags = 23
 
 // hfClusterInput is the backing store for all hyperfleet-specific create cluster flags.
 // RegisterClusterCreateFlags binds cobra flags to its fields; runHyperfleet reads from it.
@@ -168,6 +176,23 @@ func (h *hyperfleetClusterCreate) PreRequest(
 		input.OidcConfigId = args.oidcConfigId
 	}
 
+	// --tags is OCM-registered as a string slice, so registerIfNew skips the HF
+	// flag and input.Tags stays empty. Bridge args.tags into spec.tags, which the
+	// Platform API applies to the AWS resources created for this cluster.
+	if input.Tags == "" {
+		tags, err := parseHyperfleetClusterTags(args.tags)
+		if err != nil {
+			return err
+		}
+		if len(tags) > 0 {
+			encoded, err := json.Marshal(tags)
+			if err != nil {
+				return fmt.Errorf("failed to encode --tags: %w", err)
+			}
+			input.Tags = string(encoded)
+		}
+	}
+
 	// Derive VPC ID and availability zone from the subnet.
 	subnetOut, err := h.describeSubnets(ctx, r.AWSConfig, input.SubnetID)
 	if err != nil {
@@ -210,6 +235,34 @@ func (h *hyperfleetClusterCreate) PostExpand(
 func (h *hyperfleetClusterCreate) PostResponse(_ context.Context, r *rosa.Runtime, cluster *v1alpha1.Cluster) error {
 	r.Reporter.Infof("Cluster %q created with ID %q", cluster.Name, string(cluster.UID))
 	return nil
+}
+
+// parseHyperfleetClusterTags converts the --tags values into the map the Platform
+// API expects on spec.tags. Tags are applied at provisioning time only: AWS
+// resources created by OpenShift cannot be retagged, so spec.tags is immutable
+// once the cluster exists.
+func parseHyperfleetClusterTags(input []string) (map[string]string, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
+	if len(input) > maxHyperfleetClusterTags {
+		return nil, fmt.Errorf("invalid cluster AWS tags: a maximum of %d tags is supported, got %d",
+			maxHyperfleetClusterTags, len(input))
+	}
+	if err := aws.UserTagValidator(input); err != nil {
+		return nil, err
+	}
+
+	delimiter := aws.GetTagsDelimiter(input)
+	tags := make(map[string]string, len(input))
+	for _, tag := range input {
+		parts := strings.SplitN(tag, delimiter, 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", tag)
+		}
+		tags[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	}
+	return tags, nil
 }
 
 // convertNetworkingFlags converts individual networking flags (--machine-cidr, --service-cidr,

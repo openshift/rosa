@@ -145,6 +145,37 @@ var _ = Describe("Healthy check",
 					}
 				})
 
+			It("the creation of rosa cluster with user tags will work - [id:ROSAENG-65293]",
+				labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
+				func() {
+					By("Check the cluster was created with user tags")
+					if clusterConfig.Tags == "" {
+						Skip("Skip this case as it is only for clusters created with tag_enabled: true")
+					}
+
+					By("Parse the tags the cluster was created with")
+					expectedTags := map[string]string{}
+					for _, tag := range strings.Split(clusterConfig.Tags, ",") {
+						kv := strings.SplitN(strings.TrimSpace(tag), ":", 2)
+						Expect(kv).To(HaveLen(2),
+							fmt.Sprintf("unexpected tag format %q in the cluster config", tag))
+						expectedTags[kv[0]] = kv[1]
+					}
+					Expect(expectedTags).ToNot(BeEmpty())
+
+					By("Check the user tags are reported by cluster describe")
+					// Both paths report customer AWS tags under "aws.tags": V1 from the
+					// OCM cluster object, V2 from spec.tags.
+					rosaClient.Runner.JsonFormat()
+					output, err := clusterService.DescribeCluster(clusterID)
+					rosaClient.Runner.UnsetFormat()
+					Expect(err).ToNot(HaveOccurred())
+
+					data := rosaClient.Parser.JsonData.Input(output).Parse()
+					for key, value := range expectedTags {
+						Expect(data.DigString("aws", "tags", key)).To(Equal(value),
+							fmt.Sprintf("expected AWS tag %s=%s on cluster %s", key, value, clusterID))
+					}
 			It("the scheduler profile configured during cluster creation is applied",
 				labels.High, labels.Runtime.Day1Post, labels.Hyperfleet.Validated,
 				func() {
