@@ -267,7 +267,7 @@ func parseHyperfleetClusterTags(input []string) (map[string]string, error) {
 		return nil, fmt.Errorf("invalid cluster AWS tags: a maximum of %d tags is supported, got %d",
 			maxHyperfleetClusterTags, len(input))
 	}
-	if err := rosaaws.UserTagValidator(input); err != nil {
+	if err := rosaaws.UserTagValidator(rosaaws.UserTagOptions{})(input); err != nil {
 		return nil, err
 	}
 
