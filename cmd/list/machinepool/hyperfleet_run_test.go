@@ -1,6 +1,7 @@
 package machinepool
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,6 +20,7 @@ import (
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 )
 
 func newListMPMocks(ctrl *gomock.Controller) (
@@ -64,7 +67,13 @@ var _ = Describe("runHyperfleetList", func() {
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
 				ObjectMeta: metav1.ObjectMeta{Name: "np1", UID: types.UID("np-uid-1")},
 				Spec: v1alpha1.NodePoolSpec{
+					Labels:     map[string]string{"team": "test", "empty": ""},
+					AutoRepair: ptr.To(false),
 					NodePool: v1alpha1.NodePoolSpecPassthrough{
+						Replicas:   ptr.To(int32(3)),
+						Release:    hypershiftv1beta1.Release{Image: "quay.io/example/release:5.0.0-ec.6"},
+						Management: hypershiftv1beta1.NodePoolManagement{AutoRepair: true},
+						Taints:     []hypershiftv1beta1.Taint{{Key: "dedicated", Effect: "NoSchedule"}},
 						Platform: v1alpha1.NodePoolPlatform{
 							AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
 								RootVolume: &hypershiftv1beta1.Volume{Size: 75},
@@ -78,10 +87,26 @@ var _ = Describe("runHyperfleetList", func() {
 		t.RosaRuntime.HyperFleetClient = hf
 		stdout := captureStdout(func() { runHyperfleetList(t.RosaRuntime) })
 
+		Expect(stdout).To(ContainSubstring("LABELS"))
+		Expect(stdout).To(ContainSubstring("TAINTS"))
+		Expect(stdout).To(ContainSubstring("empty=, team=test"))
+		Expect(stdout).To(ContainSubstring("dedicated=:NoSchedule"))
 		Expect(stdout).To(ContainSubstring("DISK SIZE"))
 		Expect(stdout).To(ContainSubstring("75 GiB"))
 		Expect(stdout).To(ContainSubstring("np1"))
 		Expect(stdout).To(ContainSubstring("np-uid-1"))
+		// Exercise the same parser that 56782 and 56778 use, including blank columns.
+		client := rosacli.NewClient()
+		pools, err := client.MachinePool.ReflectNodePoolList(*bytes.NewBufferString(stdout))
+		Expect(err).NotTo(HaveOccurred())
+		pool := pools.Nodepool("np1")
+		Expect(pool).NotTo(BeNil())
+		Expect(pool.AutoScaling).To(Equal("No"))
+		Expect(pool.AutoRepair).To(Equal("No"))
+		Expect(pool.Replicas).To(Equal("-/3"))
+		Expect(pool.Version).To(Equal("quay.io/example/release:5.0.0-ec.6"))
+		Expect(pool.Labels).To(Equal("empty=, team=test"))
+		Expect(pool.Taints).To(Equal("dedicated=:NoSchedule"))
 	})
 
 	It("prints a message when there are no node pools", func() {

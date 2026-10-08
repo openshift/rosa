@@ -180,7 +180,8 @@ exit 1
 		client.Runner.envs = prependPathEnv(tempDir)
 		service := NewClusterService(client)
 
-		err = service.WaitClusterStatus(clusterID, constants.Ready, 0, 0)
+		// Allow time for both fake CLI processes to start on a busy test host.
+		err = service.WaitClusterStatus(clusterID, constants.Ready, 0, 1)
 
 		Expect(err).ToNot(HaveOccurred())
 

@@ -73,8 +73,68 @@ var _ = Describe("Edit nodepool",
 			Expect(err).ToNot(HaveOccurred())
 		})
 
+		It("can create, replace and clear HyperFleet nodepool labels and taints",
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			func() {
+				if !isHyperfleetMode() {
+					Skip("This case exercises HyperFleet nodepool metadata")
+				}
+				By("Select an existing worker subnet and instance type")
+				existing, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(existing.NodePools).NotTo(BeEmpty())
+				subnet := existing.NodePools[0].Subnet
+				workerType := existing.NodePools[0].InstanceType
+				Expect(subnet).NotTo(BeEmpty())
+				Expect(workerType).NotTo(BeEmpty())
+				poolName := helper.GenerateRandomName("np-metadata", 2)
+				verify := func(expectedLabels, expectedTaints string) {
+					pools, err := machinePoolService.ListAndReflectNodePools(clusterID)
+					Expect(err).NotTo(HaveOccurred())
+					pool := pools.Nodepool(poolName)
+					Expect(pool).NotTo(BeNil())
+					Expect(helper.ParseLabels(pool.Labels)).To(ConsistOf(helper.ParseLabels(expectedLabels)))
+					Expect(helper.ParseTaints(pool.Taints)).To(ConsistOf(helper.ParseTaints(expectedTaints)))
+					description, err := machinePoolService.DescribeAndReflectNodePool(clusterID, poolName)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(helper.ParseLabels(description.Labels)).To(ConsistOf(helper.ParseLabels(expectedLabels)))
+					Expect(helper.ParseTaints(description.Taints)).To(ConsistOf(helper.ParseTaints(expectedTaints)))
+				}
+				By("Create a nodepool with labels and taints")
+				_, err = machinePoolService.CreateMachinePool(clusterID, poolName,
+					"--replicas", "0", "--subnet", subnet, "--instance-type", workerType,
+					"--labels", "original=value,empty=", "--taints", "original=value:NoSchedule,empty=:NoExecute")
+				Expect(err).NotTo(HaveOccurred())
+				defer func() {
+					_, err := machinePoolService.DeleteMachinePool(clusterID, poolName)
+					Expect(err).NotTo(HaveOccurred())
+				}()
+				verify("original=value,empty=", "original=value:NoSchedule,empty=:NoExecute")
+				By("Replace both collections and verify old entries disappear")
+				_, err = machinePoolService.EditMachinePool(clusterID, poolName,
+					"--labels", "replacement=new", "--taints", "replacement=new:PreferNoSchedule")
+				Expect(err).NotTo(HaveOccurred())
+				verify("replacement=new", "replacement=new:PreferNoSchedule")
+				By("Clear labels while preserving taints")
+				_, err = machinePoolService.EditMachinePool(clusterID, poolName, "--labels", "")
+				Expect(err).NotTo(HaveOccurred())
+				verify("", "replacement=new:PreferNoSchedule")
+				By("Set a label with an empty value while preserving taints")
+				_, err = machinePoolService.EditMachinePool(clusterID, poolName, "--labels", "empty=")
+				Expect(err).NotTo(HaveOccurred())
+				verify("empty=", "replacement=new:PreferNoSchedule")
+				By("Clear taints while preserving labels")
+				_, err = machinePoolService.EditMachinePool(clusterID, poolName, "--taints", "")
+				Expect(err).NotTo(HaveOccurred())
+				verify("empty=", "")
+				By("Clear labels using the quoted empty value")
+				_, err = machinePoolService.EditMachinePool(clusterID, poolName, "--labels", `""`)
+				Expect(err).NotTo(HaveOccurred())
+				verify("", "")
+			})
+
 		It("can create/edit/list/delete nodepool - [id:56782]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
 				nodePoolName := helper.GenerateRandomName("np-56782", 2)
 				labels := "label1=value1,label2=value2"
@@ -104,11 +164,14 @@ var _ = Describe("Edit nodepool",
 				np := npList.Nodepool(nodePoolName)
 				Expect(np).ToNot(BeNil())
 				Expect(np.AutoScaling).To(Equal("No"))
-				Expect(np.Replicas).To(Equal("0/0"))
+				expectNodePoolReplicas(np.Replicas, "0")
 				Expect(np.InstanceType).To(Equal(instanceType))
 				Expect(np.AvalaiblityZones).ToNot(BeNil())
 				Expect(np.Subnet).ToNot(BeNil())
-				Expect(np.Version).To(Equal(cpVersion))
+				if !isHyperfleetMode() {
+					Expect(np.Version).To(Equal(cpVersion))
+				}
+				originalPoolVersion := np.Version
 				Expect(np.AutoRepair).To(Equal("Yes"))
 				Expect(len(helper.ParseLabels(np.Labels))).To(Equal(len(helper.ParseLabels(labels))))
 				Expect(helper.ParseLabels(np.Labels)).To(ContainElements(helper.ParseLabels(labels)))
@@ -124,18 +187,20 @@ var _ = Describe("Edit nodepool",
 					"--labels", newLabels,
 					"--taints", newTaints)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					Should(ContainSubstring(
-						"Updated machine pool '%s' on hosted cluster '%s'",
-						nodePoolName,
-						clusterID))
+				if isHyperfleetMode() {
+					Expect(output.String()).To(ContainSubstring("Updated node pool '%s' in cluster '%s'", nodePoolName, clusterID))
+				} else {
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring(
+						"Updated machine pool '%s' on hosted cluster '%s'", nodePoolName, clusterID))
+				}
 
 				By("Check edited nodepool")
 				npList, err = machinePoolService.ListAndReflectNodePools(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				np = npList.Nodepool(nodePoolName)
 				Expect(np).ToNot(BeNil())
-				Expect(np.Replicas).To(Equal(fmt.Sprintf("0/%s", replicasNb)))
+				expectNodePoolReplicas(np.Replicas, replicasNb)
+				Expect(np.Version).To(Equal(originalPoolVersion))
 				Expect(len(helper.ParseLabels(np.Labels))).To(Equal(len(helper.ParseLabels(newLabels))))
 				Expect(helper.ParseLabels(np.Labels)).To(BeEquivalentTo(helper.ParseLabels(newLabels)))
 				Expect(len(helper.ParseTaints(np.Taints))).To(Equal(len(helper.ParseTaints(newTaints))))
@@ -149,11 +214,16 @@ var _ = Describe("Edit nodepool",
 				Expect(npDesc).ToNot(BeNil())
 				Expect(npDesc.AutoScaling).To(Equal("No"))
 				Expect(npDesc.DesiredReplicas).To(Equal(replicasCount))
-				Expect(npDesc.CurrentReplicas).To(Equal("0"))
+				if isHyperfleetMode() {
+					// An absent observed count is unknown, rather than a reported zero.
+					Expect(npDesc.CurrentReplicas).To(MatchRegexp("^[0-9]*$"))
+				} else {
+					Expect(npDesc.CurrentReplicas).To(Equal("0"))
+				}
 				Expect(npDesc.InstanceType).To(Equal(instanceType))
 				Expect(npDesc.AvalaiblityZones).ToNot(BeNil())
 				Expect(npDesc.Subnet).ToNot(BeNil())
-				Expect(npDesc.Version).To(Equal(cpVersion))
+				Expect(npDesc.Version).To(Equal(originalPoolVersion))
 				Expect(npDesc.AutoRepair).To(Equal("Yes"))
 				Expect(len(helper.ParseLabels(npDesc.Labels))).To(Equal(len(helper.ParseLabels(newLabels))))
 				Expect(helper.ParseLabels(npDesc.Labels)).To(BeEquivalentTo(helper.ParseLabels(newLabels)))
@@ -163,16 +233,19 @@ var _ = Describe("Edit nodepool",
 				By("Delete nodepool")
 				output, err = machinePoolService.DeleteMachinePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					Should(ContainSubstring(
-						"Successfully deleted machine pool '%s' from hosted cluster '%s'",
-						nodePoolName,
-						clusterID))
+				if isHyperfleetMode() {
+					Expect(output.String()).To(ContainSubstring("Node pool '%s' will start deleting now", nodePoolName))
+				} else {
+					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring(
+						"Successfully deleted machine pool '%s' from hosted cluster '%s'", nodePoolName, clusterID))
+				}
 
 				By("Nodepool does not appear anymore")
-				npList, err = machinePoolService.ListAndReflectNodePools(clusterID)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(npList.Nodepool(nodePoolName)).To(BeNil())
+				Eventually(func(g Gomega) {
+					pools, err := machinePoolService.ListAndReflectNodePools(clusterID)
+					g.Expect(err).NotTo(HaveOccurred())
+					g.Expect(pools.Nodepool(nodePoolName)).To(BeNil())
+				}, 2*time.Minute, 5*time.Second).Should(Succeed())
 			})
 
 		It("can create nodepool with defined subnets - [id:60202]",
@@ -1714,6 +1787,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("Edit machine pool to the ROSA Hypershift cluster - [id:56778]", labels.Runtime.Day2, labels.High, labels.FedRAMP,
+			labels.Hyperfleet.Validated,
 			func() {
 				var (
 					replicas         string
@@ -1755,7 +1829,7 @@ var _ = Describe("Edit nodepool",
 					np = npList.Nodepool(npName)
 					Expect(np).ToNot(BeNil())
 					Expect(np.AutoScaling).To(Equal("No"))
-					Expect(np.Replicas).To(Equal("0/3"))
+					expectNodePoolReplicas(np.Replicas, "3")
 					Expect(np.AutoRepair).To(Equal("No"))
 
 					By("Edit an advanced machine pools")
@@ -1773,7 +1847,7 @@ var _ = Describe("Edit nodepool",
 					np = npList.Nodepool(npName)
 					Expect(np).ToNot(BeNil())
 					Expect(np.AutoScaling).To(Equal("Yes"))
-					Expect(np.Replicas).To(Equal("0/3-6"))
+					expectNodePoolReplicas(np.Replicas, "3-6")
 					Expect(np.AutoRepair).To(Equal("Yes"))
 
 					By("Edit machine pool to enable autoscaling and set min-replicas to 1")
@@ -1790,7 +1864,7 @@ var _ = Describe("Edit nodepool",
 					np = npList.Nodepool(npName)
 					Expect(np).ToNot(BeNil())
 					Expect(np.AutoScaling).To(Equal("Yes"))
-					Expect(np.Replicas).To(Equal("0/1-6"))
+					expectNodePoolReplicas(np.Replicas, "1-6")
 
 					By("Edit machinepool with tag --autorepair")
 					_, err = rosaClient.MachinePool.EditMachinePool(clusterID, npName,
@@ -1808,3 +1882,14 @@ var _ = Describe("Edit nodepool",
 
 			})
 	})
+
+// HyperFleet may omit the observed count until its controller reports status.
+// Verify the requested desired count while accepting only non-negative observed counts.
+func expectNodePoolReplicas(actual, desired string) {
+	GinkgoHelper()
+	if isHyperfleetMode() {
+		Expect(actual).To(MatchRegexp("^([0-9]+|-)/" + desired + "$"))
+	} else {
+		Expect(actual).To(Equal("0/" + desired))
+	}
+}

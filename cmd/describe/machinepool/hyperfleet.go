@@ -136,6 +136,8 @@ func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
 		"version":            np.Spec.NodePool.Release.Image,
 		"created_at":         np.CreationTimestamp.UTC().Format(time.RFC3339),
 		"conditions":         conditions,
+		"labels":             np.Spec.Labels,
+		"taints":             np.Spec.NodePool.Taints,
 	}
 }
 
@@ -202,31 +204,11 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		currentReplicasStr = fmt.Sprintf("%d", *np.Status.Replicas)
 	}
 
-	// Labels
-	labels := ""
-	if len(np.Spec.NodePool.NodeLabels) > 0 {
-		labelPairs := make([]string, 0, len(np.Spec.NodePool.NodeLabels))
-		for k, v := range np.Spec.NodePool.NodeLabels {
-			labelPairs = append(labelPairs, fmt.Sprintf("%s=%s", k, v))
-		}
-		labels = strings.Join(labelPairs, ", ")
-	}
-
-	// Taints
-	taintsStr := ""
-	if len(np.Spec.NodePool.Taints) > 0 {
-		taintStrs := make([]string, 0, len(np.Spec.NodePool.Taints))
-		for _, t := range np.Spec.NodePool.Taints {
-			taintStrs = append(taintStrs, fmt.Sprintf("%s=%s:%s", t.Key, t.Value, t.Effect))
-		}
-		taintsStr = strings.Join(taintStrs, ", ")
-	}
+	labels := hyperfleet.FormatNodePoolLabels(np.Spec.Labels)
+	taintsStr := hyperfleet.FormatNodePoolTaints(np.Spec.NodePool.Taints)
 
 	// Autorepair
-	autorepair := "No"
-	if np.Spec.NodePool.Management.AutoRepair {
-		autorepair = "Yes"
-	}
+	autorepair := hyperfleet.FormatNodePoolAutorepair(np)
 
 	// Tuning configs
 	tuningConfigs := ""

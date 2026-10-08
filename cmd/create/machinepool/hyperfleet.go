@@ -6,17 +6,19 @@ import (
 	"os"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
 	rosaaws "github.com/openshift/rosa/pkg/aws"
+	awsapi "github.com/openshift/rosa/pkg/aws/api_interface"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
+	mpValidation "github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -34,6 +36,8 @@ const maxAWSResourceTags = 25
 var hfNodePoolInput hfpathbind.NodePoolCreateInput
 
 var (
+	newNodePoolEC2Client = func(config awssdk.Config) awsapi.Ec2ApiClient { return ec2.NewFromConfig(config) }
+
 	exitFn = func(code int) { os.Exit(code) }
 
 	hfCreateMachinePool = func(userOptions *mpOpts.CreateMachinepoolUserOptions, argv []string, cmd *cobra.Command) {
@@ -43,6 +47,7 @@ var (
 		handler := &hyperfleetNodePoolCreate{
 			userOptions: userOptions,
 			argv:        argv,
+			cmd:         cmd,
 		}
 		if err := handler.validateAndParseUserOptions(); err != nil {
 			r.Reporter.Errorf("%v", err)
@@ -132,6 +137,7 @@ type hyperfleetNodePoolCreate struct {
 	hfpathbind.GeneratedNodePoolCreatePrompt
 	userOptions          *mpOpts.CreateMachinepoolUserOptions
 	argv                 []string
+	cmd                  *cobra.Command
 	clusterKey           string
 	clusterUID           string
 	userOptionsValidated bool
@@ -144,16 +150,34 @@ func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
 	if h.userOptionsValidated {
 		return nil
 	}
+	if h.cmd != nil && h.cmd.Flags().Changed("multi-availability-zone") {
+		return fmt.Errorf("setting `multi-availability-zone` flag is not supported for HCP clusters")
+	}
+	if h.cmd != nil && h.cmd.Flags().Changed("version") && h.userOptions.Version == "" {
+		return fmt.Errorf("expected a valid OpenShift version: --version requires a non-empty value")
+	}
+	name := h.userOptions.Name
+	if name == "" && len(h.argv) > 0 {
+		name = h.argv[0]
+	}
+	if name != "" {
+		if err := mpValidation.ValidateMachinePoolName(name); err != nil {
+			return err
+		}
+	}
+	if err := h.validateReplicas(); err != nil {
+		return err
+	}
 	if len(h.userOptions.Tags) > maxAWSResourceTags {
 		return fmt.Errorf("%s", "Invalid machine pool AWS tags: Resource has too many AWS tags")
 	}
 
-	labels, err := parseHyperfleetLabels(h.userOptions.Labels)
+	labels, err := mpHelpers.ParseHyperfleetLabels(h.userOptions.Labels)
 	if err != nil {
 		return err
 	}
 
-	taints, err := parseHyperfleetTaints(h.userOptions.Taints)
+	taints, err := mpHelpers.ParseHyperfleetTaints(h.userOptions.Taints)
 	if err != nil {
 		return err
 	}
@@ -170,61 +194,26 @@ func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
 	return nil
 }
 
-func parseHyperfleetLabels(input string) (map[string]string, error) {
-	if input != "" && input != `""` {
-		entries := strings.Split(input, ",")
-		for i, label := range entries {
-			if label == "" && i == len(entries)-1 {
-				continue
-			}
-			if strings.Count(label, "=") != 1 {
-				return nil, fmt.Errorf("expected key=value format for labels")
-			}
-		}
+func (h *hyperfleetNodePoolCreate) validateReplicas() error {
+	options := h.userOptions
+	validation := mpValidation.ReplicaSizeValidation{
+		IsHostedCp:  true,
+		Autoscaling: options.AutoscalingEnabled,
+		MinReplicas: options.MinReplicas,
 	}
-	return mpHelpers.ParseLabels(input)
-}
-
-func parseHyperfleetTaints(input string) ([]hypershiftv1beta1.Taint, error) {
-	if input == "" || input == `""` {
-		return nil, nil
-	}
-
-	entries := strings.Split(input, ",")
-	trimmedEntries := make([]string, 0, len(entries))
-	for i, taint := range entries {
-		if taint == "" && i == len(entries)-1 && i > 0 {
-			continue
+	if options.AutoscalingEnabled {
+		if h.cmd != nil && h.cmd.Flags().Changed("replicas") {
+			return fmt.Errorf("replicas can't be set when autoscaling is enabled")
 		}
-		originalTaint := taint
-		taint = strings.TrimSpace(taint)
-		if !strings.Contains(taint, "=") || !strings.Contains(taint, ":") {
-			return nil, fmt.Errorf("expected key=value:scheduleType format for taints. Got '%s'", originalTaint)
+		if err := validation.MinReplicaValidator()(options.MinReplicas); err != nil {
+			return err
 		}
-		if strings.Count(taint, "=") != 1 || strings.Count(taint, ":") != 1 {
-			return nil, fmt.Errorf("invalid taint format: '%s'. Expected format is '<key>=<value>:<effect>'", taint)
-		}
-		trimmedEntries = append(trimmedEntries, taint)
+		return validation.MaxReplicaValidator()(options.MaxReplicas)
 	}
-
-	parsedTaints, err := mpHelpers.ParseTaints(strings.Join(trimmedEntries, ","))
-	if err != nil {
-		return nil, err
+	if h.cmd != nil && (h.cmd.Flags().Changed("min-replicas") || h.cmd.Flags().Changed("max-replicas")) {
+		return fmt.Errorf("autoscaling must be enabled in order to set min and max replicas")
 	}
-
-	taints := make([]hypershiftv1beta1.Taint, 0, len(parsedTaints))
-	for _, taintBuilder := range parsedTaints {
-		parsed, err := taintBuilder.Build()
-		if err != nil {
-			return nil, err
-		}
-		taints = append(taints, hypershiftv1beta1.Taint{
-			Key:    parsed.Key(),
-			Value:  parsed.Value(),
-			Effect: corev1.TaintEffect(parsed.Effect()),
-		})
-	}
-	return taints, nil
+	return validation.MinReplicaValidator()(options.Replicas)
 }
 
 func parseHyperfleetResourceTags(input []string) ([]hypershiftv1beta1.AWSResourceTag, error) {
@@ -327,6 +316,14 @@ func (h *hyperfleetNodePoolCreate) PostExpand(
 	if err != nil {
 		return fmt.Errorf("failed to get cluster %q: %w", h.clusterKey, err)
 	}
+	if h.userOptions.Version != "" {
+		image, err := hyperfleet.ResolveNodePoolReleaseImage(cluster, h.userOptions.Version,
+			obj.Spec.NodePool.Release.Image)
+		if err != nil {
+			return err
+		}
+		obj.Spec.NodePool.Release.Image = image
+	}
 
 	var rolesRef hypershiftv1beta1.AWSRolesRef
 	if cluster.Spec.HostedCluster.Platform.AWS != nil {
@@ -405,7 +402,15 @@ func (h *hyperfleetNodePoolCreate) PostExpand(
 	autoRepair := h.userOptions.Autorepair
 	obj.Spec.AutoRepair = &autoRepair
 
-	return nil
+	if cluster.Spec.HostedCluster.Platform.AWS == nil ||
+		cluster.Spec.HostedCluster.Platform.AWS.CloudProviderConfig == nil {
+		return fmt.Errorf("cluster %q has no AWS platform configuration", h.clusterKey)
+	}
+	return rosaaws.ValidateMachinePoolAWS(ctx, newNodePoolEC2Client(r.AWSConfig), rosaaws.ValidateMachinePoolAWSRequest{
+		SubnetID:     awssdk.ToString(obj.Spec.NodePool.Platform.AWS.Subnet.ID),
+		VPCID:        cluster.Spec.HostedCluster.Platform.AWS.CloudProviderConfig.VPC,
+		InstanceType: obj.Spec.NodePool.Platform.AWS.InstanceType,
+	})
 }
 
 func (h *hyperfleetNodePoolCreate) PostResponse(_ context.Context, r *rosa.Runtime, created *v1alpha1.NodePool) error {

@@ -53,6 +53,14 @@ type ReplicaSizeValidation struct {
 	MultiAz             bool
 }
 
+// ValidateMachinePoolName applies the machine pool naming rule used by the OCM workflows.
+func ValidateMachinePoolName(name string) error {
+	if !machinePoolKeyRE.MatchString(name) {
+		return fmt.Errorf("expected a valid name for the machine pool")
+	}
+	return nil
+}
+
 // Parse labels if the 'labels' flag is set
 func ValidateLabels(cmd *cobra.Command, args *mpOpts.CreateMachinepoolUserOptions) error {
 	if cmd.Flags().Changed("labels") {
