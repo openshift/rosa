@@ -39,6 +39,5 @@
 - name: "preference"
 - name: "resource-tags"
 - name: "root-volume-type"
-- name: "security-groups"
 - name: "size"
 - name: "tenancy"

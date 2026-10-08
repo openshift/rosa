@@ -9,6 +9,7 @@ import (
 
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
+	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -80,6 +81,22 @@ func runHyperfleetDescribe(r *rosa.Runtime, userOptions *DescribeMachinepoolUser
 	fmt.Print(hfNodePoolToString(np, clusterKey))
 }
 
+// hfSecurityGroupIDs extracts the additional security group IDs from an AWS node
+// pool platform spec, in the order the API returns them. Returns an empty (non-nil)
+// slice when aws is nil or no security groups are set.
+func hfSecurityGroupIDs(aws *hypershiftv1beta1.AWSNodePoolPlatform) []string {
+	sgIDs := make([]string, 0)
+	if aws == nil {
+		return sgIDs
+	}
+	for _, sg := range aws.SecurityGroups {
+		if sg.ID != nil {
+			sgIDs = append(sgIDs, *sg.ID)
+		}
+	}
+	return sgIDs
+}
+
 func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
 	replicas := int32(0)
 	if np.Spec.NodePool.Replicas != nil {
@@ -95,6 +112,7 @@ func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
 		}
 		diskSize = hyperfleet.FormatNodePoolDiskSize(np.Spec.NodePool.Platform.AWS)
 	}
+	securityGroupIDs := hfSecurityGroupIDs(np.Spec.NodePool.Platform.AWS)
 
 	conditions := make([]map[string]interface{}, 0, len(np.Status.Conditions))
 	for _, cond := range np.Status.Conditions {
@@ -107,16 +125,17 @@ func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"id":           string(np.UID),
-		"name":         np.Name,
-		"state":        string(np.Status.Phase),
-		"replicas":     replicas,
-		"instanceType": instanceType,
-		"subnet":       subnetID,
-		"disk_size":    diskSize,
-		"version":      np.Spec.NodePool.Release.Image,
-		"created_at":   np.CreationTimestamp.UTC().Format(time.RFC3339),
-		"conditions":   conditions,
+		"id":                 string(np.UID),
+		"name":               np.Name,
+		"state":              string(np.Status.Phase),
+		"replicas":           replicas,
+		"instanceType":       instanceType,
+		"subnet":             subnetID,
+		"disk_size":          diskSize,
+		"security_group_ids": securityGroupIDs,
+		"version":            np.Spec.NodePool.Release.Image,
+		"created_at":         np.CreationTimestamp.UTC().Format(time.RFC3339),
+		"conditions":         conditions,
 	}
 }
 
@@ -147,13 +166,7 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		}
 
 		// Security groups
-		if len(aws.SecurityGroups) > 0 {
-			sgIDs := make([]string, 0, len(aws.SecurityGroups))
-			for _, sg := range aws.SecurityGroups {
-				if sg.ID != nil {
-					sgIDs = append(sgIDs, *sg.ID)
-				}
-			}
+		if sgIDs := hfSecurityGroupIDs(aws); len(sgIDs) > 0 {
 			securityGroupIDs = strings.Join(sgIDs, ", ")
 		}
 

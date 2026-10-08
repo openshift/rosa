@@ -42,7 +42,7 @@ type NodePoolCreateInput struct {
 	Iops                          *int64 `hfsdk:"spec.nodePool.platform.aws.rootVolume.iops"`
 	Size                          *int64 `hfsdk:"spec.nodePool.platform.aws.rootVolume.size"`
 	RootVolumeType                string `hfsdk:"spec.nodePool.platform.aws.rootVolume.type"`
-	SecurityGroups                string `hfsdk:"spec.nodePool.platform.aws.securityGroups"`
+	SecurityGroupIds              string `hfsdk:"spec.nodePool.platform.aws.securityGroups"`
 	Filters                       string `hfsdk:"spec.nodePool.platform.aws.subnet.filters"`
 	SubnetID                      string `hfsdk:"spec.nodePool.platform.aws.subnet.id"`
 	PlatformType                  string `hfsdk:"spec.nodePool.platform.type"`
@@ -77,7 +77,7 @@ var NodePoolCreatePlatformAPIFlags = []string{
 	"iops",
 	"size",
 	"root-volume-type",
-	"security-groups",
+	"additional-security-group-ids",
 	"filters",
 	"subnet",
 	"platform-type",
@@ -110,7 +110,9 @@ func RegisterNodePoolCreateFlags(cmd *cobra.Command, input *NodePoolCreateInput)
 	registerIfNew(f, "iops", func() { input.Iops = new(int64); f.Int64Var(input.Iops, "iops", 0, "") })
 	registerIfNew(f, "size", func() { input.Size = new(int64); f.Int64Var(input.Size, "size", 0, "") })
 	registerIfNew(f, "root-volume-type", func() { f.StringVar(&input.RootVolumeType, "root-volume-type", "", "") })
-	registerIfNew(f, "security-groups", func() { f.StringVar(&input.SecurityGroups, "security-groups", "", "") })
+	registerIfNew(f, "additional-security-group-ids", func() {
+		f.StringVar(&input.SecurityGroupIds, "additional-security-group-ids", "", "Additional AWS Security Group IDs to attach to node pool instances. Format should be a comma-separated list.")
+	})
 	registerIfNew(f, "filters", func() { f.StringVar(&input.Filters, "filters", "", "") })
 	registerIfNew(f, "subnet", func() { f.StringVar(&input.SubnetID, "subnet", "", "Subnet ID for the node pool.") })
 	registerIfNew(f, "platform-type", func() { f.StringVar(&input.PlatformType, "platform-type", "", "") })
