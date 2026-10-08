@@ -35,7 +35,6 @@ func runHyperfleetCreateNetwork(r *rosa.Runtime, userOptions *opts.NetworkUserOp
 		hfExitFn(1)
 		return
 	}
-
 	// Require ClusterName parameter for hosted zone creation
 	clusterName := parsedParams["ClusterName"]
 	if clusterName == "" {
