@@ -5,6 +5,8 @@ package rosacli
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -210,5 +212,113 @@ var _ = Describe("Y-stream upgrade discovery helpers", func() {
 		)
 
 		Expect(err).To(MatchError(ContainSubstring("y-stream upgrade preparation is required")))
+	})
+})
+
+var _ = Describe("Upgrade scheduling retry helpers", func() {
+	updateInProgressErr := fmt.Errorf("exit status 1: ERR: failed to schedule upgrade for cluster '%s': "+
+		"status is 400, identifier is '400', code is 'CLUSTERS-MGMT-400': "+
+		"An update is already in progress and the details are in the Progressing condition", testClusterID)
+
+	It("returns immediately when the upgrade is scheduled on the first attempt", func() {
+		callCount := 0
+
+		output, err := upgradeRetryingWhileUpdateInProgress(
+			time.Nanosecond,
+			time.Second,
+			func() (bytes.Buffer, error) {
+				callCount++
+				return *bytes.NewBufferString("Upgrade successfully scheduled for cluster"), nil
+			},
+		)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+		Expect(callCount).To(Equal(1))
+	})
+
+	It("retries while the cluster update is still in progress", func() {
+		callCount := 0
+
+		output, err := upgradeRetryingWhileUpdateInProgress(
+			time.Nanosecond,
+			time.Second,
+			func() (bytes.Buffer, error) {
+				callCount++
+				if callCount < 3 {
+					return *bytes.NewBufferString(updateInProgressErr.Error()), updateInProgressErr
+				}
+				return *bytes.NewBufferString("Upgrade successfully scheduled for cluster"), nil
+			},
+		)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(output.String()).To(ContainSubstring("Upgrade successfully scheduled for cluster"))
+		Expect(callCount).To(Equal(3))
+	})
+
+	It("detects the in-progress message in the command output", func() {
+		callCount := 0
+
+		_, err := upgradeRetryingWhileUpdateInProgress(
+			time.Nanosecond,
+			time.Second,
+			func() (bytes.Buffer, error) {
+				callCount++
+				if callCount == 1 {
+					return *bytes.NewBufferString(updateInProgressErr.Error()), fmt.Errorf("exit status 1")
+				}
+				return bytes.Buffer{}, nil
+			},
+		)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(callCount).To(Equal(2))
+	})
+
+	It("does not retry unrelated errors", func() {
+		callCount := 0
+
+		output, err := upgradeRetryingWhileUpdateInProgress(
+			time.Nanosecond,
+			time.Second,
+			func() (bytes.Buffer, error) {
+				callCount++
+				return *bytes.NewBufferString("There is already a scheduled upgrade"), fmt.Errorf("boom")
+			},
+		)
+
+		Expect(err).To(MatchError("boom"))
+		Expect(output.String()).To(ContainSubstring("There is already a scheduled upgrade"))
+		Expect(callCount).To(Equal(1))
+	})
+
+	It("uses the default retry timeout when interval and timeout are non-positive", func() {
+		_, err := upgradeRetryingWhileUpdateInProgress(
+			0,
+			0,
+			func() (bytes.Buffer, error) {
+				return *bytes.NewBufferString(updateInProgressErr.Error()), updateInProgressErr
+			},
+		)
+
+		Expect(err).To(MatchError(ContainSubstring(
+			fmt.Sprintf("timeout after %s", defaultUpdateInProgressRetryTimeout))))
+	})
+
+	It("returns a detailed timeout that wraps the last error when the cluster update never finishes", func() {
+		_, err := upgradeRetryingWhileUpdateInProgress(
+			time.Millisecond,
+			5*time.Millisecond,
+			func() (bytes.Buffer, error) {
+				return *bytes.NewBufferString(updateInProgressErr.Error()), updateInProgressErr
+			},
+		)
+
+		Expect(err).To(MatchError(ContainSubstring("timeout after 5ms")))
+		Expect(err).To(MatchError(ContainSubstring("context deadline exceeded")))
+		Expect(err).To(MatchError(ContainSubstring(updateInProgressMessage)))
+		Expect(errors.Is(err, updateInProgressErr)).To(BeTrue())
+		Expect(errors.Is(err, context.DeadlineExceeded)).To(BeTrue())
 	})
 })
