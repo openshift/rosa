@@ -48,7 +48,12 @@ func ParseCommaSeparatedStrings(input string) (output []string) {
 
 func ParseTagsFronJsonOutput(tags string) map[string]interface{} {
 	output := make(map[string]interface{})
-	rawMap := tags[strings.Index(tags, "map[")+4 : strings.LastIndex(tags, "]")]
+	mapStart := strings.Index(tags, "map[")
+	mapEnd := strings.LastIndex(tags, "]")
+	if mapStart == -1 || mapEnd <= mapStart+4 {
+		return output
+	}
+	rawMap := tags[mapStart+4 : mapEnd]
 	pairs := strings.Split(rawMap, " ")
 	for _, pair := range pairs {
 		kvp := strings.SplitN(pair, ":", 2)
