@@ -35,6 +35,7 @@
 - name: "instance-profile"
 - name: "iops"
 - name: "max-price"
+- name: "node-labels"
 - name: "placement-market-type"
 - name: "preference"
 - name: "resource-tags"
