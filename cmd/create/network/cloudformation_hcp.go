@@ -46,6 +46,13 @@ Parameters:
   ClusterName:
     Type: String
     Description: "Cluster name for private hosted zone (creates <cluster-name>.hypershift.local)"
+  SingleNatGateway:
+    Type: String
+    Description: Use one NAT gateway across all Availability Zones
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
 
 Conditions:
   AZ1Explicit: !Not [!Equals [!Ref AZ1, ""]]
@@ -65,6 +72,18 @@ Conditions:
   Two:   !Or [!And [!Condition ExplicitAZs, !Condition AZ2Explicit], !And [!Condition NoExplicitAZs, !Condition AZ2Implicit]]
   Three: !Or [!And [!Condition ExplicitAZs, !Condition AZ3Explicit], !And [!Condition NoExplicitAZs, !Condition AZ3Implicit]]
   Four:  !Or [!And [!Condition ExplicitAZs, !Condition AZ4Explicit], !And [!Condition NoExplicitAZs, !Condition AZ4Implicit]]
+
+  UseSingleNat: !Equals [!Ref SingleNatGateway, 'true']
+  UseMultiNat: !Not [!Condition UseSingleNat]
+  NoAZ1: !Not [!Condition One]
+  NoAZ2: !Not [!Condition Two]
+  NoAZ3: !Not [!Condition Three]
+  CreateNat2: !Or [!And [!Condition Two, !Condition UseMultiNat], !And [!Condition Two, !Condition UseSingleNat, !Condition NoAZ1]]
+  CreateNat3: !Or [!And [!Condition Three, !Condition UseMultiNat], !And [!Condition Three, !Condition UseSingleNat, !Condition NoAZ1, !Condition NoAZ2]]
+  CreateNat4: !Or [!And [!Condition Four, !Condition UseMultiNat], !And [!Condition Four, !Condition UseSingleNat, !Condition NoAZ1, !Condition NoAZ2, !Condition NoAZ3]]
+  CreatePrivateRT2: !And [!Condition Two, !Condition UseMultiNat]
+  CreatePrivateRT3: !And [!Condition Three, !Condition UseMultiNat]
+  CreatePrivateRT4: !And [!Condition Four, !Condition UseMultiNat]
 
 Resources:
   VPC:
@@ -94,6 +113,9 @@ Resources:
       RouteTableIds:
         - !Ref PublicRouteTable
         - !Ref PrivateRouteTable
+        - !If [CreatePrivateRT2, !Ref PrivateRouteTable2, !Ref "AWS::NoValue"]
+        - !If [CreatePrivateRT3, !Ref PrivateRouteTable3, !Ref "AWS::NoValue"]
+        - !If [CreatePrivateRT4, !Ref PrivateRouteTable4, !Ref "AWS::NoValue"]
 
   SubnetPublic1:
     Type: AWS::EC2::Subnet
@@ -290,7 +312,7 @@ Resources:
           Value: 'ROSA'
 
   ElasticIP2:
-    Condition: Two
+    Condition: CreateNat2
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -305,7 +327,7 @@ Resources:
           Value: 'ROSA'
 
   ElasticIP3:
-    Condition: Three
+    Condition: CreateNat3
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -320,7 +342,7 @@ Resources:
           Value: 'ROSA'
 
   ElasticIP4:
-    Condition: Four
+    Condition: CreateNat4
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -351,7 +373,7 @@ Resources:
           Value: 'ROSA'
 
   NATGateway2:
-    Condition: Two
+    Condition: CreateNat2
     Type: 'AWS::EC2::NatGateway'
     Properties:
       AllocationId: !GetAtt ElasticIP2.AllocationId
@@ -367,7 +389,7 @@ Resources:
           Value: 'ROSA'
 
   NATGateway3:
-    Condition: Three
+    Condition: CreateNat3
     Type: 'AWS::EC2::NatGateway'
     Properties:
       AllocationId: !GetAtt ElasticIP3.AllocationId
@@ -383,7 +405,7 @@ Resources:
           Value: 'ROSA'
 
   NATGateway4:
-    Condition: Four
+    Condition: CreateNat4
     Type: 'AWS::EC2::NatGateway'
     Properties:
       AllocationId: !GetAtt ElasticIP4.AllocationId
@@ -434,6 +456,51 @@ Resources:
         - Key: 'service'
           Value: 'ROSA'
 
+  PrivateRouteTable2:
+    Condition: CreatePrivateRT2
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Private-Route-Table-2"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PrivateRouteTable3:
+    Condition: CreatePrivateRT3
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Private-Route-Table-3"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PrivateRouteTable4:
+    Condition: CreatePrivateRT4
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Private-Route-Table-4"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
   PrivateRoute:
     Type: AWS::EC2::Route
     Properties:
@@ -452,6 +519,30 @@ Resources:
               - Four
               - !Ref NATGateway4
               - !Ref "AWS::NoValue"
+
+  PrivateRoute2:
+    Condition: CreatePrivateRT2
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway2
+
+  PrivateRoute3:
+    Condition: CreatePrivateRT3
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable3
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway3
+
+  PrivateRoute4:
+    Condition: CreatePrivateRT4
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable4
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway4
 
   PublicSubnetRouteTableAssociation1:
     Condition: One
@@ -493,21 +584,21 @@ Resources:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate2
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !If [UseSingleNat, !Ref PrivateRouteTable, !Ref PrivateRouteTable2]
 
   PrivateSubnetRouteTableAssociation3:
     Condition: Three
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate3
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !If [UseSingleNat, !Ref PrivateRouteTable, !Ref PrivateRouteTable3]
 
   PrivateSubnetRouteTableAssociation4:
     Condition: Four
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate4
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !If [UseSingleNat, !Ref PrivateRouteTable, !Ref PrivateRouteTable4]
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -659,21 +750,21 @@ Outputs:
       Name: !Sub "${Name}-EIP1-AllocationId"
 
   EIP2AllocationId:
-    Condition: Two
+    Condition: CreateNat2
     Description: Allocation ID for ElasticIP2
     Value: !GetAtt ElasticIP2.AllocationId
     Export:
       Name: !Sub "${Name}-EIP2-AllocationId"
 
   EIP3AllocationId:
-    Condition: Three
+    Condition: CreateNat3
     Description: Allocation ID for ElasticIP3
     Value: !GetAtt ElasticIP3.AllocationId
     Export:
       Name: !Sub "${Name}-EIP3-AllocationId"
 
   EIP4AllocationId:
-    Condition: Four
+    Condition: CreateNat4
     Description: Allocation ID for ElasticIP4
     Value: !GetAtt ElasticIP4.AllocationId
     Export:
@@ -681,7 +772,7 @@ Outputs:
 
   NatGatewayId:
     Description: The NAT Gateway IDs
-    Value: !Join [",", [!If [One, !Ref NATGateway1, !Ref "AWS::NoValue"], !If [Two, !Ref NATGateway2, !Ref "AWS::NoValue"], !If [Three, !Ref NATGateway3, !Ref "AWS::NoValue"], !If [Four, !Ref NATGateway4, !Ref "AWS::NoValue"]]]
+    Value: !Join [",", [!If [One, !Ref NATGateway1, !Ref "AWS::NoValue"], !If [CreateNat2, !Ref NATGateway2, !Ref "AWS::NoValue"], !If [CreateNat3, !Ref NATGateway3, !Ref "AWS::NoValue"], !If [CreateNat4, !Ref NATGateway4, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-NatGatewayId"
 

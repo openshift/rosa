@@ -2,6 +2,7 @@ package network
 
 import (
 	"go.uber.org/mock/gomock"
+	"gopkg.in/yaml.v3"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -49,10 +50,19 @@ var _ = Describe("Validation functions", func() {
 
 	Context("parseParams", func() {
 		It("should correctly parse the tags and parameters", func() {
-			mockArgs.Params = []string{"Tags=key1=value1, key2=value2", "Name=test-stack", "Region=us-east-1"}
+			mockArgs.Params = []string{
+				"Tags=key1=value1, key2=value2",
+				"Name=test-stack",
+				"Region=us-east-1",
+				"SingleNatGateway=true",
+			}
 			params, tags, err := network.ParseParams(mockArgs.Params)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(params).To(Equal(map[string]string{"Name": "test-stack", "Region": "us-east-1"}))
+			Expect(params).To(Equal(map[string]string{
+				"Name":             "test-stack",
+				"Region":           "us-east-1",
+				"SingleNatGateway": "true",
+			}))
 			Expect(tags).To(Equal(map[string]string{"key1": "value1", "key2": "value2"}))
 		})
 
@@ -147,5 +157,29 @@ var _ = Describe("Validation functions", func() {
 			Expect(templateCommand).To(Equal("rosa-quickstart-default-vpc"))
 			Expect(templateFile).To(Equal(CloudFormationTemplateFile))
 		})
+	})
+})
+
+var _ = Describe("network CloudFormation templates", func() {
+	It("keeps per-AZ NAT gateways as the built-in template default", func() {
+		for templateName, templateBody := range map[string]string{
+			"default": CloudFormationTemplateFile,
+			"HCP":     CloudFormationHCPTemplateFile,
+		} {
+			var template map[string]interface{}
+			Expect(yaml.Unmarshal([]byte(templateBody), &template)).To(Succeed(), templateName)
+
+			parameters, ok := template["Parameters"].(map[string]interface{})
+			Expect(ok).To(BeTrue(), templateName)
+			singleNatGateway, ok := parameters["SingleNatGateway"].(map[string]interface{})
+			Expect(ok).To(BeTrue(), templateName)
+			Expect(singleNatGateway["Default"]).To(Equal("false"), templateName)
+
+			resources, ok := template["Resources"].(map[string]interface{})
+			Expect(ok).To(BeTrue(), templateName)
+			natGateway2, ok := resources["NATGateway2"].(map[string]interface{})
+			Expect(ok).To(BeTrue(), templateName)
+			Expect(natGateway2["Condition"]).To(Equal("CreateNat2"), templateName)
+		}
 	})
 })

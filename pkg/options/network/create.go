@@ -19,6 +19,9 @@ const (
 		"\n" + `  rosa create network rosa-quickstart-default-vpc --param Region=us-west-2` +
 		` --param Name=quickstart-stack --param AvailabilityZoneCount=1` +
 		` --param VpcCidr=10.0.0.0/16` +
+		"\n\n" + `  # Use one shared NAT gateway for a hyperfleet HCP VPC` +
+		"\n" + `  rosa create network --param ClusterName=my-cluster --param AvailabilityZoneCount=3` +
+		` --param SingleNatGateway=true` +
 		"\n\n" + `  # ROSA quick start HCP VPC example with two explicit availability zones` +
 		"\n" + `  rosa create network rosa-quickstart-default-vpc --param Region=us-west-2` +
 		` --param Name=quickstart-stack` +
