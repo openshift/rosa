@@ -2074,6 +2074,12 @@ components:
           metadata.Name is the human-readable cluster name; metadata.Namespace is the cluster UUID.
           The owning AWS account is stored as the label hyperfleet.io/account-id.
       properties:
+          additionalTrustBundle:
+              description: |-
+                  AdditionalTrustBundle is a PEM-encoded CA bundle used by the cluster.
+                  The Platform API accepts this value on writes and redacts it in its responses.
+              maxLength: 1.048576e+06
+              type: string
           controlPlaneUpgradePolicy:
               description: ControlPlaneUpgradePolicy is the control plane upgrade policy defined by the user.
               properties:
@@ -2167,8 +2173,16 @@ components:
           tags:
               additionalProperties:
                   type: string
-              description: Tags are customer-defined labels for organizational purposes.
-              maxProperties: 100
+              description: |-
+                  Tags are customer-defined AWS tags applied to the AWS resources created
+                  for this cluster, for cost allocation, resource organization and
+                  compliance tracking. They are applied at provisioning time only: AWS
+                  resources created by OpenShift cannot be retagged after the fact, so this
+                  field is immutable once the cluster is created.
+                  HyperShift caps platform.aws.resourceTags at 25 entries and the operator
+                  injects 2 system tags (red-hat-managed and kubernetes.io/cluster/<id>),
+                  so 23 customer tags are available here.
+              maxProperties: 23
               type: object
       required:
           - hostedCluster
@@ -2220,12 +2234,32 @@ components:
               type: string
           metadata:
               type: object
+          proxy:
+              description: Proxy is a read-only projection of spec.hostedCluster.configuration.proxy.
+              properties:
+                  http_proxy:
+                      description: HTTPProxy is the URL of the proxy for HTTP requests.
+                      type: string
+                  https_proxy:
+                      description: HTTPSProxy is the URL of the proxy for HTTPS requests.
+                      type: string
+                  no_proxy:
+                      description: NoProxy lists hosts, domains, IP addresses, or CIDRs excluded from proxying.
+                      type: string
+              readOnly: true
+              type: object
           spec:
               description: |-
                   ClusterSpec defines the desired state of a ROSA HCP cluster.
                   metadata.Name is the human-readable cluster name; metadata.Namespace is the cluster UUID.
                   The owning AWS account is stored as the label hyperfleet.io/account-id.
               properties:
+                  additionalTrustBundle:
+                      description: |-
+                          AdditionalTrustBundle is a PEM-encoded CA bundle used by the cluster.
+                          The Platform API accepts this value on writes and redacts it in its responses.
+                      maxLength: 1.048576e+06
+                      type: string
                   controlPlaneUpgradePolicy:
                       description: ControlPlaneUpgradePolicy is the control plane upgrade policy defined by the user.
                       properties:
@@ -2587,12 +2621,226 @@ components:
                               required:
                                   - provisionerConfig
                               type: object
+                          autoscaling:
+                              description: autoscaling specifies auto-scaling behavior that applies to all NodePools
+                              properties:
+                                  balancingIgnoredLabels:
+                                      description: |-
+                                          balancingIgnoredLabels sets "--balancing-ignore-label <label name>" flag on cluster-autoscaler for each listed label.
+                                          This option specifies labels that cluster autoscaler should ignore when considering node group similarity.
+                                          For example, if you have nodes with "topology.ebs.csi.aws.com/zone" label, you can add name of this label here
+                                          to prevent cluster autoscaler from splitting nodes into different node groups based on its value.
+                                          HyperShift automatically appends platform-specific balancing ignore labels:
+                                          - AWS: "lifecycle", "k8s.amazonaws.com/eniConfig", "topology.k8s.aws/zone-id"
+                                          - Azure: "agentpool", "kubernetes.azure.com/agentpool"
+                                          - Common:
+                                            - "hypershift.openshift.io/nodePool"
+                                            - "topology.ebs.csi.aws.com/zone"
+                                            - "topology.disk.csi.azure.com/zone"
+                                            - "ibm-cloud.kubernetes.io/worker-id"
+                                            - "vpc-block-csi-driver-labels"
+                                          These labels are added by default and do not need to be manually specified.
+                                      items:
+                                          maxLength: 317
+                                          type: string
+                                      maxItems: 64
+                                      type: array
+                                      x-kubernetes-validations:
+                                          - message: Each balancingIgnoredLabels item must be a valid label key
+                                            rule: self.all(l, l.matches('^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?[a-zA-Z0-9]([a-zA-Z0-9_.-]{0,61}[a-zA-Z0-9])?$'))
+                                  expanders:
+                                      description: |-
+                                          expanders guide the autoscaler in choosing node groups during scale-out.
+                                          Sets the order of expanders for scaling out node groups.
+                                          Options include:
+                                          * LeastWaste - selects the group with minimal idle CPU and memory after scaling.
+                                          * Priority - selects the group with the highest user-defined priority.
+                                          * Random - selects a group randomly.
+                                          If not specified, `[Priority, LeastWaste]` is the default.
+                                          Maximum of 3 expanders can be specified.
+                                      items:
+                                          description: ExpanderString contains the name of an expander to be used by the cluster autoscaler.
+                                          enum:
+                                              - LeastWaste
+                                              - Priority
+                                              - Random
+                                          type: string
+                                      maxItems: 3
+                                      minItems: 1
+                                      type: array
+                                  maxFreeDifferenceRatioPercent:
+                                      description: |-
+                                          maxFreeDifferenceRatioPercent sets the maximum difference ratio for free resources between similar node groups. This parameter controls how strict the similarity check is when comparing node groups for load balancing.
+                                          The value represents a percentage from 0 to 100.
+                                          When set to 0, this means node groups must have exactly the same free resources to be considered similar (no difference allowed).
+                                          When set to 100, this means node groups will be considered similar regardless of their free resource differences (any difference allowed).
+                                          A value between 0 and 100 represents the maximum allowed difference ratio for free resources between node groups to be considered similar.
+                                          When omitted, the autoscaler defaults to 10%.
+                                          This affects the "--max-free-difference-ratio" flag on cluster-autoscaler.
+                                      format: int32
+                                      maximum: 100
+                                      minimum: 0
+                                      type: integer
+                                  maxNodeProvisionTime:
+                                      description: |-
+                                          maxNodeProvisionTime is the maximum time to wait for node provisioning
+                                          before considering the provisioning to be unsuccessful, expressed as a Go
+                                          duration string. The default is 15 minutes.
+                                      maxLength: 100
+                                      pattern: ^([0-9]+(\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$
+                                      type: string
+                                  maxNodesTotal:
+                                      description: |-
+                                          maxNodesTotal is the maximum allowable number of nodes for the Autoscaler scale out to be operational.
+                                          The autoscaler will not grow the cluster beyond this number.
+                                          If omitted, the autoscaler will not have a maximum limit.
+                                          number.
+                                      format: int32
+                                      minimum: 0
+                                      type: integer
+                                  maxPodGracePeriod:
+                                      description: |-
+                                          maxPodGracePeriod is the maximum seconds to wait for graceful pod
+                                          termination before scaling down a NodePool. The default is 600 seconds.
+                                      format: int32
+                                      minimum: 0
+                                      type: integer
+                                  podPriorityThreshold:
+                                      description: |-
+                                          podPriorityThreshold enables users to schedule "best-effort" pods, which
+                                          shouldn't trigger autoscaler actions, but only run when there are spare
+                                          resources available. The default is -10.
+                                          See the following for more details:
+                                          https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#how-does-cluster-autoscaler-work-with-pod-priority-and-preemption
+                                      format: int32
+                                      type: integer
+                                  scaleDown:
+                                      description: |-
+                                          scaleDown configures the behavior of the Cluster Autoscaler scale down operation.
+                                          This field is only valid when scaling is set to ScaleUpAndScaleDown.
+                                      properties:
+                                          delayAfterAddSeconds:
+                                              description: |-
+                                                  delayAfterAddSeconds sets how long after scale up the scale down evaluation resumes in seconds.
+                                                  It must be between 0 and 86400 (24 hours).
+                                                  When set to 0, this means scale down evaluation will resume immediately after scale up, without any delay.
+                                                  When omitted, the autoscaler defaults to 600s (10 minutes).
+                                              format: int32
+                                              maximum: 86400
+                                              minimum: 0
+                                              type: integer
+                                          delayAfterDeleteSeconds:
+                                              description: |-
+                                                  delayAfterDeleteSeconds sets how long after node deletion, scale down evaluation resumes, defaults to scan-interval.
+                                                  It must be between 0 and 86400 (24 hours).
+                                                  When set to 0, this means scale down evaluation will resume immediately after node deletion, without any delay.
+                                                  When omitted, the autoscaler defaults to 0s.
+                                              format: int32
+                                              maximum: 86400
+                                              minimum: 0
+                                              type: integer
+                                          delayAfterFailureSeconds:
+                                              description: |-
+                                                  delayAfterFailureSeconds sets how long after a scale down failure, scale down evaluation resumes.
+                                                  It must be between 0 and 86400 (24 hours).
+                                                  When set to 0, this means scale down evaluation will resume immediately after a scale down failure, without any delay.
+                                                  When omitted, the autoscaler defaults to 180s (3 minutes).
+                                              format: int32
+                                              maximum: 86400
+                                              minimum: 0
+                                              type: integer
+                                          unneededDurationSeconds:
+                                              description: |-
+                                                  unneededDurationSeconds establishes how long a node should be unneeded before it is eligible for scale down in seconds.
+                                                  It must be between 0 and 86400 (24 hours).
+                                                  When omitted, the autoscaler defaults to 600s (10 minutes).
+                                              format: int32
+                                              maximum: 86400
+                                              minimum: 0
+                                              type: integer
+                                          utilizationThresholdPercent:
+                                              description: |-
+                                                  utilizationThresholdPercent determines the node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down.
+                                                  The value represents a percentage from 0 to 100.
+                                                  When set to 0, this means nodes will only be considered for scale down if they are completely idle (0% utilization).
+                                                  When set to 100, this means nodes will be considered for scale down regardless of their utilization level.
+                                                  A value between 0 and 100 represents the utilization threshold below which a node can be considered for scale down.
+                                                  When omitted, the autoscaler defaults to 50%.
+                                              format: int32
+                                              maximum: 100
+                                              minimum: 0
+                                              type: integer
+                                      type: object
+                                  scaling:
+                                      default: ScaleUpAndScaleDown
+                                      description: |-
+                                          scaling defines the scaling behavior for the cluster autoscaler.
+                                          ScaleUpOnly means the autoscaler will only scale up nodes, never scale down.
+                                          ScaleUpAndScaleDown means the autoscaler will both scale up and scale down nodes.
+                                          When set to ScaleUpAndScaleDown, the scaleDown field can be used to configure scale down behavior.
+                                          Note: This field is only supported in OpenShift versions 4.19 and above.
+                                      enum:
+                                          - ScaleUpOnly
+                                          - ScaleUpAndScaleDown
+                                      type: string
+                              type: object
+                              x-kubernetes-validations:
+                                  - message: scaleDown can only be set when scaling is ScaleUpAndScaleDown
+                                    rule: 'self.scaling == ''ScaleUpAndScaleDown'' ? true : !has(self.scaleDown)'
                           channel:
                               description: channel is an identifier for explicitly requesting that a non-default set of updates be applied to this cluster.
                               type: string
                           configuration:
                               description: configuration specifies configuration for individual OCP components in the
                               properties:
+                                  ingress:
+                                      description: ingress contains the configuration for ingress.
+                                      properties:
+                                          componentRoutes:
+                                              description: |-
+                                                  componentRoutes configures hostnames and serving certificates for
+                                                  the console and downloads OpenShift component routes.
+                                              items:
+                                                  description: |-
+                                                      ComponentRouteConfiguration specifies a custom hostname and serving
+                                                      certificate for an OpenShift component route.
+                                                  properties:
+                                                      hostname:
+                                                          description: hostname is the hostname that should be used by the route.
+                                                          pattern: ^([a-zA-Z0-9\p{S}\p{L}]((-?[a-zA-Z0-9\p{S}\p{L}]{0,62})?)|([a-zA-Z0-9\p{S}\p{L}](([a-zA-Z0-9-\p{S}\p{L}]{0,61}[a-zA-Z0-9\p{S}\p{L}])?)(\.)){1,}([a-zA-Z\p{L}]){2,63})$|^(([a-z0-9][-a-z0-9]{0,61}[a-z0-9]|[a-z0-9]{1,63})[\.]){0,}([a-z0-9][-a-z0-9]{0,61}[a-z0-9]|[a-z0-9]{1,63})$
+                                                          type: string
+                                                      name:
+                                                          description: name identifies the component route within its namespace.
+                                                          enum:
+                                                              - console
+                                                              - downloads
+                                                          type: string
+                                                      namespace:
+                                                          description: namespace identifies the namespace containing the component route.
+                                                          enum:
+                                                              - openshift-console
+                                                          type: string
+                                                      servingCertKeyPairSecret:
+                                                          description: servingCertKeyPairSecret references a TLS secret in openshift-config.
+                                                          properties:
+                                                              name:
+                                                                  description: name is the metadata.name of the referenced secret
+                                                                  type: string
+                                                          required:
+                                                              - name
+                                                          type: object
+                                                  required:
+                                                      - hostname
+                                                      - name
+                                                      - namespace
+                                                  type: object
+                                              maxItems: 2
+                                              type: array
+                                              x-kubernetes-list-map-keys:
+                                                  - namespace
+                                                  - name
+                                              x-kubernetes-list-type: map
+                                      type: object
                                   kubelet:
                                       description: kubelet contains the configuration for kubelet on nodes.
                                       properties:
@@ -4441,8 +4689,16 @@ components:
                   tags:
                       additionalProperties:
                           type: string
-                      description: Tags are customer-defined labels for organizational purposes.
-                      maxProperties: 100
+                      description: |-
+                          Tags are customer-defined AWS tags applied to the AWS resources created
+                          for this cluster, for cost allocation, resource organization and
+                          compliance tracking. They are applied at provisioning time only: AWS
+                          resources created by OpenShift cannot be retagged after the fact, so this
+                          field is immutable once the cluster is created.
+                          HyperShift caps platform.aws.resourceTags at 25 entries and the operator
+                          injects 2 system tags (red-hat-managed and kubernetes.io/cluster/<id>),
+                          so 23 customer tags are available here.
+                      maxProperties: 23
                       type: object
               required:
                   - hostedCluster
@@ -4625,12 +4881,32 @@ components:
                           type: string
                       metadata:
                           type: object
+                      proxy:
+                          description: Proxy is a read-only projection of spec.hostedCluster.configuration.proxy.
+                          properties:
+                              http_proxy:
+                                  description: HTTPProxy is the URL of the proxy for HTTP requests.
+                                  type: string
+                              https_proxy:
+                                  description: HTTPSProxy is the URL of the proxy for HTTPS requests.
+                                  type: string
+                              no_proxy:
+                                  description: NoProxy lists hosts, domains, IP addresses, or CIDRs excluded from proxying.
+                                  type: string
+                          readOnly: true
+                          type: object
                       spec:
                           description: |-
                               ClusterSpec defines the desired state of a ROSA HCP cluster.
                               metadata.Name is the human-readable cluster name; metadata.Namespace is the cluster UUID.
                               The owning AWS account is stored as the label hyperfleet.io/account-id.
                           properties:
+                              additionalTrustBundle:
+                                  description: |-
+                                      AdditionalTrustBundle is a PEM-encoded CA bundle used by the cluster.
+                                      The Platform API accepts this value on writes and redacts it in its responses.
+                                  maxLength: 1.048576e+06
+                                  type: string
                               controlPlaneUpgradePolicy:
                                   description: ControlPlaneUpgradePolicy is the control plane upgrade policy defined by the user.
                                   properties:
@@ -4992,12 +5268,226 @@ components:
                                           required:
                                               - provisionerConfig
                                           type: object
+                                      autoscaling:
+                                          description: autoscaling specifies auto-scaling behavior that applies to all NodePools
+                                          properties:
+                                              balancingIgnoredLabels:
+                                                  description: |-
+                                                      balancingIgnoredLabels sets "--balancing-ignore-label <label name>" flag on cluster-autoscaler for each listed label.
+                                                      This option specifies labels that cluster autoscaler should ignore when considering node group similarity.
+                                                      For example, if you have nodes with "topology.ebs.csi.aws.com/zone" label, you can add name of this label here
+                                                      to prevent cluster autoscaler from splitting nodes into different node groups based on its value.
+                                                      HyperShift automatically appends platform-specific balancing ignore labels:
+                                                      - AWS: "lifecycle", "k8s.amazonaws.com/eniConfig", "topology.k8s.aws/zone-id"
+                                                      - Azure: "agentpool", "kubernetes.azure.com/agentpool"
+                                                      - Common:
+                                                        - "hypershift.openshift.io/nodePool"
+                                                        - "topology.ebs.csi.aws.com/zone"
+                                                        - "topology.disk.csi.azure.com/zone"
+                                                        - "ibm-cloud.kubernetes.io/worker-id"
+                                                        - "vpc-block-csi-driver-labels"
+                                                      These labels are added by default and do not need to be manually specified.
+                                                  items:
+                                                      maxLength: 317
+                                                      type: string
+                                                  maxItems: 64
+                                                  type: array
+                                                  x-kubernetes-validations:
+                                                      - message: Each balancingIgnoredLabels item must be a valid label key
+                                                        rule: self.all(l, l.matches('^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?[a-zA-Z0-9]([a-zA-Z0-9_.-]{0,61}[a-zA-Z0-9])?$'))
+                                              expanders:
+                                                  description: |-
+                                                      expanders guide the autoscaler in choosing node groups during scale-out.
+                                                      Sets the order of expanders for scaling out node groups.
+                                                      Options include:
+                                                      * LeastWaste - selects the group with minimal idle CPU and memory after scaling.
+                                                      * Priority - selects the group with the highest user-defined priority.
+                                                      * Random - selects a group randomly.
+                                                      If not specified, `[Priority, LeastWaste]` is the default.
+                                                      Maximum of 3 expanders can be specified.
+                                                  items:
+                                                      description: ExpanderString contains the name of an expander to be used by the cluster autoscaler.
+                                                      enum:
+                                                          - LeastWaste
+                                                          - Priority
+                                                          - Random
+                                                      type: string
+                                                  maxItems: 3
+                                                  minItems: 1
+                                                  type: array
+                                              maxFreeDifferenceRatioPercent:
+                                                  description: |-
+                                                      maxFreeDifferenceRatioPercent sets the maximum difference ratio for free resources between similar node groups. This parameter controls how strict the similarity check is when comparing node groups for load balancing.
+                                                      The value represents a percentage from 0 to 100.
+                                                      When set to 0, this means node groups must have exactly the same free resources to be considered similar (no difference allowed).
+                                                      When set to 100, this means node groups will be considered similar regardless of their free resource differences (any difference allowed).
+                                                      A value between 0 and 100 represents the maximum allowed difference ratio for free resources between node groups to be considered similar.
+                                                      When omitted, the autoscaler defaults to 10%.
+                                                      This affects the "--max-free-difference-ratio" flag on cluster-autoscaler.
+                                                  format: int32
+                                                  maximum: 100
+                                                  minimum: 0
+                                                  type: integer
+                                              maxNodeProvisionTime:
+                                                  description: |-
+                                                      maxNodeProvisionTime is the maximum time to wait for node provisioning
+                                                      before considering the provisioning to be unsuccessful, expressed as a Go
+                                                      duration string. The default is 15 minutes.
+                                                  maxLength: 100
+                                                  pattern: ^([0-9]+(\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$
+                                                  type: string
+                                              maxNodesTotal:
+                                                  description: |-
+                                                      maxNodesTotal is the maximum allowable number of nodes for the Autoscaler scale out to be operational.
+                                                      The autoscaler will not grow the cluster beyond this number.
+                                                      If omitted, the autoscaler will not have a maximum limit.
+                                                      number.
+                                                  format: int32
+                                                  minimum: 0
+                                                  type: integer
+                                              maxPodGracePeriod:
+                                                  description: |-
+                                                      maxPodGracePeriod is the maximum seconds to wait for graceful pod
+                                                      termination before scaling down a NodePool. The default is 600 seconds.
+                                                  format: int32
+                                                  minimum: 0
+                                                  type: integer
+                                              podPriorityThreshold:
+                                                  description: |-
+                                                      podPriorityThreshold enables users to schedule "best-effort" pods, which
+                                                      shouldn't trigger autoscaler actions, but only run when there are spare
+                                                      resources available. The default is -10.
+                                                      See the following for more details:
+                                                      https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#how-does-cluster-autoscaler-work-with-pod-priority-and-preemption
+                                                  format: int32
+                                                  type: integer
+                                              scaleDown:
+                                                  description: |-
+                                                      scaleDown configures the behavior of the Cluster Autoscaler scale down operation.
+                                                      This field is only valid when scaling is set to ScaleUpAndScaleDown.
+                                                  properties:
+                                                      delayAfterAddSeconds:
+                                                          description: |-
+                                                              delayAfterAddSeconds sets how long after scale up the scale down evaluation resumes in seconds.
+                                                              It must be between 0 and 86400 (24 hours).
+                                                              When set to 0, this means scale down evaluation will resume immediately after scale up, without any delay.
+                                                              When omitted, the autoscaler defaults to 600s (10 minutes).
+                                                          format: int32
+                                                          maximum: 86400
+                                                          minimum: 0
+                                                          type: integer
+                                                      delayAfterDeleteSeconds:
+                                                          description: |-
+                                                              delayAfterDeleteSeconds sets how long after node deletion, scale down evaluation resumes, defaults to scan-interval.
+                                                              It must be between 0 and 86400 (24 hours).
+                                                              When set to 0, this means scale down evaluation will resume immediately after node deletion, without any delay.
+                                                              When omitted, the autoscaler defaults to 0s.
+                                                          format: int32
+                                                          maximum: 86400
+                                                          minimum: 0
+                                                          type: integer
+                                                      delayAfterFailureSeconds:
+                                                          description: |-
+                                                              delayAfterFailureSeconds sets how long after a scale down failure, scale down evaluation resumes.
+                                                              It must be between 0 and 86400 (24 hours).
+                                                              When set to 0, this means scale down evaluation will resume immediately after a scale down failure, without any delay.
+                                                              When omitted, the autoscaler defaults to 180s (3 minutes).
+                                                          format: int32
+                                                          maximum: 86400
+                                                          minimum: 0
+                                                          type: integer
+                                                      unneededDurationSeconds:
+                                                          description: |-
+                                                              unneededDurationSeconds establishes how long a node should be unneeded before it is eligible for scale down in seconds.
+                                                              It must be between 0 and 86400 (24 hours).
+                                                              When omitted, the autoscaler defaults to 600s (10 minutes).
+                                                          format: int32
+                                                          maximum: 86400
+                                                          minimum: 0
+                                                          type: integer
+                                                      utilizationThresholdPercent:
+                                                          description: |-
+                                                              utilizationThresholdPercent determines the node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down.
+                                                              The value represents a percentage from 0 to 100.
+                                                              When set to 0, this means nodes will only be considered for scale down if they are completely idle (0% utilization).
+                                                              When set to 100, this means nodes will be considered for scale down regardless of their utilization level.
+                                                              A value between 0 and 100 represents the utilization threshold below which a node can be considered for scale down.
+                                                              When omitted, the autoscaler defaults to 50%.
+                                                          format: int32
+                                                          maximum: 100
+                                                          minimum: 0
+                                                          type: integer
+                                                  type: object
+                                              scaling:
+                                                  default: ScaleUpAndScaleDown
+                                                  description: |-
+                                                      scaling defines the scaling behavior for the cluster autoscaler.
+                                                      ScaleUpOnly means the autoscaler will only scale up nodes, never scale down.
+                                                      ScaleUpAndScaleDown means the autoscaler will both scale up and scale down nodes.
+                                                      When set to ScaleUpAndScaleDown, the scaleDown field can be used to configure scale down behavior.
+                                                      Note: This field is only supported in OpenShift versions 4.19 and above.
+                                                  enum:
+                                                      - ScaleUpOnly
+                                                      - ScaleUpAndScaleDown
+                                                  type: string
+                                          type: object
+                                          x-kubernetes-validations:
+                                              - message: scaleDown can only be set when scaling is ScaleUpAndScaleDown
+                                                rule: 'self.scaling == ''ScaleUpAndScaleDown'' ? true : !has(self.scaleDown)'
                                       channel:
                                           description: channel is an identifier for explicitly requesting that a non-default set of updates be applied to this cluster.
                                           type: string
                                       configuration:
                                           description: configuration specifies configuration for individual OCP components in the
                                           properties:
+                                              ingress:
+                                                  description: ingress contains the configuration for ingress.
+                                                  properties:
+                                                      componentRoutes:
+                                                          description: |-
+                                                              componentRoutes configures hostnames and serving certificates for
+                                                              the console and downloads OpenShift component routes.
+                                                          items:
+                                                              description: |-
+                                                                  ComponentRouteConfiguration specifies a custom hostname and serving
+                                                                  certificate for an OpenShift component route.
+                                                              properties:
+                                                                  hostname:
+                                                                      description: hostname is the hostname that should be used by the route.
+                                                                      pattern: ^([a-zA-Z0-9\p{S}\p{L}]((-?[a-zA-Z0-9\p{S}\p{L}]{0,62})?)|([a-zA-Z0-9\p{S}\p{L}](([a-zA-Z0-9-\p{S}\p{L}]{0,61}[a-zA-Z0-9\p{S}\p{L}])?)(\.)){1,}([a-zA-Z\p{L}]){2,63})$|^(([a-z0-9][-a-z0-9]{0,61}[a-z0-9]|[a-z0-9]{1,63})[\.]){0,}([a-z0-9][-a-z0-9]{0,61}[a-z0-9]|[a-z0-9]{1,63})$
+                                                                      type: string
+                                                                  name:
+                                                                      description: name identifies the component route within its namespace.
+                                                                      enum:
+                                                                          - console
+                                                                          - downloads
+                                                                      type: string
+                                                                  namespace:
+                                                                      description: namespace identifies the namespace containing the component route.
+                                                                      enum:
+                                                                          - openshift-console
+                                                                      type: string
+                                                                  servingCertKeyPairSecret:
+                                                                      description: servingCertKeyPairSecret references a TLS secret in openshift-config.
+                                                                      properties:
+                                                                          name:
+                                                                              description: name is the metadata.name of the referenced secret
+                                                                              type: string
+                                                                      required:
+                                                                          - name
+                                                                      type: object
+                                                              required:
+                                                                  - hostname
+                                                                  - name
+                                                                  - namespace
+                                                              type: object
+                                                          maxItems: 2
+                                                          type: array
+                                                          x-kubernetes-list-map-keys:
+                                                              - namespace
+                                                              - name
+                                                          x-kubernetes-list-type: map
+                                                  type: object
                                               kubelet:
                                                   description: kubelet contains the configuration for kubelet on nodes.
                                                   properties:
@@ -6846,8 +7336,16 @@ components:
                               tags:
                                   additionalProperties:
                                       type: string
-                                  description: Tags are customer-defined labels for organizational purposes.
-                                  maxProperties: 100
+                                  description: |-
+                                      Tags are customer-defined AWS tags applied to the AWS resources created
+                                      for this cluster, for cost allocation, resource organization and
+                                      compliance tracking. They are applied at provisioning time only: AWS
+                                      resources created by OpenShift cannot be retagged after the fact, so this
+                                      field is immutable once the cluster is created.
+                                      HyperShift caps platform.aws.resourceTags at 25 entries and the operator
+                                      injects 2 system tags (red-hat-managed and kubernetes.io/cluster/<id>),
+                                      so 23 customer tags are available here.
+                                  maxProperties: 23
                                   type: object
                           required:
                               - hostedCluster
@@ -8535,6 +9033,12 @@ components:
           autoNode:
               description: autoNode specifies the configuration for automatic node provisioning and lifecycle management.
               type: object
+          autoscaling:
+              description: autoscaling specifies auto-scaling behavior that applies to all NodePools
+              type: object
+              x-kubernetes-validations:
+                  - message: scaleDown can only be set when scaling is ScaleUpAndScaleDown
+                    rule: 'self.scaling == ''ScaleUpAndScaleDown'' ? true : !has(self.scaleDown)'
           channel:
               description: channel is an identifier for explicitly requesting that a non-default set of updates be applied to this cluster.
               type: string
@@ -8725,6 +9229,54 @@ components:
           This is a HyperFleet-owned mirror of hypershiftv1beta1.ClusterConfiguration that allows
           us to add granular markers to nested fields like kubelet config.
       properties:
+          ingress:
+              description: ingress contains the configuration for ingress.
+              properties:
+                  componentRoutes:
+                      description: |-
+                          componentRoutes configures hostnames and serving certificates for
+                          the console and downloads OpenShift component routes.
+                      items:
+                          description: |-
+                              ComponentRouteConfiguration specifies a custom hostname and serving
+                              certificate for an OpenShift component route.
+                          properties:
+                              hostname:
+                                  description: hostname is the hostname that should be used by the route.
+                                  pattern: ^([a-zA-Z0-9\p{S}\p{L}]((-?[a-zA-Z0-9\p{S}\p{L}]{0,62})?)|([a-zA-Z0-9\p{S}\p{L}](([a-zA-Z0-9-\p{S}\p{L}]{0,61}[a-zA-Z0-9\p{S}\p{L}])?)(\.)){1,}([a-zA-Z\p{L}]){2,63})$|^(([a-z0-9][-a-z0-9]{0,61}[a-z0-9]|[a-z0-9]{1,63})[\.]){0,}([a-z0-9][-a-z0-9]{0,61}[a-z0-9]|[a-z0-9]{1,63})$
+                                  type: string
+                              name:
+                                  description: name identifies the component route within its namespace.
+                                  enum:
+                                      - console
+                                      - downloads
+                                  type: string
+                              namespace:
+                                  description: namespace identifies the namespace containing the component route.
+                                  enum:
+                                      - openshift-console
+                                  type: string
+                              servingCertKeyPairSecret:
+                                  description: servingCertKeyPairSecret references a TLS secret in openshift-config.
+                                  properties:
+                                      name:
+                                          description: name is the metadata.name of the referenced secret
+                                          type: string
+                                  required:
+                                      - name
+                                  type: object
+                          required:
+                              - hostname
+                              - name
+                              - namespace
+                          type: object
+                      maxItems: 2
+                      type: array
+                      x-kubernetes-list-map-keys:
+                          - namespace
+                          - name
+                      x-kubernetes-list-type: map
+              type: object
           kubelet:
               $ref: '#/components/schemas/KubeletConfig'
           machineConfig:

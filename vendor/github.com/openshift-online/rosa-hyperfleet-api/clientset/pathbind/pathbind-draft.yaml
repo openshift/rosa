@@ -12,6 +12,11 @@ resources:
               goType: string
               operations:
                 - read
+            - path: spec.additionalTrustBundle
+              goType: string
+              operations:
+                - create
+                - update
             - path: spec.deleteProtection
               goType: boolean
               operations:
@@ -42,8 +47,78 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.hostedCluster.autoscaling.balancingIgnoredLabels
+              goType: array(string)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.expanders
+              goType: array(string)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.maxFreeDifferenceRatioPercent
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.maxNodeProvisionTime
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.maxNodesTotal
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.maxPodGracePeriod
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.podPriorityThreshold
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.scaleDown.delayAfterAddSeconds
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.scaleDown.delayAfterDeleteSeconds
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.scaleDown.delayAfterFailureSeconds
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.scaleDown.unneededDurationSeconds
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.scaleDown.utilizationThresholdPercent
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.autoscaling.scaling
+              goType: string
+              operations:
+                - create
+                - update
             - path: spec.hostedCluster.channel
               goType: string
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.configuration.ingress.componentRoutes
+              goType: array(object)
               operations:
                 - create
                 - update
@@ -306,7 +381,6 @@ resources:
               goType: map
               operations:
                 - create
-                - update
     nodePool:
         sdkType: v1alpha1.NodePool
         fields:
@@ -355,6 +429,11 @@ resources:
                 - update
             - path: spec.nodePool.nodeDrainTimeout
               goType: string
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.nodeLabels
+              goType: map
               operations:
                 - create
                 - update

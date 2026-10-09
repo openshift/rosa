@@ -17,6 +17,12 @@ resources:
   cluster:
     aliases:
       # Complex passthrough values retain their existing JSON-string Cobra representation.
+      - path: spec.hostedCluster.autoscaling.balancingIgnoredLabels
+        type: string
+      - path: spec.hostedCluster.autoscaling.expanders
+        type: string
+      - path: spec.hostedCluster.configuration.ingress.componentRoutes
+        type: string
       - path: spec.hostedCluster.configuration.kubelet.kubeReserved
         type: string
       - path: spec.hostedCluster.configuration.kubelet.systemReserved
@@ -153,6 +159,8 @@ resources:
         flag: ""
 
       - path: spec.labels
+        type: string
+      - path: spec.nodePool.nodeLabels
         type: string
       - path: spec.nodePool.platform.aws.resourceTags
         type: string

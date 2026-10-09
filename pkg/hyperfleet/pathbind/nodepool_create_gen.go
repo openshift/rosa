@@ -26,6 +26,7 @@ type NodePoolCreateInput struct {
 	ClusterName                   string `hfsdk:"spec.nodePool.clusterName"`
 	Config                        string `hfsdk:"spec.nodePool.config"`
 	NodeDrainTimeout              string `hfsdk:"spec.nodePool.nodeDrainTimeout"`
+	NodeLabels                    string `hfsdk:"spec.nodePool.nodeLabels"`
 	Ami                           string `hfsdk:"spec.nodePool.platform.aws.ami"`
 	ImageType                     string `hfsdk:"spec.nodePool.platform.aws.imageType"`
 	InstanceProfile               string `hfsdk:"spec.nodePool.platform.aws.instanceProfile"`
@@ -61,6 +62,7 @@ var NodePoolCreatePlatformAPIFlags = []string{
 	"display-name",
 	"labels",
 	"cluster-name",
+	"node-labels",
 	"ami",
 	"image-type",
 	"instance-profile",
@@ -94,6 +96,7 @@ func RegisterNodePoolCreateFlags(cmd *cobra.Command, input *NodePoolCreateInput)
 	registerIfNew(f, "display-name", func() { f.StringVar(&input.DisplayName, "display-name", "", "") })
 	registerIfNew(f, "labels", func() { f.StringVar(&input.Labels, "labels", "", "") })
 	registerIfNew(f, "cluster-name", func() { f.StringVar(&input.ClusterName, "cluster-name", "", "") })
+	registerIfNew(f, "node-labels", func() { f.StringVar(&input.NodeLabels, "node-labels", "", "") })
 	registerIfNew(f, "ami", func() { f.StringVar(&input.Ami, "ami", "", "") })
 	registerIfNew(f, "image-type", func() { f.StringVar(&input.ImageType, "image-type", "", "") })
 	registerIfNew(f, "instance-profile", func() { f.StringVar(&input.InstanceProfile, "instance-profile", "", "") })

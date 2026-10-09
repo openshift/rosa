@@ -51,12 +51,12 @@ type NodePoolSpecPassthrough struct {
 	// +optional
 	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
 	// nodeLabels propagates a list of labels to Nodes, only once on creation.
-	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=service-set
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=mutable
 	// +optional
 	NodeLabels map[string]string `json:"nodeLabels,omitempty"`
 	// taints if specified, propagates a list of taints to Nodes, only once on creation.
-	// +k8s:openapi-gen=true
+	// +k8s:openapi-gen=false
 	// +hyperfleet:write-mode=mutable
 	// +optional
 	Taints []hypershiftv1beta1.Taint `json:"taints,omitempty"`
