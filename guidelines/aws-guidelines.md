@@ -20,7 +20,7 @@ Use this file when work touches `pkg/aws/`, AWS-backed command flows, setup inst
 
 - Do not silently bump `aws-sdk-go-v2` or related AWS dependencies as part of an unrelated change.
 - If an AWS dependency bump is required, call it out explicitly in the commit and PR, explain why it is needed, and validate the downstream impact.
-- Avoid `go mod tidy` or vendor churn unless the task explicitly requires dependency-state changes.
+- Avoid `go mod tidy` or `go.mod`/`go.sum` churn unless the task explicitly requires dependency-state changes.
 
 ## Review Prompts
 

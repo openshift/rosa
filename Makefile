@@ -28,7 +28,9 @@ RUN_CHECKS_SCRIPT := ./hack/run-checks.sh
 
 # Ensure go modules are enabled:
 export GO111MODULE=on
-export GOPROXY=https://proxy.golang.org
+# Default to the public proxy, but keep a GOPROXY from the environment (e.g. the
+# offline module proxy that Konflux prefetching injects into hermetic builds).
+export GOPROXY ?= https://proxy.golang.org
 # Use Go's documented toolchain switching, since some repackaged toolchains default to local-only.
 export GOTOOLCHAIN=auto
 # Let the selected Go binary provide its own GOROOT to avoid mixed-toolchain builds.
@@ -168,7 +170,6 @@ diff:
 .PHONY: verify
 verify: fmt
 	go mod tidy
-	go mod vendor
 	$(MAKE) diff
 
 .PHONY: clean
