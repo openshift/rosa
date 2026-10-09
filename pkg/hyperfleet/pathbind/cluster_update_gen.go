@@ -12,13 +12,28 @@ import (
 
 // ClusterUpdateInput holds mutable inputs for Cluster update.
 type ClusterUpdateInput struct {
+	AdditionalTrustBundle          string `hfsdk:"spec.additionalTrustBundle"`
 	DeleteProtection               *bool  `hfsdk:"spec.deleteProtection"`
 	DisplayName                    string `hfsdk:"spec.displayName"`
 	ExpirationTimestamp            string `hfsdk:"spec.expirationTimestamp"`
 	RoleARN                        string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.aws.roleARN"`
 	Platform                       string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.platform"`
 	ProvisionerConfigName          string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.name"`
+	BalancingIgnoredLabels         string `hfsdk:"spec.hostedCluster.autoscaling.balancingIgnoredLabels"`
+	Expanders                      string `hfsdk:"spec.hostedCluster.autoscaling.expanders"`
+	MaxFreeDifferenceRatioPercent  *int32 `hfsdk:"spec.hostedCluster.autoscaling.maxFreeDifferenceRatioPercent"`
+	MaxNodeProvisionTime           string `hfsdk:"spec.hostedCluster.autoscaling.maxNodeProvisionTime"`
+	MaxNodesTotal                  *int32 `hfsdk:"spec.hostedCluster.autoscaling.maxNodesTotal"`
+	MaxPodGracePeriod              *int32 `hfsdk:"spec.hostedCluster.autoscaling.maxPodGracePeriod"`
+	PodPriorityThreshold           *int32 `hfsdk:"spec.hostedCluster.autoscaling.podPriorityThreshold"`
+	DelayAfterAddSeconds           *int32 `hfsdk:"spec.hostedCluster.autoscaling.scaleDown.delayAfterAddSeconds"`
+	DelayAfterDeleteSeconds        *int32 `hfsdk:"spec.hostedCluster.autoscaling.scaleDown.delayAfterDeleteSeconds"`
+	DelayAfterFailureSeconds       *int32 `hfsdk:"spec.hostedCluster.autoscaling.scaleDown.delayAfterFailureSeconds"`
+	UnneededDurationSeconds        *int32 `hfsdk:"spec.hostedCluster.autoscaling.scaleDown.unneededDurationSeconds"`
+	UtilizationThresholdPercent    *int32 `hfsdk:"spec.hostedCluster.autoscaling.scaleDown.utilizationThresholdPercent"`
+	Scaling                        string `hfsdk:"spec.hostedCluster.autoscaling.scaling"`
 	Channel                        string `hfsdk:"spec.hostedCluster.channel"`
+	ComponentRoutes                string `hfsdk:"spec.hostedCluster.configuration.ingress.componentRoutes"`
 	ContainerLogMaxFiles           *int32 `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxFiles"`
 	ContainerLogMaxSize            string `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxSize"`
 	ImageGCHighThresholdPercent    *int32 `hfsdk:"spec.hostedCluster.configuration.kubelet.imageGCHighThresholdPercent"`
@@ -61,19 +76,33 @@ type ClusterUpdateInput struct {
 	SharedVPCRolesRefIngressARN    string `hfsdk:"spec.hostedCluster.platform.aws.sharedVPC.rolesRef.ingressARN"`
 	TerminationHandlerQueueURL     string `hfsdk:"spec.hostedCluster.platform.aws.terminationHandlerQueueURL"`
 	Properties                     string `hfsdk:"spec.properties"`
-	Tags                           string `hfsdk:"spec.tags"`
 }
 
 // ClusterUpdatePlatformAPIFlags lists the cobra flag names registered by
 // RegisterClusterUpdateFlags. Consumers use this to mark them in a help section.
 var ClusterUpdatePlatformAPIFlags = []string{
+	"additional-trust-bundle",
 	"delete-protection",
 	"display-name",
 	"expiration-time",
 	"role-arn",
 	"platform",
 	"provisioner-config-name",
+	"balancing-ignored-labels",
+	"expanders",
+	"max-free-difference-ratio-percent",
+	"max-node-provision-time",
+	"max-nodes-total",
+	"max-pod-grace-period",
+	"pod-priority-threshold",
+	"delay-after-add-seconds",
+	"delay-after-delete-seconds",
+	"delay-after-failure-seconds",
+	"unneeded-duration-seconds",
+	"utilization-threshold-percent",
+	"scaling",
 	"channel",
+	"component-routes",
 	"container-log-max-files",
 	"container-log-max-size",
 	"image-gc-high-threshold-percent",
@@ -116,12 +145,12 @@ var ClusterUpdatePlatformAPIFlags = []string{
 	"shared-vpc-roles-ref-ingress-arn",
 	"termination-handler-queue-url",
 	"properties",
-	"tags",
 }
 
 // RegisterClusterUpdateFlags registers cobra flags for mutable Cluster fields.
 func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	f := cmd.Flags()
+	registerIfNew(f, "additional-trust-bundle", func() { f.StringVar(&input.AdditionalTrustBundle, "additional-trust-bundle", "", "") })
 	registerIfNew(f, "delete-protection", func() {
 		input.DeleteProtection = new(bool)
 		f.BoolVar(input.DeleteProtection, "delete-protection", false, "Enable delete protection on the cluster.")
@@ -135,7 +164,45 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	registerIfNew(f, "role-arn", func() { f.StringVar(&input.RoleARN, "role-arn", "", "") })
 	registerIfNew(f, "platform", func() { f.StringVar(&input.Platform, "platform", "", "") })
 	registerIfNew(f, "provisioner-config-name", func() { f.StringVar(&input.ProvisionerConfigName, "provisioner-config-name", "", "") })
+	registerIfNew(f, "balancing-ignored-labels", func() { f.StringVar(&input.BalancingIgnoredLabels, "balancing-ignored-labels", "", "") })
+	registerIfNew(f, "expanders", func() { f.StringVar(&input.Expanders, "expanders", "", "") })
+	registerIfNew(f, "max-free-difference-ratio-percent", func() {
+		input.MaxFreeDifferenceRatioPercent = new(int32)
+		f.Int32Var(input.MaxFreeDifferenceRatioPercent, "max-free-difference-ratio-percent", 0, "")
+	})
+	registerIfNew(f, "max-node-provision-time", func() { f.StringVar(&input.MaxNodeProvisionTime, "max-node-provision-time", "", "") })
+	registerIfNew(f, "max-nodes-total", func() { input.MaxNodesTotal = new(int32); f.Int32Var(input.MaxNodesTotal, "max-nodes-total", 0, "") })
+	registerIfNew(f, "max-pod-grace-period", func() {
+		input.MaxPodGracePeriod = new(int32)
+		f.Int32Var(input.MaxPodGracePeriod, "max-pod-grace-period", 0, "")
+	})
+	registerIfNew(f, "pod-priority-threshold", func() {
+		input.PodPriorityThreshold = new(int32)
+		f.Int32Var(input.PodPriorityThreshold, "pod-priority-threshold", 0, "")
+	})
+	registerIfNew(f, "delay-after-add-seconds", func() {
+		input.DelayAfterAddSeconds = new(int32)
+		f.Int32Var(input.DelayAfterAddSeconds, "delay-after-add-seconds", 0, "")
+	})
+	registerIfNew(f, "delay-after-delete-seconds", func() {
+		input.DelayAfterDeleteSeconds = new(int32)
+		f.Int32Var(input.DelayAfterDeleteSeconds, "delay-after-delete-seconds", 0, "")
+	})
+	registerIfNew(f, "delay-after-failure-seconds", func() {
+		input.DelayAfterFailureSeconds = new(int32)
+		f.Int32Var(input.DelayAfterFailureSeconds, "delay-after-failure-seconds", 0, "")
+	})
+	registerIfNew(f, "unneeded-duration-seconds", func() {
+		input.UnneededDurationSeconds = new(int32)
+		f.Int32Var(input.UnneededDurationSeconds, "unneeded-duration-seconds", 0, "")
+	})
+	registerIfNew(f, "utilization-threshold-percent", func() {
+		input.UtilizationThresholdPercent = new(int32)
+		f.Int32Var(input.UtilizationThresholdPercent, "utilization-threshold-percent", 0, "")
+	})
+	registerIfNew(f, "scaling", func() { f.StringVar(&input.Scaling, "scaling", "", "") })
 	registerIfNew(f, "channel", func() { f.StringVar(&input.Channel, "channel", "", "") })
+	registerIfNew(f, "component-routes", func() { f.StringVar(&input.ComponentRoutes, "component-routes", "", "") })
 	registerIfNew(f, "container-log-max-files", func() {
 		input.ContainerLogMaxFiles = new(int32)
 		f.Int32Var(input.ContainerLogMaxFiles, "container-log-max-files", 0, "")
@@ -197,7 +264,6 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	registerIfNew(f, "shared-vpc-roles-ref-ingress-arn", func() { f.StringVar(&input.SharedVPCRolesRefIngressARN, "shared-vpc-roles-ref-ingress-arn", "", "") })
 	registerIfNew(f, "termination-handler-queue-url", func() { f.StringVar(&input.TerminationHandlerQueueURL, "termination-handler-queue-url", "", "") })
 	registerIfNew(f, "properties", func() { f.StringVar(&input.Properties, "properties", "", "") })
-	registerIfNew(f, "tags", func() { f.StringVar(&input.Tags, "tags", "", "") })
 }
 
 // ClusterUpdateHandler is implemented by consumers to provide Cluster update logic.
@@ -232,6 +298,42 @@ func normalizeClusterUpdateInput(cmd *cobra.Command, input *ClusterUpdateInput) 
 	if cmd.Flags().Lookup("delete-protection") != nil && !cmd.Flag("delete-protection").Changed &&
 		input.DeleteProtection != nil {
 		input.DeleteProtection = nil
+	}
+	if cmd.Flags().Lookup("max-free-difference-ratio-percent") != nil && !cmd.Flag("max-free-difference-ratio-percent").Changed &&
+		input.MaxFreeDifferenceRatioPercent != nil {
+		input.MaxFreeDifferenceRatioPercent = nil
+	}
+	if cmd.Flags().Lookup("max-nodes-total") != nil && !cmd.Flag("max-nodes-total").Changed &&
+		input.MaxNodesTotal != nil {
+		input.MaxNodesTotal = nil
+	}
+	if cmd.Flags().Lookup("max-pod-grace-period") != nil && !cmd.Flag("max-pod-grace-period").Changed &&
+		input.MaxPodGracePeriod != nil {
+		input.MaxPodGracePeriod = nil
+	}
+	if cmd.Flags().Lookup("pod-priority-threshold") != nil && !cmd.Flag("pod-priority-threshold").Changed &&
+		input.PodPriorityThreshold != nil {
+		input.PodPriorityThreshold = nil
+	}
+	if cmd.Flags().Lookup("delay-after-add-seconds") != nil && !cmd.Flag("delay-after-add-seconds").Changed &&
+		input.DelayAfterAddSeconds != nil {
+		input.DelayAfterAddSeconds = nil
+	}
+	if cmd.Flags().Lookup("delay-after-delete-seconds") != nil && !cmd.Flag("delay-after-delete-seconds").Changed &&
+		input.DelayAfterDeleteSeconds != nil {
+		input.DelayAfterDeleteSeconds = nil
+	}
+	if cmd.Flags().Lookup("delay-after-failure-seconds") != nil && !cmd.Flag("delay-after-failure-seconds").Changed &&
+		input.DelayAfterFailureSeconds != nil {
+		input.DelayAfterFailureSeconds = nil
+	}
+	if cmd.Flags().Lookup("unneeded-duration-seconds") != nil && !cmd.Flag("unneeded-duration-seconds").Changed &&
+		input.UnneededDurationSeconds != nil {
+		input.UnneededDurationSeconds = nil
+	}
+	if cmd.Flags().Lookup("utilization-threshold-percent") != nil && !cmd.Flag("utilization-threshold-percent").Changed &&
+		input.UtilizationThresholdPercent != nil {
+		input.UtilizationThresholdPercent = nil
 	}
 	if cmd.Flags().Lookup("container-log-max-files") != nil && !cmd.Flag("container-log-max-files").Changed &&
 		input.ContainerLogMaxFiles != nil {

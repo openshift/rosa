@@ -24,6 +24,9 @@ type Cluster struct {
 	Spec ClusterSpec `json:"spec"`
 	// +optional
 	Status ClusterStatus `json:"status,omitzero"`
+	// Proxy is a read-only projection of spec.hostedCluster.configuration.proxy.
+	// +optional
+	Proxy *ClusterProxy `json:"proxy,omitempty"`
 }
 
 // +kubebuilder:object:root=true
