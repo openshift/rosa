@@ -32,26 +32,31 @@ var _ = Describe("DNS domain tests",
 		})
 
 		It("can create/list/delete dns-domain via rosacli - [id:65793]",
-			labels.Critical, labels.Runtime.OCMResources,
+			labels.Critical, labels.Runtime.OCMResources, labels.Hyperfleet.Validated,
 			func() {
-				By("Create dns-domain for classic cluster")
+				isV2 := isHyperfleetMode()
+				defaultArchitecture := "classic"
+				if isV2 {
+					defaultArchitecture = "hcp"
+				}
+				By("Create dns-domain using the default architecture")
 				outputC, err := dnsDomainService.CreateDNSDomain()
 				Expect(err).ToNot(HaveOccurred())
-				defer func() {
-					By("Delete the created dns-domain for classic cluster")
+				dnsDomainC, err = helper.ExtractDNSDomainID(outputC)
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() {
+					By("Delete the created dns-domain using the default architecture")
 					output, err := dnsDomainService.DeleteDNSDomain(dnsDomainC)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(output.String()).To(ContainSubstring("Successfully deleted dns domain '%s'", dnsDomainC))
 
-					By("Check the created dns-domain for classic cluster delete")
+					By("Check the created dns-domain using the default architecture delete")
 					out, err := dnsDomainService.ListDNSDomain()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(out.String()).ToNot(ContainSubstring(dnsDomainC))
-				}()
-				dnsDomainC, err = helper.ExtractDNSDomainID(outputC)
-				Expect(err).ToNot(HaveOccurred())
+				})
 
-				By("List the created dns-domain for classic cluster")
+				By("List the created dns-domain using the default architecture")
 				out, err := dnsDomainService.ListDNSDomain()
 				Expect(err).ToNot(HaveOccurred())
 				dnsDomainList, err := dnsDomainService.ReflectDNSDomainList(out)
@@ -59,12 +64,14 @@ var _ = Describe("DNS domain tests",
 				dnsDomain := dnsDomainList.GetDNSDomain(dnsDomainC)
 				Expect(dnsDomain.ID).To(Equal(dnsDomainC))
 				Expect(dnsDomain.UserDefined).To(Equal("Yes"))
-				Expect(dnsDomain.Architecture).To(Equal("classic"))
+				Expect(dnsDomain.Architecture).To(Equal(defaultArchitecture))
 
 				By("Create dns-domain for hosted-cp cluster")
 				outputH, err := dnsDomainService.CreateDNSDomain("--hosted-cp")
 				Expect(err).ToNot(HaveOccurred())
-				defer func() {
+				dnsDomainH, err = helper.ExtractDNSDomainID(outputH)
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() {
 					By("Delete the created dns-domain for hosted-cp cluster")
 					output, err := dnsDomainService.DeleteDNSDomain(dnsDomainH)
 					Expect(err).ToNot(HaveOccurred())
@@ -74,9 +81,7 @@ var _ = Describe("DNS domain tests",
 					out, err := dnsDomainService.ListDNSDomain()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(out.String()).ToNot(ContainSubstring(dnsDomainH))
-				}()
-				dnsDomainH, err = helper.ExtractDNSDomainID(outputH)
-				Expect(err).ToNot(HaveOccurred())
+				})
 
 				By("List the created dns-domain for hosted-cp cluster")
 				out, err = dnsDomainService.ListDNSDomain()
@@ -98,11 +103,17 @@ var _ = Describe("DNS domain tests",
 				Expect(dnsDomain.UserDefined).To(Equal("Yes"))
 				Expect(dnsDomain.Architecture).To(Equal("hcp"))
 				dnsDomain = dnsDomainList.GetDNSDomain(dnsDomainC)
-				Expect(dnsDomain.ID).To(BeEmpty())
-				Expect(dnsDomain.UserDefined).To(BeEmpty())
-				Expect(dnsDomain.Architecture).To(BeEmpty())
+				if isV2 {
+					Expect(dnsDomain.ID).To(Equal(dnsDomainC))
+					Expect(dnsDomain.UserDefined).To(Equal("Yes"))
+					Expect(dnsDomain.Architecture).To(Equal("hcp"))
+				} else {
+					Expect(dnsDomain.ID).To(BeEmpty())
+					Expect(dnsDomain.UserDefined).To(BeEmpty())
+					Expect(dnsDomain.Architecture).To(BeEmpty())
+				}
 
-				By("List all created dns-domains for hosted-cp and classic clusters")
+				By("List all created dns-domains for all supported architectures")
 				out, err = dnsDomainService.ListDNSDomain("--all")
 				Expect(err).ToNot(HaveOccurred())
 				dnsDomainList, err = dnsDomainService.ReflectDNSDomainList(out)
@@ -114,7 +125,7 @@ var _ = Describe("DNS domain tests",
 				dnsDomain = dnsDomainList.GetDNSDomain(dnsDomainC)
 				Expect(dnsDomain.ID).To(Equal(dnsDomainC))
 				Expect(dnsDomain.UserDefined).To(Equal("Yes"))
-				Expect(dnsDomain.Architecture).To(Equal("classic"))
+				Expect(dnsDomain.Architecture).To(Equal(defaultArchitecture))
 
 				By("List all created dns-domains with '--hosted-cp' flag")
 				out, err = dnsDomainService.ListDNSDomain("--all", "--hosted-cp")
@@ -126,22 +137,31 @@ var _ = Describe("DNS domain tests",
 				Expect(dnsDomain.UserDefined).To(Equal("Yes"))
 				Expect(dnsDomain.Architecture).To(Equal("hcp"))
 				dnsDomain = dnsDomainList.GetDNSDomain(dnsDomainC)
-				Expect(dnsDomain.ID).To(BeEmpty())
-				Expect(dnsDomain.UserDefined).To(BeEmpty())
-				Expect(dnsDomain.Architecture).To(BeEmpty())
+				if isV2 {
+					Expect(dnsDomain.ID).To(Equal(dnsDomainC))
+					Expect(dnsDomain.UserDefined).To(Equal("Yes"))
+					Expect(dnsDomain.Architecture).To(Equal("hcp"))
+				} else {
+					Expect(dnsDomain.ID).To(BeEmpty())
+					Expect(dnsDomain.UserDefined).To(BeEmpty())
+					Expect(dnsDomain.Architecture).To(BeEmpty())
+				}
 
-				By("Make sure that '--all' lists more domains as without it")
+				By("Verify the scope of the --all flag")
 				out, err = dnsDomainService.ListDNSDomain("--all")
 				Expect(err).ToNot(HaveOccurred())
 				dnsDomainList, err = dnsDomainService.ReflectDNSDomainList(out)
 				Expect(err).ToNot(HaveOccurred())
-				allDomainsLength := len(dnsDomainList.DNSDomainList)
+				allDomains := dnsDomainList.DNSDomainList
 				out, err = dnsDomainService.ListDNSDomain()
 				Expect(err).ToNot(HaveOccurred())
 				dnsDomainList, err = dnsDomainService.ReflectDNSDomainList(out)
 				Expect(err).ToNot(HaveOccurred())
-				domainsLength := len(dnsDomainList.DNSDomainList)
-				Expect(allDomainsLength).To(BeNumerically(">", domainsLength))
+				if isV2 {
+					Expect(allDomains).To(ConsistOf(dnsDomainList.DNSDomainList))
+				} else {
+					Expect(len(allDomains)).To(BeNumerically(">", len(dnsDomainList.DNSDomainList)))
+				}
 			})
 
 	})
