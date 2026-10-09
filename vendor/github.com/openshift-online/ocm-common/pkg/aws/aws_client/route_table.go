@@ -49,7 +49,7 @@ func (client *AWSClient) AssociateRouteTable(routeTableID string, subnetID strin
 func (client *AWSClient) ListCustomerRouteTables(vpcID string) ([]types.RouteTable, error) {
 	vpcFilterName := "vpc-id"
 	Filters := []types.Filter{
-		types.Filter{
+		{
 			Name: &vpcFilterName,
 			Values: []string{
 				vpcID,

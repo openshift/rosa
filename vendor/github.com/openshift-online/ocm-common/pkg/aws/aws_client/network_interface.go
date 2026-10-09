@@ -13,7 +13,7 @@ import (
 func (client *AWSClient) DescribeNetWorkInterface(vpcID string) ([]types.NetworkInterface, error) {
 	vpcFilter := "vpc-id"
 	filter := []types.Filter{
-		types.Filter{
+		{
 			Name: &vpcFilter,
 			Values: []string{
 				vpcID,
@@ -33,7 +33,7 @@ func (client *AWSClient) DescribeNetWorkInterface(vpcID string) ([]types.Network
 func (client *AWSClient) DescribeNetWorkInterfaceBySG(securityGroupID string) ([]types.NetworkInterface, error) {
 	sgFilter := "group-id"
 	filter := []types.Filter{
-		types.Filter{
+		{
 			Name: &sgFilter,
 			Values: []string{
 				securityGroupID,

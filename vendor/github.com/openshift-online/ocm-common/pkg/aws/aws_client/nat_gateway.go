@@ -54,7 +54,7 @@ func (client *AWSClient) DeleteNatGateway(natGatewayID string, timeout ...int) (
 func (client *AWSClient) ListNatGateways(vpcID string) ([]types.NatGateway, error) {
 	vpcFilter := "vpc-id"
 	filter := []types.Filter{
-		types.Filter{
+		{
 			Name: &vpcFilter,
 			Values: []string{
 				vpcID,

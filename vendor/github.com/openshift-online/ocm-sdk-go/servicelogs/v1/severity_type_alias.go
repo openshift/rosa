@@ -38,13 +38,7 @@ const (
 	//
 	SeverityImportant Severity = api_v1.SeverityImportant
 	//
-	SeverityInfo Severity = api_v1.SeverityInfo
-	//
 	SeverityLow Severity = api_v1.SeverityLow
 	//
-	SeverityMajor Severity = api_v1.SeverityMajor
-	//
 	SeverityModerate Severity = api_v1.SeverityModerate
-	//
-	SeverityWarning Severity = api_v1.SeverityWarning
 )

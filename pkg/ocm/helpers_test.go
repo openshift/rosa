@@ -120,7 +120,7 @@ var _ = Describe("Validate Issuer Url Matches Assume Policy Document", func() {
 		//nolint
 		Expect(
 			fmt.Sprintf(
-				"Operator role '%s' does not have trusted relationship to '%s' issuer URL",
+				"operator role '%s' does not have trusted relationship to '%s' issuer URL",
 				fakeOperatorRoleArn,
 				parsedUrl.Host,
 			),
@@ -137,7 +137,7 @@ var _ = Describe("Validate Issuer Url Matches Assume Policy Document", func() {
 		//nolint
 		Expect(
 			fmt.Sprintf(
-				"Operator role '%s' does not have trusted relationship to '%s' issuer URL",
+				"operator role '%s' does not have trusted relationship to '%s' issuer URL",
 				fakeOperatorRoleArn,
 				parsedUrl.Host+parsedUrl.Path,
 			),
