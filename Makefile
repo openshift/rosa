@@ -23,7 +23,9 @@ RUN_CHECKS_SCRIPT := ./hack/run-checks.sh
 
 # Ensure go modules are enabled:
 export GO111MODULE=on
-export GOPROXY=https://proxy.golang.org
+# Default to the public proxy, but keep a GOPROXY from the environment (e.g. the
+# offline module proxy that Konflux prefetching injects into hermetic builds).
+export GOPROXY ?= https://proxy.golang.org
 # Use Go's documented toolchain switching, since some repackaged toolchains default to local-only.
 export GOTOOLCHAIN=auto
 # Let the selected Go binary provide its own GOROOT to avoid mixed-toolchain builds.
@@ -116,7 +118,6 @@ diff:
 .PHONY: verify
 verify: fmt
 	go mod tidy
-	go mod vendor
 	$(MAKE) diff
 
 .PHONY: clean
@@ -134,7 +135,10 @@ clean:
 
 PATHBIND_GEN_PKG    := github.com/openshift-online/rosa-hyperfleet-api/clientset/cmd/pathbind-gen
 PATHBIND_GEN_BIN    := /tmp/pathbind-gen-$(shell git rev-parse --short HEAD)
-PATHBIND_DRAFT      := vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/pathbind/pathbind-draft.yaml
+# Module cache directory of the hyperfleet clientset; resolved lazily so only targets that need it download it.
+HYPERFLEET_CLIENTSET_MOD := github.com/openshift-online/rosa-hyperfleet-api/clientset
+HYPERFLEET_CLIENTSET_DIR = $(shell go mod download $(HYPERFLEET_CLIENTSET_MOD) && go list -m -f '{{.Dir}}' $(HYPERFLEET_CLIENTSET_MOD))
+PATHBIND_DRAFT      = $(HYPERFLEET_CLIENTSET_DIR)/pathbind/pathbind-draft.yaml
 PATHBIND_OVERRIDES  := pkg/hyperfleet/pathbind-overrides.yaml
 PATHBIND_OUT        := pkg/hyperfleet/pathbind
 
@@ -178,9 +182,8 @@ mocks: $(MOCKGEN)
 	$(MOCKGEN) -source=pkg/machinepool/machinepool.go -package=machinepool -destination=pkg/machinepool/machinepool_mock.go
 	$(MOCKGEN) -source=pkg/kubeletconfig/config.go -package=kubeletconfig -destination=pkg/kubeletconfig/capability_checker_mock.go
 	$(MOCKGEN) -source=cmd/create/idp/cmd.go -package=mocks -destination=cmd/create/idp/mocks/identityprovider.go
-	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/hyperfleet.go -package=mocks -destination=pkg/hyperfleet/mocks/hyperfleet_mock.go
-	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/platform/bridge_wrappers_generated.go -package=mocks -destination=pkg/hyperfleet/mocks/wrappers_mock.go
-	perl -pi -e 's|github\.com/openshift/rosa/vendor/github\.com/openshift-online/rosa-hyperfleet-api/clientset/platform|github.com/openshift-online/rosa-hyperfleet-api/clientset/platform|g' pkg/hyperfleet/mocks/wrappers_mock.go
+	$(MOCKGEN) -package=mocks -destination=pkg/hyperfleet/mocks/hyperfleet_mock.go $(HYPERFLEET_CLIENTSET_MOD) Interface
+	$(MOCKGEN) -package=mocks -destination=pkg/hyperfleet/mocks/wrappers_mock.go $(HYPERFLEET_CLIENTSET_MOD)/platform ClusterInterface,NodePoolInterface,OidcConfigInterface,V1alpha1PublicInterface
 
 
 .PHONY: e2e_test
