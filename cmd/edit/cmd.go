@@ -78,4 +78,5 @@ func init() {
 	// the Platform API flag section wrapper so it runs on top of that.
 	hyperfleet.AddPlatformAPIFlagSection(cluster.Cmd)
 	hyperfleet.AddPlatformAPIFlagSection(machinepoolCommand)
+	hyperfleet.AddPlatformAPIFlagSection(autoscalerCommand)
 }

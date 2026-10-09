@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/pflag"
 
 	utils "github.com/openshift/rosa/pkg/helper"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	helper "github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
@@ -58,14 +59,12 @@ var Cmd = &cobra.Command{
 
   # Update the load balancer type of the apps2 ingress 
   rosa edit ingress --lb-type=nlb --cluster=mycluster apps2`,
-	Run: run,
-	Args: func(_ *cobra.Command, argv []string) error {
-		if len(argv) != 1 {
-			return fmt.Errorf(
-				"expected exactly one command line parameter containing the id of the ingress",
-			)
+	Run: dispatch,
+	Args: func(cmd *cobra.Command, argv []string) error {
+		if hyperfleet.Enabled() && len(argv) != 0 {
+			return fmt.Errorf("HyperFleet edit ingress does not accept an ingress ID")
 		}
-		return nil
+		return cobra.MaximumNArgs(1)(cmd, argv)
 	},
 }
 
@@ -156,6 +155,10 @@ func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
 
+	if len(argv) != 1 {
+		r.Reporter.Errorf("expected exactly one command line parameter containing the id of the ingress")
+		os.Exit(1)
+	}
 	ingressKey := argv[0]
 	if !ingressKeyRE.MatchString(ingressKey) {
 		r.Reporter.Errorf(

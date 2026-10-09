@@ -31,7 +31,7 @@ func NewDescribeAutoscalerCommand() *cobra.Command {
 		Long:    long,
 		Example: example,
 		Args:    cobra.NoArgs,
-		Run:     rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeAutoscalerRunner()),
+		Run:     dispatch(),
 	}
 
 	output.AddFlag(cmd)
