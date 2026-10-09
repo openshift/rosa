@@ -2,6 +2,8 @@ package hyperfleet
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -39,7 +41,11 @@ var _ = Describe("GetClusterDescription", func() {
 	It("rejects a bundle response of the wrong type", func() {
 		client := clusterDescriptionTestClient(`{"spec":{"additionalTrustBundle":true}}`)
 		_, err := GetClusterDescription(context.Background(), client, "cluster-uid")
-		Expect(err).To(MatchError(ContainSubstring("failed to decode cluster proxy or trust bundle")))
+		Expect(err).To(MatchError(ContainSubstring("failed to decode cluster response")))
+		var typeError *json.UnmarshalTypeError
+		Expect(errors.As(err, &typeError)).To(BeTrue())
+		Expect(typeError.Field).To(Equal("spec.additionalTrustBundle"))
+		Expect(typeError.Value).To(Equal("bool"))
 	})
 
 	It("reports malformed cluster JSON", func() {

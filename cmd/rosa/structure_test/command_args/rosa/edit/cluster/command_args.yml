@@ -88,4 +88,3 @@
 - name: "shared-vpc-roles-ref-ingress-arn"
 - name: "termination-handler-queue-url"
 - name: "properties"
-- name: "tags"
