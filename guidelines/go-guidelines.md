@@ -17,5 +17,5 @@ Use this file for Go code and review. Follow nearby package patterns, and use
 - Document new exported types and functions with Go doc comments.
 - Prefer concrete types or small interfaces over reflection or `any` when clearer.
 - Use explicit names and nearby repository acronym casing, including `...Hcp`.
-- Reuse standard-library or vendored implementations when they fit.
+- Reuse standard-library or third-party dependency implementations when they fit.
 - Avoid unrelated import changes; change imports only when the task requires it.

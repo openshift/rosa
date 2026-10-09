@@ -39,7 +39,7 @@ Official product and setup references:
 - If an AWS, OCM, or related dependency bump is required, call it out
   explicitly in the commit and PR, explain why it is needed, and validate
   downstream impact.
-- Avoid `go mod tidy` or vendor churn unless the task explicitly requires dependency-state changes.
+- Avoid `go mod tidy` or `go.mod`/`go.sum` churn unless the task explicitly requires dependency-state changes.
 
 ## Review Prompts
 
