@@ -40,7 +40,7 @@ reviews:
         - Flag changes that bypass validation gates, artifact flow, or image/security checks without matching workflow updates.
     - path: "pkg/aws/**/*.go"
       instructions: |
-        - Cross-check AWS behavior and user-facing wording against the official ROSA and AWS references called out in `AGENTS.md`.
+        - Cross-check AWS behavior and user-facing wording against the official ROSA and AWS references in `guidelines/aws-guidelines.md`.
         - Flag hardcoded credentials, secret exposure, or assumptions about STS, IAM, OIDC, VPC, quotas, or regions that are not verified.
     - path: "pkg/**/*.go"
       instructions: |
@@ -52,7 +52,7 @@ reviews:
         - Flag weak tests that only restate implementation or changes that weaken existing assertions.
     - path: "**/*.md"
       instructions: |
-        - Check commands, workflow steps, and product terminology against `AGENTS.md`, `CONTRIBUTING.md`, `guidelines/ARCHITECTURE.md`, and official ROSA/AWS docs.
+        - Use `AGENTS.md` to select the relevant topic guide; check commands against `CONTRIBUTING.md` and product terminology against the official ROSA/AWS docs in `guidelines/aws-guidelines.md`.
         - Flag stale file paths, placeholder Jira links, or wording that conflicts with the real repository workflow.
     - path: "cmd/rosa/structure_test/**/*.{yml,yaml}"
       instructions: |
@@ -89,9 +89,7 @@ knowledge_base:
     filePatterns:
       - AGENTS.md
       - CONTRIBUTING.md
-      - .cursor/rules/*.mdc
-      - guidelines/ARCHITECTURE.md
-      - guidelines/*-guidelines.md
+      - guidelines/**
       - .claude/SKILLS.md
       - .claude/skills/**/SKILL.md
   learnings:
