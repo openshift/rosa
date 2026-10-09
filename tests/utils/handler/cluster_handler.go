@@ -228,8 +228,9 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 		return flags, err
 	}
 	if ch.profile.Version != "" {
-		// Force set the hcp parameter to false since hcp cannot filter the upgrade versions
-		version, err := resourcesHandler.PrepareVersion(ch.profile.Version, ch.profile.ChannelGroup, false, env)
+		// hcp is honored end-to-end now that CheckAvailableUpgrade filters upgrade candidates by product
+		version, err := resourcesHandler.PrepareVersion(
+			ch.profile.Version, ch.profile.ChannelGroup, ch.profile.ClusterConfig.HCP, env)
 
 		if err != nil {
 			return flags, err
@@ -253,11 +254,11 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 			ch.clusterConfig.Version = &ClusterConfigure.Version{}
 		}
 		ch.clusterConfig.Version.ChannelGroup = ch.profile.ChannelGroup
-	} else {
+	} else if ch.clusterConfig.Version != nil {
 		// if profile is not with channel group setting, use channel based on the cluster version
 		// before channel is enabled on production env, skip to set the flag
 		if env != constants.ProductionName {
-			channel, err := resourcesHandler.GetCurrentChannel(ch.clusterConfig.Version.RawID)
+			channel, err := resourcesHandler.GetCurrentChannel(ch.clusterConfig.Version.RawID, ch.profile.ClusterConfig.HCP)
 			if err != nil {
 				return flags, err
 			}

@@ -225,7 +225,9 @@ func (c *Client) GetAvailableUpgradesWithProduct(product string, versionID strin
 			}
 			return nil, handleErr(resp.Error(), err)
 		}
-		if resp.Body().ROSAEnabled() {
+		// The versions GET-by-ID endpoint ignores the "product" request parameter (see ROSAENG-67928),
+		// so HCP-only filtering is enforced here against the fetched version's own attribute instead.
+		if resp.Body().ROSAEnabled() && (product != HcpProduct || resp.Body().HostedControlPlaneEnabled()) {
 			// Prepend versions so that the latest one shows up first
 			availableUpgrades = append([]string{v}, availableUpgrades...)
 		}

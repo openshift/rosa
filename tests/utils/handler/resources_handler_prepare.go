@@ -117,13 +117,23 @@ func (rh *resourcesHandler) PrepareVersion(versionRequirement string,
 	return nil, fmt.Errorf("not supported version requirement: %s", versionRequirement)
 }
 
+// productForTopology returns the OCM product to query for the given topology.
+func productForTopology(hcp bool) string {
+	if hcp {
+		return ocm.HcpProduct
+	}
+	return ""
+}
+
 func (rh *resourcesHandler) CheckAvailableUpgrade(versionRequirement string,
 	hcp bool) (bool, bool, error) {
 	log.Logger.Infof("Checking %s upgrade availability", versionRequirement)
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
-	availableUpgrades, err := r.OCMClient.GetAvailableUpgrades(fmt.Sprintf("%s%s", ocm.VersionPrefix, versionRequirement))
+	product := productForTopology(hcp)
+	availableUpgrades, err := r.OCMClient.GetAvailableUpgradesWithProduct(
+		product, fmt.Sprintf("%s%s", ocm.VersionPrefix, versionRequirement))
 	if err != nil {
 		return false, false, err
 	}
@@ -150,7 +160,7 @@ func (rh *resourcesHandler) CheckAvailableUpgrade(versionRequirement string,
 }
 
 // GetUpgradeChannel return the channel based on current version
-func (rh *resourcesHandler) GetCurrentChannel(version string) (string, error) {
+func (rh *resourcesHandler) GetCurrentChannel(version string, hcp bool) (string, error) {
 	// Initialize OCM client
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
@@ -167,8 +177,10 @@ func (rh *resourcesHandler) GetCurrentChannel(version string) (string, error) {
 	versionID := fmt.Sprintf("%s%s", ocm.VersionPrefix, version)
 	log.Logger.Infof("Getting available channels for version %s", versionID)
 
+	// TODO: ROSAENG-67928 - GetAvailableChannelsWithProduct's product parameter is a no-op on the
+	// versions GET-by-ID endpoint, so this does not yet actually differentiate classic from HCP.
 	// Get available channels
-	availableChannels, err := r.OCMClient.GetAvailableChannels(versionID)
+	availableChannels, err := r.OCMClient.GetAvailableChannelsWithProduct(productForTopology(hcp), versionID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get available channels for version %s: %v", versionID, err)
 	}
