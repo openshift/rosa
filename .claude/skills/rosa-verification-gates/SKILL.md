@@ -43,7 +43,7 @@ Use this skill when:
 
 - Run `make install-hooks` in a new clone before first commit.
 - Do not bypass hooks.
-- Do not run `go mod tidy` or `go mod vendor` unless the task explicitly requires dependency-state changes.
+- Do not run `go mod tidy` unless the task explicitly requires dependency-state changes.
 - If generated files changed unexpectedly, stop and confirm why before committing them.
 - If a command changed but the structure-test files did not, verify that omission intentionally.
 - If the PR template checklist expects docs, manual validation, or risk notes, make sure the final PR body actually covers them.

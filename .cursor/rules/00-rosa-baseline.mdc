@@ -11,7 +11,6 @@ alwaysApply: true
   - `assets/bindata.go`
   - `pkg/*/mocks/`
   - `cmd/create/idp/mocks/`
-  - `vendor/`
 - Do not weaken tests to make a change pass.
 - Do not do release work from this repository.
 - Use `CONTRIBUTING.md`, the git hooks, `Makefile` targets, and the docs indexed from `AGENTS.md` for local workflow.
