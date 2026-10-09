@@ -2,6 +2,7 @@ package operatorroles
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -65,7 +66,7 @@ func getOidcConfigIssuerUrl(r *rosa.Runtime, oidcConfigId string) (string, error
 // operatorRoleSpec defines an operator role to be created
 type operatorRoleSpec struct {
 	Name              string
-	ServiceAccount    string // Empty for worker role (uses EC2 trust policy)
+	ServiceAccounts   []string // Empty for worker role (uses EC2 trust policy)
 	ManagedPolicyArns []string
 	Description       string
 	IsWorkerRole      bool // True for worker node role
@@ -74,42 +75,45 @@ type operatorRoleSpec struct {
 func getHCPOperatorRoles() []operatorRoleSpec {
 	specs := map[string]operatorRoleSpec{
 		hyperfleet.SuffixIngress: {
-			ServiceAccount:    "system:serviceaccount:openshift-ingress-operator:ingress-operator",
+			ServiceAccounts:   []string{"system:serviceaccount:openshift-ingress-operator:ingress-operator"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAIngressOperatorPolicy"},
 			Description:       "Manages AWS ELBs/NLBs for OpenShift routes",
 		},
 		hyperfleet.SuffixCloudControllerManager: {
-			ServiceAccount:    "system:serviceaccount:kube-system:kube-controller-manager",
+			ServiceAccounts:   []string{"system:serviceaccount:kube-system:kube-controller-manager"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAKubeControllerPolicy"},
 			Description:       "Manages load balancers and node lifecycle",
 		},
 		hyperfleet.SuffixEBSCSI: {
-			ServiceAccount:    "system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa",
+			ServiceAccounts:   []string{"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAAmazonEBSCSIDriverOperatorPolicy"},
 			Description:       "Creates and attaches EBS volumes",
 		},
 		hyperfleet.SuffixImageRegistry: {
-			ServiceAccount:    "system:serviceaccount:openshift-image-registry:registry",
+			ServiceAccounts: []string{
+				"system:serviceaccount:openshift-image-registry:cluster-image-registry-operator",
+				"system:serviceaccount:openshift-image-registry:registry",
+			},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAImageRegistryOperatorPolicy"},
 			Description:       "S3 access for the internal container image registry",
 		},
 		hyperfleet.SuffixNetworkConfig: {
-			ServiceAccount:    "system:serviceaccount:openshift-cloud-network-config-controller:cloud-credentials",
+			ServiceAccounts:   []string{"system:serviceaccount:openshift-cloud-network-config-controller:cloud-credentials"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSACloudNetworkConfigOperatorPolicy"},
 			Description:       "Manages ENIs and cloud networking configuration",
 		},
 		hyperfleet.SuffixControlPlaneOperator: {
-			ServiceAccount:    "system:serviceaccount:kube-system:control-plane-operator",
+			ServiceAccounts:   []string{"system:serviceaccount:kube-system:control-plane-operator"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAControlPlaneOperatorPolicy"},
 			Description:       "Control plane operator managing hosted cluster lifecycle",
 		},
 		hyperfleet.SuffixNodePoolManagement: {
-			ServiceAccount:    "system:serviceaccount:kube-system:capa-controller-manager",
+			ServiceAccounts:   []string{"system:serviceaccount:kube-system:capa-controller-manager"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSANodePoolManagementPolicy"},
 			Description:       "Manages worker node pools",
 		},
 		hyperfleet.SuffixWorkerRole: {
-			ServiceAccount: "",
+			ServiceAccounts: nil,
 			ManagedPolicyArns: []string{
 				"arn:aws:iam::aws:policy/service-role/ROSAWorkerInstancePolicy",
 				"arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
@@ -203,29 +207,14 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
 }`
 			} else {
 				// OIDC trust policy for operator roles
-				trustPolicy = fmt.Sprintf(`{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "Federated": "arn:%s:iam::%s:oidc-provider/%s"
-    },
-    "Action": "sts:AssumeRoleWithWebIdentity",
-    "Condition": {
-      "StringEquals": {
-        "%s:sub": "%s",
-        "%s:aud": "openshift"
-      }
-    }
-  }]
-}`,
-					r.Creator.Partition,
-					r.Creator.AccountID,
-					oidcIssuerDomain,
-					oidcIssuerDomain,
-					spec.ServiceAccount,
-					oidcIssuerDomain,
+				trustPolicy, err = buildOIDCTrustPolicy(
+					r.Creator.Partition, r.Creator.AccountID, oidcIssuerDomain, spec.ServiceAccounts,
 				)
+				if err != nil {
+					r.Reporter.Errorf("Failed to build trust policy for role '%s': %v", roleName, err)
+					hfExitFn(1)
+					return
+				}
 			}
 
 			r.Reporter.Debugf("Creating role '%s'", roleName)
@@ -297,29 +286,15 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
 }'`
 			} else {
 				// OIDC trust policy
-				trustPolicy = fmt.Sprintf(`'{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "Federated": "arn:%s:iam::%s:oidc-provider/%s"
-    },
-    "Action": "sts:AssumeRoleWithWebIdentity",
-    "Condition": {
-      "StringEquals": {
-        "%s:sub": "%s",
-        "%s:aud": "openshift"
-      }
-    }
-  }]
-}'`,
-					r.Creator.Partition,
-					r.Creator.AccountID,
-					oidcIssuerDomain,
-					oidcIssuerDomain,
-					spec.ServiceAccount,
-					oidcIssuerDomain,
+				trustPolicy, err = buildOIDCTrustPolicy(
+					r.Creator.Partition, r.Creator.AccountID, oidcIssuerDomain, spec.ServiceAccounts,
 				)
+				if err != nil {
+					r.Reporter.Errorf("Failed to build trust policy for role '%s': %v", roleName, err)
+					hfExitFn(1)
+					return
+				}
+				trustPolicy = "'" + trustPolicy + "'"
 			}
 
 			// Build tags
@@ -366,4 +341,40 @@ func runHyperfleetCreateOperatorRoles(r *rosa.Runtime) {
 		r.Reporter.Errorf("Invalid mode: %s", mode)
 		hfExitFn(1)
 	}
+}
+
+// buildOIDCTrustPolicy grants an operator role to the exact service account
+// subjects and audience used by that operator.
+func buildOIDCTrustPolicy(partition, accountID, oidcIssuerDomain string, serviceAccounts []string) (string, error) {
+	if len(serviceAccounts) == 0 {
+		return "", fmt.Errorf("at least one service account is required")
+	}
+
+	var subjectValue any = serviceAccounts[0]
+	if len(serviceAccounts) > 1 {
+		subjectValue = serviceAccounts
+	}
+
+	policy := map[string]any{
+		"Version": "2012-10-17",
+		"Statement": []map[string]any{{
+			"Effect": "Allow",
+			"Principal": map[string]string{
+				"Federated": fmt.Sprintf("arn:%s:iam::%s:oidc-provider/%s", partition, accountID, oidcIssuerDomain),
+			},
+			"Action": "sts:AssumeRoleWithWebIdentity",
+			"Condition": map[string]any{
+				"StringEquals": map[string]any{
+					oidcIssuerDomain + ":sub": subjectValue,
+					oidcIssuerDomain + ":aud": "openshift",
+				},
+			},
+		}},
+	}
+
+	doc, err := json.MarshalIndent(policy, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("marshalling OIDC trust policy: %w", err)
+	}
+	return string(doc), nil
 }

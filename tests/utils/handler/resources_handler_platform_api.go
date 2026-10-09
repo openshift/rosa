@@ -311,7 +311,10 @@ func platformAPIOperatorTrustPolicy(partition, accountID, oidcProvider string, s
 			},
 			"Action": "sts:AssumeRoleWithWebIdentity",
 			"Condition": map[string]any{
-				"StringEquals": map[string]any{oidcProvider + ":sub": subjectValue},
+				"StringEquals": map[string]any{
+					oidcProvider + ":sub": subjectValue,
+					oidcProvider + ":aud": "openshift",
+				},
 			},
 		}},
 	})

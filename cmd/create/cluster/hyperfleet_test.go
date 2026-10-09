@@ -193,7 +193,7 @@ var _ = Describe("runHyperfleet", func() {
 		args.hostPrefix = 0
 		args.networkType = ""
 		args.noCni = false
-		args.version = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+		args.version = "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
 		args.dryRun = false
 
 		t = test.NewTestRuntime()
@@ -264,6 +264,9 @@ var _ = Describe("runHyperfleet", func() {
 			"role ARNs must use the GovCloud partition")
 		Expect(rolesRef.NodePoolManagementARN).To(HavePrefix("arn:aws-us-gov:iam::"),
 			"role ARNs must use the GovCloud partition")
+		Expect(rolesRef.ImageRegistryARN).To(Equal(
+			"arn:aws-us-gov:iam::123456789012:role/test-cluster-image-registry",
+		), "the image registry operator must receive the ARN of its matching role")
 	})
 
 	It("does not submit a Platform API create request for a dry run", func() {

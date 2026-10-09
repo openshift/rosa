@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"sync/atomic"
 
 	"github.com/aws/smithy-go"
@@ -62,5 +63,45 @@ var _ = Describe("waitForSubnetsVisible", func() {
 		}
 		err := waitForSubnetsVisible(ctx, []string{"subnet-aaa"}, checker)
 		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("platformAPIOperatorTrustPolicy", func() {
+	It("scopes image registry role trust to its issuer, service accounts, and audience", func() {
+		const issuer = "oidc.example.com/us-east-1/issuer-id"
+		policyJSON := platformAPIOperatorTrustPolicy("aws", "123456789012", issuer, []platformAPIServiceAccount{
+			{"openshift-image-registry", "cluster-image-registry-operator"},
+			{"openshift-image-registry", "registry"},
+		})
+
+		var policy struct {
+			Statement []struct {
+				Principal struct {
+					Federated string `json:"Federated"`
+				} `json:"Principal"`
+				Action    string `json:"Action"`
+				Condition struct {
+					StringEquals map[string]json.RawMessage `json:"StringEquals"`
+				} `json:"Condition"`
+			} `json:"Statement"`
+		}
+		Expect(json.Unmarshal([]byte(policyJSON), &policy)).To(Succeed())
+		Expect(policy.Statement).To(HaveLen(1))
+
+		statement := policy.Statement[0]
+		Expect(statement.Principal.Federated).To(Equal("arn:aws:iam::123456789012:oidc-provider/" + issuer))
+		Expect(statement.Action).To(Equal("sts:AssumeRoleWithWebIdentity"))
+		Expect(statement.Condition.StringEquals).To(HaveLen(2))
+
+		var subjects []string
+		Expect(json.Unmarshal(statement.Condition.StringEquals[issuer+":sub"], &subjects)).To(Succeed())
+		Expect(subjects).To(ConsistOf(
+			"system:serviceaccount:openshift-image-registry:cluster-image-registry-operator",
+			"system:serviceaccount:openshift-image-registry:registry",
+		))
+
+		var audience string
+		Expect(json.Unmarshal(statement.Condition.StringEquals[issuer+":aud"], &audience)).To(Succeed())
+		Expect(audience).To(Equal("openshift"))
 	})
 })
