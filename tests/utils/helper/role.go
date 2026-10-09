@@ -5,7 +5,6 @@ package helper
 
 import (
 	"bytes"
-	"fmt"
 	"regexp"
 	"strings"
 )
@@ -48,28 +47,36 @@ func ExtractCommandsToCreateAWSResources(bf bytes.Buffer) []string {
 // Extract aws commands to delete AWS resource promted by rosacli, this function supports to parse bellow commands
 // `rosa delete operator-roles --mode manual`
 // `rosa delete oidc-provider --mode manual`
-func ExtractCommandsToDeleteAWSResoueces(bf bytes.Buffer) []string {
+// `rosa delete oidc-config --mode manual`
+// Every `aws` sub-command is returned, not just `aws iam`, because deleting an
+// unmanaged oidc-config also emits `aws secretsmanager` and `aws s3` commands.
+// Blocks that are not commands, such as the reporter preamble, are skipped.
+func ExtractCommandsToDeleteAWSResources(bf bytes.Buffer) []string {
 	var commands []string
-	output := strings.Split(bf.String(), "\naws")
-	for _, message := range output {
-		if strings.HasPrefix(message, "aws iam") {
-			commands = append(commands, message)
-		} else {
-			commands = append(commands, fmt.Sprintf("aws %s", message))
+	var current []string
+	spaceRegex := regexp.MustCompile(`\s+`)
+	// rosacli prints each command at the start of a line and wraps its params
+	// onto following lines, every wrapped line ending with a "\". So a line
+	// starting with "aws " opens a command and the first line without a
+	// trailing "\" closes it. Commands are joined with "\n" by some callers and
+	// "\n\n" by others, so do not rely on the separator between them.
+	for _, line := range strings.Split(bf.String(), "\n") {
+		line = strings.TrimSpace(line)
+		if current == nil && !strings.HasPrefix(line, "aws ") {
+			// Reporter preamble, blank lines, or trailing log output.
+			continue
 		}
-
-	}
-	var newCommands []string
-	for _, command := range commands {
-		command = strings.ReplaceAll(command, "\\", "")
-		command = strings.ReplaceAll(command, "\n", " ")
-		spaceRegex := regexp.MustCompile(`\s+`)
-		command = spaceRegex.ReplaceAllString(command, " ")
+		continued := strings.HasSuffix(line, "\\")
+		current = append(current, strings.TrimSuffix(line, "\\"))
+		if continued {
+			continue
+		}
+		command := spaceRegex.ReplaceAllString(strings.Join(current, " "), " ")
 		command = strings.ReplaceAll(command, "'", "")
-		newCommands = append(newCommands, command)
-
+		commands = append(commands, strings.TrimSpace(command))
+		current = nil
 	}
-	return newCommands
+	return commands
 }
 
 // Extract aws command to delete account roles in manual mode

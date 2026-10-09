@@ -4029,7 +4029,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					"-y",
 				)
 				Expect(err).To(BeNil())
-				commands = helper.ExtractCommandsToDeleteAWSResoueces(output)
+				commands = helper.ExtractCommandsToDeleteAWSResources(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 					Expect(err).To(BeNil())
@@ -4042,7 +4042,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					"-y",
 				)
 				Expect(err).To(BeNil())
-				commands = helper.ExtractCommandsToDeleteAWSResoueces(output)
+				commands = helper.ExtractCommandsToDeleteAWSResources(output)
 				for _, command := range commands {
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 					Expect(err).To(BeNil())
