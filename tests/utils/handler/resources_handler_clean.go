@@ -64,7 +64,7 @@ func (rh *resourcesHandler) DeleteVPCChain(withSharedAccount bool) error {
 // were created under the primary/cluster account rather than the shared/prefix account
 // that owns the VPC. In a RAM-shared VPC, the VPC owner can list every security group in
 // its VPC but cannot delete ones created by the other account ("...the provided object is
-// not owned by you"), and the vendored security-group sweep in DeleteVPCChain aborts on
+// not owned by you"), and the ocm-common security-group sweep in DeleteVPCChain aborts on
 // the first such group, blocking the rest of the VPC-chain teardown (ENIs, subnets, VPC).
 func (rh *resourcesHandler) deleteForeignOwnedSecurityGroups() error {
 	primaryClient, err := rh.GetAWSClient(false)
