@@ -19,3 +19,7 @@ RUN mkdir -p /opt/app-root/src /tmp/gomodcache /tmp/.cache && \
 ENV HOME="/opt/app-root/src" \
     GOMODCACHE="/tmp/gomodcache" \
     GOLANGCI_LINT_CACHE="/tmp/.cache"
+# Warm the module cache once at image build so each presubmit job does not
+# download the module graph again; keep it group-writable for the Prow UID.
+RUN GOTOOLCHAIN=auto go mod download && \
+    chmod -R g+rwX /tmp/gomodcache
