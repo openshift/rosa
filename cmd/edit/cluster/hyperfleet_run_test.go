@@ -219,7 +219,7 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 				MatchError(ContainSubstring(message)))
 		},
 		Entry("HTTP missing scheme", "http-proxy", "invalidvalue", "invalid http-proxy value: URL is missing scheme"),
-		Entry("HTTP wrong scheme", "http-proxy", "https://test-proxy.com", "URL scheme must be 'http://'"),
+		Entry("HTTP wrong scheme", "http-proxy", "ftp://test-proxy.com", "URL scheme must be 'http://' or 'https://'"),
 		Entry("HTTP with path", "http-proxy", "http://test-proxy.com/extra", "proxy URL should not contain a path '/extra'"),
 		Entry("HTTPS missing scheme", "https-proxy", "invalidvalue", "invalid https-proxy value: URL is missing scheme"),
 		Entry("HTTPS wrong scheme", "https-proxy", "ftp://test-proxy.com", "URL scheme must be 'http://' or 'https://'"),

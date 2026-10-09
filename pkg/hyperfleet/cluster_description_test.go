@@ -39,7 +39,7 @@ var _ = Describe("GetClusterDescription", func() {
 	It("rejects a bundle response of the wrong type", func() {
 		client := clusterDescriptionTestClient(`{"spec":{"additionalTrustBundle":true}}`)
 		_, err := GetClusterDescription(context.Background(), client, "cluster-uid")
-		Expect(err).To(MatchError(ContainSubstring("failed to decode cluster proxy or trust bundle")))
+		Expect(err).To(MatchError(ContainSubstring("failed to decode cluster response")))
 	})
 
 	It("reports malformed cluster JSON", func() {

@@ -19,6 +19,7 @@ type NodePoolUpdateInput struct {
 	Min                           *int32 `hfsdk:"spec.nodePool.autoScaling.min"`
 	Config                        string `hfsdk:"spec.nodePool.config"`
 	NodeDrainTimeout              string `hfsdk:"spec.nodePool.nodeDrainTimeout"`
+	NodeLabels                    string `hfsdk:"spec.nodePool.nodeLabels"`
 	Ami                           string `hfsdk:"spec.nodePool.platform.aws.ami"`
 	ImageType                     string `hfsdk:"spec.nodePool.platform.aws.imageType"`
 	InstanceProfile               string `hfsdk:"spec.nodePool.platform.aws.instanceProfile"`
@@ -47,6 +48,7 @@ var NodePoolUpdatePlatformAPIFlags = []string{
 	"auto-repair",
 	"display-name",
 	"labels",
+	"node-labels",
 	"ami",
 	"image-type",
 	"instance-profile",
@@ -73,6 +75,7 @@ func RegisterNodePoolUpdateFlags(cmd *cobra.Command, input *NodePoolUpdateInput)
 	registerIfNew(f, "auto-repair", func() { input.AutoRepair = new(bool); f.BoolVar(input.AutoRepair, "auto-repair", false, "") })
 	registerIfNew(f, "display-name", func() { f.StringVar(&input.DisplayName, "display-name", "", "") })
 	registerIfNew(f, "labels", func() { f.StringVar(&input.Labels, "labels", "", "") })
+	registerIfNew(f, "node-labels", func() { f.StringVar(&input.NodeLabels, "node-labels", "", "") })
 	registerIfNew(f, "ami", func() { f.StringVar(&input.Ami, "ami", "", "") })
 	registerIfNew(f, "image-type", func() { f.StringVar(&input.ImageType, "image-type", "", "") })
 	registerIfNew(f, "instance-profile", func() { f.StringVar(&input.InstanceProfile, "instance-profile", "", "") })
