@@ -25,6 +25,8 @@ import (
 	errors "github.com/zgalor/weberr"
 
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
+	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -47,6 +49,11 @@ const (
 
   # Edit a cluster-autoscaler with total CPU constraints
   rosa edit autoscaler --cluster=mycluster --min-cores 10 --max-cores 100`
+	hyperfleetExample = `  # Edit the maximum node count for a HyperFleet cluster
+  rosa edit autoscaler --cluster=mycluster --max-nodes-total 100
+
+  # Edit how long the autoscaler waits for a node to be provisioned
+  rosa edit autoscaler --cluster=mycluster --max-node-provision-time 20m`
 )
 
 var aliases = []string{"cluster-autoscaler"}
@@ -67,7 +74,25 @@ func NewEditAutoscalerCommand() *cobra.Command {
 	ocm.AddClusterFlag(cmd)
 	interactive.AddFlag(flags)
 	autoscalerArgs := clusterautoscaler.AddClusterAutoscalerFlags(cmd, argsPrefix)
-	cmd.Run = rosa.DefaultRunner(rosa.RuntimeWithOCM(), EditAutoscalerRunner(autoscalerArgs))
+	configureHyperfleetHelp := func() {
+		if !hyperfleet.Enabled() {
+			if cfg, err := config.Load(); err == nil && cfg != nil {
+				hyperfleet.SetURL(cfg.HyperfleetURL)
+			}
+		}
+		if !hyperfleet.Enabled() {
+			return
+		}
+		_ = flags.MarkHidden("interactive")
+		cmd.Example = hyperfleetExample
+	}
+	configureHyperfleetHelp()
+	defaultHelp := cmd.HelpFunc()
+	cmd.SetHelpFunc(func(command *cobra.Command, args []string) {
+		configureHyperfleetHelp()
+		defaultHelp(command, args)
+	})
+	cmd.Run = dispatch(autoscalerArgs)
 	return cmd
 }
 
