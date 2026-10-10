@@ -21,6 +21,15 @@ reviews:
     - "!**/*.pb.gw.go"
     - "!**/testdata/**"
   path_instructions:
+    - path: "**/go.mod"
+      instructions: |
+        This PR updates external dependencies (library bump).
+        Perform a deep source-level analysis of the bumped packages and verify:
+        
+        1. **Behavioral Changes & Breaking Defaults:** Inspect if updated libraries altered default behaviors (e.g., proxy transport changes, default options, or dropped bypasses like `InsecureSkipVerify`).
+        2. **Impact on Calling Code:** Identify all call sites in this repository using the updated package. Alert if internal semantics changed, even if the code compiles without errors.
+        3. **Configuration & Flag Wiring:** Check whether CLI flags/options (such as `--insecure`, custom CA, or proxy settings) need to be explicitly passed into the updated library APIs to maintain expected user-facing options.
+        4. **Feature Adoption & Code Refactoring:** Check if the new library version introduces features, options, or abstractions that could simplify existing workarounds or improve implementation efficiency.
     - path: "cmd/**/*.go"
       instructions: |
         - Treat Cobra wiring, flags, command UX, and error handling as high-signal review areas.
