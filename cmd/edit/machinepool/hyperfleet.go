@@ -82,6 +82,20 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 	}
 }
 
+// validateMergedUpgrade re-checks the rolling-update pair once the merge has
+// filled in the half the user left alone, so zeroing one half against a node
+// pool whose other half is already zero fails here instead of as an API
+// validation error.
+func validateMergedUpgrade(np *v1alpha1.NodePool) error {
+	maxUnavailable := hyperfleet.FormatUpgradeValue(np.Spec.MaxUnavailable)
+	if maxUnavailable == "" {
+		// The Platform API reads an omitted maxUnavailable as 0; an omitted
+		// maxSurge is 1, which can never be half of a zero pair.
+		maxUnavailable = "0"
+	}
+	return mpHelpers.ValidateHyperfleetUpgrade(hyperfleet.FormatUpgradeValue(np.Spec.MaxSurge), maxUnavailable)
+}
+
 // hyperfleetNodePoolUpdate implements hfpathbind.NodePoolUpdateHandler for rosa edit machinepool.
 type hyperfleetNodePoolUpdate struct {
 	hfpathbind.GeneratedNodePoolUpdatePrompt
@@ -106,13 +120,28 @@ func (h *hyperfleetNodePoolUpdate) PreRequest(
 	autoscalingChanged := h.cmd.Flags().Changed("enable-autoscaling") ||
 		minReplicasChanged || maxReplicasChanged
 
-	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged &&
+	upgradeChanged := h.cmd.Flags().Changed("max-surge") || h.cmd.Flags().Changed("max-unavailable")
+
+	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged && !upgradeChanged &&
 		!h.cmd.Flags().Changed("labels") && !h.cmd.Flags().Changed("taints") &&
 		!h.cmd.Flags().Changed("autorepair") {
 		return fmt.Errorf(
 			"specify at least one supported flag: --replicas, --enable-autoscaling, " +
-				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair",
+				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair, " +
+				"--max-surge, --max-unavailable",
 		)
+	}
+
+	if upgradeChanged {
+		// Bridge: --max-surge and --max-unavailable share their names with the OCM
+		// registrations so registerIfNew skips them; read from userOptions. Remove
+		// when OCM flag registration is dropped.
+		if err := mpHelpers.ValidateHyperfleetUpgrade(
+			h.userOptions.maxSurge, h.userOptions.maxUnavailable); err != nil {
+			return err
+		}
+		input.MaxSurge = hyperfleet.EncodeUpgradeValue(h.userOptions.maxSurge)
+		input.MaxUnavailable = hyperfleet.EncodeUpgradeValue(h.userOptions.maxUnavailable)
 	}
 
 	if h.cmd.Flags().Changed("labels") {
@@ -257,6 +286,19 @@ func (h *hyperfleetNodePoolUpdate) PostExpand(
 		// Management is service-set; the operator renders it from spec.autoRepair.
 		autorepair := h.userOptions.autorepair
 		merged.Spec.AutoRepair = &autorepair
+	}
+
+	// Each rolling-update value moves on its own: the half the user left out
+	// keeps the node pool's current setting, the way the OCM edit path carries
+	// the unchanged half forward.
+	if h.cmd.Flags().Changed("max-surge") {
+		merged.Spec.MaxSurge = obj.Spec.MaxSurge
+	}
+	if h.cmd.Flags().Changed("max-unavailable") {
+		merged.Spec.MaxUnavailable = obj.Spec.MaxUnavailable
+	}
+	if err := validateMergedUpgrade(merged); err != nil {
+		return err
 	}
 
 	if h.cmd.Flags().Changed("labels") {

@@ -133,6 +133,117 @@ var _ = Describe("Edit nodepool",
 				verify("", "")
 			})
 
+		It("can set and edit HyperFleet nodepool max surge and max unavailable",
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			func() {
+				if !isHyperfleetMode() {
+					// id:74387 covers the same flags on the OCM path, where the
+					// rejection messages come from the service instead.
+					Skip("This case exercises the HyperFleet rolling update settings")
+				}
+				By("Select an existing worker subnet and instance type")
+				existing, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(existing.NodePools).NotTo(BeEmpty())
+				subnet := existing.NodePools[0].Subnet
+				workerType := existing.NodePools[0].InstanceType
+				Expect(subnet).NotTo(BeEmpty())
+				Expect(workerType).NotTo(BeEmpty())
+
+				// The describe block is keyed rather than indexed: the upgrade
+				// type is service-set, so the operator renders it a moment after
+				// the customer values and the line is absent until then.
+				upgradeValue := func(description *rosacli.NodePoolDescription, key string) (string, bool) {
+					for _, entry := range description.ManagementUpgrade {
+						if value, found := entry[key]; found {
+							return value, true
+						}
+					}
+					return "", false
+				}
+
+				verify := func(poolName, expectedSurge, expectedUnavailable string) {
+					description, err := machinePoolService.DescribeAndReflectNodePool(clusterID, poolName)
+					Expect(err).NotTo(HaveOccurred())
+
+					surge, found := upgradeValue(description, "Max surge")
+					Expect(found).To(BeTrue(), "describe reported no max surge for %s", poolName)
+					Expect(surge).To(Equal(expectedSurge))
+
+					unavailable, found := upgradeValue(description, "Max unavailable")
+					Expect(found).To(BeTrue(), "describe reported no max unavailable for %s", poolName)
+					Expect(unavailable).To(Equal(expectedUnavailable))
+
+					if upgradeType, found := upgradeValue(description, "Type"); found {
+						Expect(upgradeType).To(Equal("Replace"))
+					}
+				}
+
+				createPool := func(poolName string, flags ...string) {
+					args := append([]string{
+						"--replicas", "0", "--subnet", subnet, "--instance-type", workerType,
+					}, flags...)
+					_, err := machinePoolService.CreateMachinePool(clusterID, poolName, args...)
+					Expect(err).NotTo(HaveOccurred())
+					DeferCleanup(func() {
+						_, err := machinePoolService.DeleteMachinePool(clusterID, poolName)
+						Expect(err).NotTo(HaveOccurred())
+					})
+				}
+
+				By("Create a nodepool with absolute rolling update values")
+				absolutePool := helper.GenerateRandomName("np-upgrade-abs", 2)
+				createPool(absolutePool, "--max-surge", "2", "--max-unavailable", "1")
+				verify(absolutePool, "2", "1")
+
+				// Percentages have to reach the API as quoted JSON; an unquoted
+				// value fails to decode into the int-or-string spec field.
+				By("Create a nodepool with percentage rolling update values")
+				percentPool := helper.GenerateRandomName("np-upgrade-pct", 2)
+				createPool(percentPool, "--max-surge", "20%", "--max-unavailable", "10%")
+				verify(percentPool, "20%", "10%")
+
+				// Omitting the flags leaves spec.maxSurge and spec.maxUnavailable
+				// unset, which the Platform API reads as 1 and 0. Describe
+				// reports those documented defaults so a pool nobody configured
+				// reads the same here as it does on the OCM path (id:74387).
+				By("Create a nodepool without the flags and see the API defaults")
+				defaultPool := helper.GenerateRandomName("np-upgrade-def", 2)
+				createPool(defaultPool)
+				verify(defaultPool, "1", "0")
+
+				By("Edit only max unavailable and keep max surge")
+				_, err = machinePoolService.EditMachinePool(clusterID, absolutePool, "--max-unavailable", "3")
+				Expect(err).NotTo(HaveOccurred())
+				verify(absolutePool, "2", "3")
+
+				By("Edit only max surge and keep max unavailable")
+				_, err = machinePoolService.EditMachinePool(clusterID, absolutePool, "--max-surge", "40%")
+				Expect(err).NotTo(HaveOccurred())
+				verify(absolutePool, "40%", "3")
+
+				By("Reject a rolling update that can never make progress")
+				zeroPool := helper.GenerateRandomName("np-upgrade-zero", 2)
+				output, err := machinePoolService.CreateMachinePool(clusterID, zeroPool,
+					"--replicas", "0", "--subnet", subnet, "--instance-type", workerType,
+					"--max-surge", "0", "--max-unavailable", "0")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring("only one of --max-surge and --max-unavailable can be zero"))
+
+				By("Reject zeroing one half against a node pool whose other half is zero")
+				output, err = machinePoolService.EditMachinePool(clusterID, defaultPool, "--max-surge", "0")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring("only one of --max-surge and --max-unavailable can be zero"))
+
+				By("Reject an out-of-range percentage")
+				output, err = machinePoolService.EditMachinePool(clusterID, absolutePool, "--max-unavailable", "101%")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring("invalid --max-unavailable"))
+			})
+
 		It("can create/edit/list/delete nodepool - [id:56782]",
 			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
@@ -1197,8 +1308,12 @@ var _ = Describe("Edit nodepool",
 						"ERR: invalid tag format for tag '[#.bar]'. Expected tag format: 'key value'"))
 			})
 
+		// Deferred on HyperFleet until someone runs it against the Platform API:
+		// the CLI sends the rolling update on both create and edit, and the API
+		// now accepts spec.maxSurge / spec.maxUnavailable, but the case has only
+		// been exercised on the OCM path.
 		It("create/edit/describe maxunavailable/maxsurge for HCP nodepools - [id:74387]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				By("Retrieve help for create/edit machinepool")
 				output, err := machinePoolService.RetrieveHelpForCreate()

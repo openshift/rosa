@@ -1,11 +1,16 @@
 package machinepool
 
 import (
+	"context"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
+	"github.com/openshift/rosa/pkg/test"
 )
 
 var _ = Describe("HyperFleet machine pool creation validation", func() {
@@ -113,5 +118,80 @@ var _ = Describe("HyperFleet machine pool creation validation", func() {
 		Expect(cmd.Flags().Set("min-replicas", "3")).To(Succeed())
 		handler := &hyperfleetNodePoolCreate{cmd: cmd, userOptions: &mpOpts.CreateMachinepoolUserOptions{MinReplicas: 3}}
 		Expect(handler.validateAndParseUserOptions()).To(MatchError("autoscaling must be enabled in order to set min and max replicas"))
+	})
+})
+
+var _ = Describe("HyperFleet machine pool rolling update settings", func() {
+	// The flags carry the same defaults the create command registers, so the
+	// tests exercise the values a user actually sends.
+	newUpgradeHandler := func(maxSurge, maxUnavailable string) *hyperfleetNodePoolCreate {
+		cmd := &cobra.Command{}
+		cmd.Flags().String("max-surge", "1", "")
+		cmd.Flags().String("max-unavailable", "0", "")
+		options := &mpOpts.CreateMachinepoolUserOptions{MaxSurge: "1", MaxUnavailable: "0"}
+		if maxSurge != "" {
+			Expect(cmd.Flags().Set("max-surge", maxSurge)).To(Succeed())
+			options.MaxSurge = maxSurge
+		}
+		if maxUnavailable != "" {
+			Expect(cmd.Flags().Set("max-unavailable", maxUnavailable)).To(Succeed())
+			options.MaxUnavailable = maxUnavailable
+		}
+		return &hyperfleetNodePoolCreate{cmd: cmd, userOptions: options}
+	}
+
+	It("sends no rolling update settings when neither flag is set", func() {
+		handler := newUpgradeHandler("", "")
+		Expect(handler.validateAndParseUserOptions()).To(Succeed())
+		Expect(handler.upgrade).To(BeNil())
+	})
+
+	It("sends both values when only one flag is set", func() {
+		handler := newUpgradeHandler("2", "")
+		Expect(handler.validateAndParseUserOptions()).To(Succeed())
+		Expect(handler.upgrade).To(Equal(&hyperfleet.NodePoolUpgrade{MaxSurge: "2", MaxUnavailable: "0"}))
+	})
+
+	It("sends percentages as the user wrote them", func() {
+		handler := newUpgradeHandler("20%", "10%")
+		Expect(handler.validateAndParseUserOptions()).To(Succeed())
+		Expect(handler.upgrade).To(Equal(&hyperfleet.NodePoolUpgrade{MaxSurge: "20%", MaxUnavailable: "10%"}))
+	})
+
+	It("rejects a rolling update that can never make progress", func() {
+		handler := newUpgradeHandler("0", "0")
+		Expect(handler.validateAndParseUserOptions()).To(MatchError(
+			"only one of --max-surge and --max-unavailable can be zero"))
+	})
+
+	It("rejects an invalid value", func() {
+		handler := newUpgradeHandler("", "101%")
+		Expect(handler.validateAndParseUserOptions()).To(MatchError(ContainSubstring("invalid --max-unavailable")))
+	})
+
+	It("treats non-empty user options as set when there is no cobra command", func() {
+		handler := &hyperfleetNodePoolCreate{userOptions: &mpOpts.CreateMachinepoolUserOptions{MaxSurge: "3"}}
+		Expect(handler.validateAndParseUserOptions()).To(Succeed())
+		Expect(handler.upgrade).To(Equal(&hyperfleet.NodePoolUpgrade{MaxSurge: "3"}))
+	})
+
+	It("leaves the request fields empty when neither flag is set", func() {
+		handler := newUpgradeHandler("", "")
+		handler.userOptions.Name = "workers"
+		handler.userOptions.Subnet = "subnet-abc123"
+		input := &hfpathbind.NodePoolCreateInput{}
+		Expect(handler.PreRequest(context.Background(), test.NewTestRuntime().RosaRuntime, input)).To(Succeed())
+		Expect(input.MaxSurge).To(BeEmpty())
+		Expect(input.MaxUnavailable).To(BeEmpty())
+	})
+
+	It("bridges both values into the request", func() {
+		handler := newUpgradeHandler("2", "1")
+		handler.userOptions.Name = "workers"
+		handler.userOptions.Subnet = "subnet-abc123"
+		input := &hfpathbind.NodePoolCreateInput{}
+		Expect(handler.PreRequest(context.Background(), test.NewTestRuntime().RosaRuntime, input)).To(Succeed())
+		Expect(input.MaxSurge).To(Equal("2"))
+		Expect(input.MaxUnavailable).To(Equal("1"))
 	})
 })

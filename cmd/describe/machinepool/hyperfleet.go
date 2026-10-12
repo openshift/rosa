@@ -125,7 +125,7 @@ func hfNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string]inter
 		})
 	}
 
-	return map[string]interface{}{
+	m := map[string]interface{}{
 		"id":                 string(np.UID),
 		"name":               hyperfleet.NodePoolDisplayName(clusterName, np.Name),
 		"state":              string(np.Status.Phase),
@@ -140,6 +140,27 @@ func hfNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string]inter
 		"labels":             np.Spec.Labels,
 		"taints":             np.Spec.NodePool.Taints,
 	}
+
+	// The rolling-update settings are reported under "management_upgrade" to
+	// match the OCM-based machine pool describe output, where they come from
+	// the node pool's management upgrade.
+	m["management_upgrade"] = hfManagementUpgradeToMap(np)
+	return m
+}
+
+// hfManagementUpgradeToMap reports the rolling update a node pool upgrades
+// with. The type is service-set, so it is left out until the operator renders
+// it, as is max surge for an InPlace pool, which never surges.
+func hfManagementUpgradeToMap(np *v1alpha1.NodePool) map[string]interface{} {
+	upgradeType, upgrade := hyperfleet.NodePoolUpgradeSettings(np)
+	m := map[string]interface{}{"max_unavailable": upgrade.MaxUnavailable}
+	if upgradeType != "" {
+		m["type"] = upgradeType
+	}
+	if upgrade.MaxSurge != "" {
+		m["max_surge"] = upgrade.MaxSurge
+	}
+	return m
 }
 
 func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
@@ -285,6 +306,19 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		nodeDrainTimeout,
 		np.CreationTimestamp.UTC().Format("2006-01-02 15:04:05 UTC"),
 	)
+
+	upgradeType, upgrade := hyperfleet.NodePoolUpgradeSettings(np)
+	s += "Management upgrade:                    \n"
+	// The upgrade type is service-set: the operator renders it from the
+	// customer values, so a node pool reports its rolling update before it
+	// reports a type. Leave the line out rather than print an empty one.
+	if upgradeType != "" {
+		s += fmt.Sprintf(" - Type:                               %s\n", upgradeType)
+	}
+	if upgrade.MaxSurge != "" {
+		s += fmt.Sprintf(" - Max surge:                          %s\n", upgrade.MaxSurge)
+	}
+	s += fmt.Sprintf(" - Max unavailable:                    %s\n", upgrade.MaxUnavailable)
 
 	if len(np.Status.Conditions) > 0 {
 		s += "Conditions:\n"

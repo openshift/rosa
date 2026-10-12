@@ -139,6 +139,7 @@ type hyperfleetNodePoolCreate struct {
 	labels               map[string]string
 	taints               []hypershiftv1beta1.Taint
 	resourceTags         []hypershiftv1beta1.AWSResourceTag
+	upgrade              *hyperfleet.NodePoolUpgrade
 }
 
 func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
@@ -182,11 +183,45 @@ func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
 		return err
 	}
 
+	upgrade, err := h.parseUpgrade()
+	if err != nil {
+		return err
+	}
+
 	h.labels = labels
 	h.taints = taints
 	h.resourceTags = resourceTags
+	h.upgrade = upgrade
 	h.userOptionsValidated = true
 	return nil
+}
+
+// parseUpgrade builds the rolling-update settings for the create request.
+// --max-surge and --max-unavailable default to "1" and "0", so they are only
+// sent when the user set either of them, the way the OCM path decides whether
+// to build a management upgrade. Both values travel together: the Platform API
+// renders one rolling update, so sending half of it would drop the other half
+// back to its default.
+func (h *hyperfleetNodePoolCreate) parseUpgrade() (*hyperfleet.NodePoolUpgrade, error) {
+	maxSurge := h.userOptions.MaxSurge
+	maxUnavailable := h.userOptions.MaxUnavailable
+	if !h.upgradeFlagSet("max-surge", maxSurge) && !h.upgradeFlagSet("max-unavailable", maxUnavailable) {
+		return nil, nil
+	}
+	if err := mpHelpers.ValidateHyperfleetUpgrade(maxSurge, maxUnavailable); err != nil {
+		return nil, err
+	}
+	return &hyperfleet.NodePoolUpgrade{MaxSurge: maxSurge, MaxUnavailable: maxUnavailable}, nil
+}
+
+// upgradeFlagSet reports whether the user asked for a rolling-update value.
+// Callers that invoke the handler without a cobra command signal that through
+// a non-empty user option.
+func (h *hyperfleetNodePoolCreate) upgradeFlagSet(name string, value string) bool {
+	if h.cmd == nil {
+		return value != ""
+	}
+	return h.cmd.Flags().Changed(name)
 }
 
 func (h *hyperfleetNodePoolCreate) validateReplicas() error {
@@ -263,6 +298,14 @@ func (h *hyperfleetNodePoolCreate) PreRequest(
 	input.InstanceType = instanceType
 
 	input.SubnetID = h.userOptions.Subnet
+
+	// Bridge: --max-surge and --max-unavailable share their names with the OCM
+	// registrations so registerIfNew skips them; read from userOptions. Remove
+	// when OCM flag registration is dropped.
+	if h.upgrade != nil {
+		input.MaxSurge = hyperfleet.EncodeUpgradeValue(h.upgrade.MaxSurge)
+		input.MaxUnavailable = hyperfleet.EncodeUpgradeValue(h.upgrade.MaxUnavailable)
+	}
 
 	replicas := int32(h.userOptions.Replicas)
 	input.Replicas = &replicas
