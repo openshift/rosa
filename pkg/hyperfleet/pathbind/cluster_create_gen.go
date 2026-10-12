@@ -108,19 +108,10 @@ var ClusterCreatePlatformAPIFlags = []string{
 	"role-arn",
 	"platform",
 	"provisioner-config-name",
-	"balancing-ignored-labels",
-	"expanders",
-	"max-free-difference-ratio-percent",
-	"max-node-provision-time",
-	"max-nodes-total",
-	"max-pod-grace-period",
-	"pod-priority-threshold",
-	"delay-after-add-seconds",
-	"delay-after-delete-seconds",
-	"delay-after-failure-seconds",
-	"unneeded-duration-seconds",
-	"utilization-threshold-percent",
-	"scaling",
+	"autoscaler-max-node-provision-time",
+	"autoscaler-max-nodes-total",
+	"autoscaler-max-pod-grace-period",
+	"autoscaler-pod-priority-threshold",
 	"channel",
 	"component-routes",
 	"container-log-max-files",
@@ -198,43 +189,19 @@ func RegisterClusterCreateFlags(cmd *cobra.Command, input *ClusterCreateInput) {
 	registerIfNew(f, "role-arn", func() { f.StringVar(&input.RoleARN, "role-arn", "", "") })
 	registerIfNew(f, "platform", func() { f.StringVar(&input.Platform, "platform", "", "") })
 	registerIfNew(f, "provisioner-config-name", func() { f.StringVar(&input.ProvisionerConfigName, "provisioner-config-name", "", "") })
-	registerIfNew(f, "balancing-ignored-labels", func() { f.StringVar(&input.BalancingIgnoredLabels, "balancing-ignored-labels", "", "") })
-	registerIfNew(f, "expanders", func() { f.StringVar(&input.Expanders, "expanders", "", "") })
-	registerIfNew(f, "max-free-difference-ratio-percent", func() {
-		input.MaxFreeDifferenceRatioPercent = new(int32)
-		f.Int32Var(input.MaxFreeDifferenceRatioPercent, "max-free-difference-ratio-percent", 0, "")
+	registerIfNew(f, "autoscaler-max-node-provision-time", func() { f.StringVar(&input.MaxNodeProvisionTime, "autoscaler-max-node-provision-time", "", "") })
+	registerIfNew(f, "autoscaler-max-nodes-total", func() {
+		input.MaxNodesTotal = new(int32)
+		f.Int32Var(input.MaxNodesTotal, "autoscaler-max-nodes-total", 0, "")
 	})
-	registerIfNew(f, "max-node-provision-time", func() { f.StringVar(&input.MaxNodeProvisionTime, "max-node-provision-time", "", "") })
-	registerIfNew(f, "max-nodes-total", func() { input.MaxNodesTotal = new(int32); f.Int32Var(input.MaxNodesTotal, "max-nodes-total", 0, "") })
-	registerIfNew(f, "max-pod-grace-period", func() {
+	registerIfNew(f, "autoscaler-max-pod-grace-period", func() {
 		input.MaxPodGracePeriod = new(int32)
-		f.Int32Var(input.MaxPodGracePeriod, "max-pod-grace-period", 0, "")
+		f.Int32Var(input.MaxPodGracePeriod, "autoscaler-max-pod-grace-period", 0, "")
 	})
-	registerIfNew(f, "pod-priority-threshold", func() {
+	registerIfNew(f, "autoscaler-pod-priority-threshold", func() {
 		input.PodPriorityThreshold = new(int32)
-		f.Int32Var(input.PodPriorityThreshold, "pod-priority-threshold", 0, "")
+		f.Int32Var(input.PodPriorityThreshold, "autoscaler-pod-priority-threshold", 0, "")
 	})
-	registerIfNew(f, "delay-after-add-seconds", func() {
-		input.DelayAfterAddSeconds = new(int32)
-		f.Int32Var(input.DelayAfterAddSeconds, "delay-after-add-seconds", 0, "")
-	})
-	registerIfNew(f, "delay-after-delete-seconds", func() {
-		input.DelayAfterDeleteSeconds = new(int32)
-		f.Int32Var(input.DelayAfterDeleteSeconds, "delay-after-delete-seconds", 0, "")
-	})
-	registerIfNew(f, "delay-after-failure-seconds", func() {
-		input.DelayAfterFailureSeconds = new(int32)
-		f.Int32Var(input.DelayAfterFailureSeconds, "delay-after-failure-seconds", 0, "")
-	})
-	registerIfNew(f, "unneeded-duration-seconds", func() {
-		input.UnneededDurationSeconds = new(int32)
-		f.Int32Var(input.UnneededDurationSeconds, "unneeded-duration-seconds", 0, "")
-	})
-	registerIfNew(f, "utilization-threshold-percent", func() {
-		input.UtilizationThresholdPercent = new(int32)
-		f.Int32Var(input.UtilizationThresholdPercent, "utilization-threshold-percent", 0, "")
-	})
-	registerIfNew(f, "scaling", func() { f.StringVar(&input.Scaling, "scaling", "", "") })
 	registerIfNew(f, "channel", func() { f.StringVar(&input.Channel, "channel", "", "") })
 	registerIfNew(f, "component-routes", func() { f.StringVar(&input.ComponentRoutes, "component-routes", "", "") })
 	registerIfNew(f, "container-log-max-files", func() {
@@ -374,41 +341,17 @@ func normalizeClusterCreateInput(cmd *cobra.Command, input *ClusterCreateInput) 
 		input.DeleteProtection != nil {
 		input.DeleteProtection = nil
 	}
-	if cmd.Flags().Lookup("max-free-difference-ratio-percent") != nil && !cmd.Flag("max-free-difference-ratio-percent").Changed &&
-		input.MaxFreeDifferenceRatioPercent != nil {
-		input.MaxFreeDifferenceRatioPercent = nil
-	}
-	if cmd.Flags().Lookup("max-nodes-total") != nil && !cmd.Flag("max-nodes-total").Changed &&
+	if cmd.Flags().Lookup("autoscaler-max-nodes-total") != nil && !cmd.Flag("autoscaler-max-nodes-total").Changed &&
 		input.MaxNodesTotal != nil {
 		input.MaxNodesTotal = nil
 	}
-	if cmd.Flags().Lookup("max-pod-grace-period") != nil && !cmd.Flag("max-pod-grace-period").Changed &&
+	if cmd.Flags().Lookup("autoscaler-max-pod-grace-period") != nil && !cmd.Flag("autoscaler-max-pod-grace-period").Changed &&
 		input.MaxPodGracePeriod != nil {
 		input.MaxPodGracePeriod = nil
 	}
-	if cmd.Flags().Lookup("pod-priority-threshold") != nil && !cmd.Flag("pod-priority-threshold").Changed &&
+	if cmd.Flags().Lookup("autoscaler-pod-priority-threshold") != nil && !cmd.Flag("autoscaler-pod-priority-threshold").Changed &&
 		input.PodPriorityThreshold != nil {
 		input.PodPriorityThreshold = nil
-	}
-	if cmd.Flags().Lookup("delay-after-add-seconds") != nil && !cmd.Flag("delay-after-add-seconds").Changed &&
-		input.DelayAfterAddSeconds != nil {
-		input.DelayAfterAddSeconds = nil
-	}
-	if cmd.Flags().Lookup("delay-after-delete-seconds") != nil && !cmd.Flag("delay-after-delete-seconds").Changed &&
-		input.DelayAfterDeleteSeconds != nil {
-		input.DelayAfterDeleteSeconds = nil
-	}
-	if cmd.Flags().Lookup("delay-after-failure-seconds") != nil && !cmd.Flag("delay-after-failure-seconds").Changed &&
-		input.DelayAfterFailureSeconds != nil {
-		input.DelayAfterFailureSeconds = nil
-	}
-	if cmd.Flags().Lookup("unneeded-duration-seconds") != nil && !cmd.Flag("unneeded-duration-seconds").Changed &&
-		input.UnneededDurationSeconds != nil {
-		input.UnneededDurationSeconds = nil
-	}
-	if cmd.Flags().Lookup("utilization-threshold-percent") != nil && !cmd.Flag("utilization-threshold-percent").Changed &&
-		input.UtilizationThresholdPercent != nil {
-		input.UtilizationThresholdPercent = nil
 	}
 	if cmd.Flags().Lookup("container-log-max-files") != nil && !cmd.Flag("container-log-max-files").Changed &&
 		input.ContainerLogMaxFiles != nil {

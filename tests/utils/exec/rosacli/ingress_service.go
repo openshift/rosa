@@ -16,10 +16,12 @@ type IngressService interface {
 	ResourcesCleaner
 
 	EditIngress(clusterID string, ingressID string, flags ...string) (bytes.Buffer, error)
+	EditDefaultIngress(clusterID string, flags ...string) (bytes.Buffer, error)
 	ListIngress(clusterID string, flags ...string) (bytes.Buffer, error)
 	DeleteIngress(clusterID string, ingressID string) (bytes.Buffer, error)
 	ReflectIngressList(result bytes.Buffer) (res *IngressList, err error)
 	DescribeIngress(clusterID string, ingressID string) (bytes.Buffer, error)
+	DescribeDefaultIngress(clusterID string) (bytes.Buffer, error)
 	DescribeIngressAndReflect(clusterID string, ingressID string) (res *Ingress, err error)
 }
 
@@ -89,6 +91,11 @@ func (i *ingressService) EditIngress(clusterID string, ingressID string, flags .
 	return editIngress.Run()
 }
 
+func (i *ingressService) EditDefaultIngress(clusterID string, flags ...string) (bytes.Buffer, error) {
+	combflags := append([]string{"-c", clusterID}, flags...)
+	return i.client.Runner.Cmd("edit", "ingress").CmdFlags(combflags...).Run()
+}
+
 // List the cluster ingress
 func (i *ingressService) DescribeIngress(clusterID string, ingressID string) (bytes.Buffer, error) {
 	combflags := append([]string{"-c", clusterID}, ingressID)
@@ -96,6 +103,10 @@ func (i *ingressService) DescribeIngress(clusterID string, ingressID string) (by
 		Cmd("describe", "ingress").
 		CmdFlags(combflags...)
 	return describeIngress.Run()
+}
+
+func (i *ingressService) DescribeDefaultIngress(clusterID string) (bytes.Buffer, error) {
+	return i.client.Runner.Cmd("describe", "ingress").CmdFlags("-c", clusterID).Run()
 }
 
 // Parse the result of 'rosa list ingress' to Ingress struct
