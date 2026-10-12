@@ -190,14 +190,13 @@ func (c *Client) GetAvailableUpgrades(versionID string) ([]string, error) {
 }
 
 // GetAvailableUpgradesWithProduct returns ROSA-enabled upgrade candidates for a product-specific version.
+// The single-version GET endpoint has no server-side product filter, so HCP requests are filtered
+// client-side using HostedControlPlaneEnabled(), the same field ocm.HasHostedCPSupport uses elsewhere.
 func (c *Client) GetAvailableUpgradesWithProduct(product string, versionID string) ([]string, error) {
 	request := c.ocm.ClustersMgmt().V1().
 		Versions().
 		Version(versionID).
 		Get()
-	if product != "" {
-		request.Parameter("product", product)
-	}
 	response, err := request.Send()
 	if err != nil {
 		if response == nil {
@@ -215,15 +214,15 @@ func (c *Client) GetAvailableUpgradesWithProduct(product string, versionID strin
 			Versions().
 			Version(id).
 			Get()
-		if product != "" {
-			request.Parameter("product", product)
-		}
 		resp, err := request.Send()
 		if err != nil {
 			if resp == nil {
 				return nil, fmt.Errorf("failed to fetch available upgrade version '%s': %w", id, err)
 			}
 			return nil, handleErr(resp.Error(), err)
+		}
+		if product == HcpProduct && !resp.Body().HostedControlPlaneEnabled() {
+			continue
 		}
 		if resp.Body().ROSAEnabled() {
 			// Prepend versions so that the latest one shows up first
@@ -238,12 +237,12 @@ func (c *Client) GetAvailableChannels(versionID string) ([]string, error) {
 	return c.GetAvailableChannelsWithProduct("", versionID)
 }
 
-// GetAvailableChannelsWithProduct returns the channels for a product-specific version.
+// GetAvailableChannelsWithProduct returns the channels for a version.
+// Available channels are an intrinsic property of the resolved version (which channel groups it
+// belongs to), not a topology-specific concept, so no product filtering is applied here. The
+// product parameter is kept for interface symmetry with GetAvailableUpgradesWithProduct.
 func (c *Client) GetAvailableChannelsWithProduct(product string, versionID string) ([]string, error) {
 	request := c.ocm.ClustersMgmt().V1().Versions().Version(versionID).Get()
-	if product != "" {
-		request.Parameter("product", product)
-	}
 	resp, err := request.Send()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch version '%s' by ID: %w", versionID, err)
