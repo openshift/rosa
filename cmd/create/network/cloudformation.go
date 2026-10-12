@@ -91,7 +91,10 @@ Resources:
       VpcEndpointType: Gateway
       RouteTableIds:
         - !Ref PublicRouteTable
-        - !Ref PrivateRouteTable
+        - !If [One, !Ref PrivateRouteTable1, !Ref "AWS::NoValue"]
+        - !If [Two, !Ref PrivateRouteTable2, !Ref "AWS::NoValue"]
+        - !If [Three, !Ref PrivateRouteTable3, !Ref "AWS::NoValue"]
+        - !If [Four, !Ref PrivateRouteTable4, !Ref "AWS::NoValue"]
 
   SubnetPublic1:
     Type: AWS::EC2::Subnet
@@ -418,13 +421,14 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PrivateRouteTable:
+  PrivateRouteTable1:
     Type: AWS::EC2::RouteTable
+    Condition: One
     Properties:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub "${Name}-Private-Route-Table"
+          Value: !Sub "${Name}-Private-Route-Table-1"
         - Key: 'rosa_managed_policies'
           Value: 'true'
         - Key: 'rosa_hcp_policies'
@@ -432,24 +436,82 @@ Resources:
         - Key: 'service'
           Value: 'ROSA'
 
-  PrivateRoute:
-    Type: AWS::EC2::Route
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Condition: Two
     Properties:
-      RouteTableId: !Ref PrivateRouteTable
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Private-Route-Table-2"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PrivateRouteTable3:
+    Type: AWS::EC2::RouteTable
+    Condition: Three
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Private-Route-Table-3"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PrivateRouteTable4:
+    Type: AWS::EC2::RouteTable
+    Condition: Four
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Private-Route-Table-4"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
+  PrivateRoute1:
+    Type: AWS::EC2::Route
+    Condition: One
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !If
-        - One
-        - !Ref NATGateway1
-        - !If
-          - Two
-          - !Ref NATGateway2
-          - !If
-            - Three
-            - !Ref NATGateway3
-            - !If
-              - Four
-              - !Ref NATGateway4
-              - !Ref "AWS::NoValue"
+      NatGatewayId: !Ref NATGateway1
+
+  PrivateRoute2:
+    Type: AWS::EC2::Route
+    Condition: Two
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway2
+
+  PrivateRoute3:
+    Type: AWS::EC2::Route
+    Condition: Three
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable3
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway3
+
+  PrivateRoute4:
+    Type: AWS::EC2::Route
+    Condition: Four
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable4
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway4
 
   PublicSubnetRouteTableAssociation1:
     Condition: One
@@ -484,28 +546,28 @@ Resources:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate1
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTable1
 
   PrivateSubnetRouteTableAssociation2:
     Condition: Two
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate2
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTable2
 
   PrivateSubnetRouteTableAssociation3:
     Condition: Three
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate3
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTable3
 
   PrivateSubnetRouteTableAssociation4:
     Condition: Four
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate4
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTable4
   
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -679,8 +741,8 @@ Outputs:
       Name: !Sub "${Name}-PublicRouteTableId"
 
   PrivateRouteTableId:
-    Description: The ID of the private route table
-    Value: !Ref PrivateRouteTable
+    Description: The IDs of the private route tables
+    Value: !Join [",", [!If [One, !Ref PrivateRouteTable1, !Ref "AWS::NoValue"], !If [Two, !Ref PrivateRouteTable2, !Ref "AWS::NoValue"], !If [Three, !Ref PrivateRouteTable3, !Ref "AWS::NoValue"], !If [Four, !Ref PrivateRouteTable4, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-PrivateRouteTableId"
 
@@ -712,4 +774,5 @@ Outputs:
     Description: The ID of the ECR DKR VPC Endpoint
     Value: !Ref EcrDkrVPCEndpoint
     Export:
-      Name: !Sub "${Name}-EcrDkrVPCEndpointId"`
+      Name: !Sub "${Name}-EcrDkrVPCEndpointId"
+`
