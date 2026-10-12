@@ -105,6 +105,7 @@ func EditAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa
 		}
 
 		if cluster.State() != cmv1.ClusterStateReady {
+			//nolint:staticcheck // Preserve the user-facing message asserted by e2e.
 			return fmt.Errorf("Cluster '%s' is not yet ready. Current state is '%s'", clusterKey, cluster.State())
 		}
 
@@ -121,11 +122,13 @@ func EditAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa
 
 		autoscaler, err := r.OCMClient.GetClusterAutoscaler(cluster.ID())
 		if err != nil {
+			//nolint:staticcheck // Preserve the user-facing message asserted by e2e.
 			return fmt.Errorf("Failed updating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)
 		}
 
 		if autoscaler == nil {
+			//nolint:staticcheck // Preserve the user-facing message asserted by e2e.
 			return fmt.Errorf("No autoscaler for cluster '%s' has been found. "+
 				"You should first create it via 'rosa create autoscaler'", clusterKey)
 		}
@@ -140,6 +143,7 @@ func EditAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa
 
 		autoscalerArgs, err := clusterautoscaler.PrefillAutoscalerArgs(command, autoscalerArgs, autoscaler)
 		if err != nil {
+			//nolint:staticcheck // Preserve the user-facing message asserted by e2e.
 			return fmt.Errorf("Failed updating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)
 		}
@@ -153,18 +157,21 @@ func EditAutoscalerRunner(autoscalerArgs *clusterautoscaler.AutoscalerArgs) rosa
 		autoscalerArgs, err = clusterautoscaler.GetAutoscalerOptions(
 			command.Flags(), "", false, autoscalerArgs, autoscalerValidationArgs)
 		if err != nil {
+			//nolint:staticcheck // Preserve the user-facing message asserted by e2e.
 			return fmt.Errorf("Failed updating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)
 		}
 
 		autoscalerConfig, err := clusterautoscaler.CreateAutoscalerConfig(autoscalerArgs)
 		if err != nil {
+			//nolint:staticcheck // Preserve the user-facing message asserted by e2e.
 			return fmt.Errorf("Failed updating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)
 		}
 
 		_, err = r.OCMClient.UpdateClusterAutoscaler(cluster.ID(), cluster.Hypershift().Enabled(), autoscalerConfig)
 		if err != nil {
+			//nolint:staticcheck // Preserve the user-facing message asserted by e2e.
 			return fmt.Errorf("Failed updating autoscaler configuration for cluster '%s': %s",
 				cluster.ID(), err)
 		}

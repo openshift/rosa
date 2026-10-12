@@ -74,7 +74,8 @@ func DescribeHyperfleetIngressRunner() rosa.CommandRunner {
 		var routes []string
 		if cluster.Spec.HostedCluster.Configuration != nil && cluster.Spec.HostedCluster.Configuration.Ingress != nil {
 			for _, route := range cluster.Spec.HostedCluster.Configuration.Ingress.ComponentRoutes {
-				routes = append(routes, fmt.Sprintf("%s: hostname=%s;tlsSecretRef=%s", route.Name, route.Hostname, route.ServingCertKeyPairSecret.Name))
+				routes = append(routes, fmt.Sprintf("%s: hostname=%s;tlsSecretRef=%s",
+					route.Name, route.Hostname, route.ServingCertKeyPairSecret.Name))
 			}
 		}
 		sort.Strings(routes)

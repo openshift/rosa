@@ -57,6 +57,7 @@ func DescribeAutoscalerRunner() rosa.CommandRunner {
 		}
 
 		if autoscaler == nil {
+			//nolint:staticcheck // Preserve the user-facing message asserted by e2e.
 			return fmt.Errorf("No autoscaler exists for cluster '%s'", runtime.ClusterKey)
 		}
 

@@ -6,6 +6,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/openshift/rosa/tests/utils/helper"
+	//nolint:staticcheck
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 

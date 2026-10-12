@@ -103,6 +103,12 @@ linters:
         linters:
           - depguard
           - forbidigo
+      # Reads the autoscaler flags straight off the command to tell an explicit
+      # zero from an unset value. Dropping the cobra dependency needs the flag
+      # reading to move into cmd/.
+      - path: pkg/clusterautoscaler/hyperfleet.go
+        linters:
+          - depguard
       - path: pkg/hyperfleet/pathbind
         linters:
           - depguard
