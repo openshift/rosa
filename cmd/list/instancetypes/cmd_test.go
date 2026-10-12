@@ -184,11 +184,11 @@ var _ = Describe("list instance-types", func() {
 	}
 	`
 		regionSuccessOutput = `INFO: Using fake_installer_arn for the Installer role
-ID             CATEGORY               CPU_CORES  MEMORY
-g4dn.12xlarge  accelerated_computing  48         192.0 GiB
+ID             CATEGORY               VCPUS  MEMORY
+g4dn.12xlarge  accelerated_computing  48     192.0 GiB
 `
-		explicitRoleRegionSuccessOutput = `ID             CATEGORY               CPU_CORES  MEMORY
-g4dn.12xlarge  accelerated_computing  48         192.0 GiB
+		explicitRoleRegionSuccessOutput = `ID             CATEGORY               VCPUS  MEMORY
+g4dn.12xlarge  accelerated_computing  48     192.0 GiB
 `
 		mockAwsClient *aws.MockClient
 	)
