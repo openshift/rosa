@@ -103,10 +103,10 @@ func NewOCMResourceService(client *Client) OCMResourceService {
 
 // Struct for the 'rosa list instance-types' output
 type InstanceTypes struct {
-	ID        string `json:"ID,omitempty"`
-	CATEGORY  string `json:"CATEGORY,omitempty"`
-	CPU_CORES string `json:"CPU_CORES,omitempty"`
-	MEMORY    string `json:"MEMORY,omitempty"`
+	ID       string `json:"ID,omitempty"`
+	CATEGORY string `json:"CATEGORY,omitempty"`
+	VCPUS    string `json:"VCPUS,omitempty"`
+	MEMORY   string `json:"MEMORY,omitempty"`
 }
 type InstanceTypesList struct {
 	InstanceTypesList []InstanceTypes `json:"InstanceTypesList,omitempty"`

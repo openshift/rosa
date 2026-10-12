@@ -196,7 +196,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 
 	// Create the writer that will be used to print the tabulated results:
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(writer, "ID\tCATEGORY\tCPU_CORES\tMEMORY\n")
+	fmt.Fprintf(writer, "ID\tCATEGORY\tVCPUS\tMEMORY\n")
 
 	for _, machine := range machineTypes.Items {
 		if !machine.Available {
