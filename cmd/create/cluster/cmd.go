@@ -3599,7 +3599,7 @@ func run(cmd *cobra.Command, _ []string) {
 		Region:                       region,
 		MultiAZ:                      multiAZ,
 		Version:                      version,
-		ChannelGroup:                 channelGroup,
+		ChannelGroup:                 resolveSpecChannelGroup(cmd, channelGroup),
 		Channel:                      channel,
 		Flavour:                      args.flavour,
 		FIPS:                         fips,
@@ -4362,7 +4362,7 @@ func buildCommand(spec ocm.Spec, operatorRolesPrefix string,
 	if spec.Version != "" {
 		commandVersion := ocm.GetRawVersionId(spec.Version)
 		// --channel and --channel-group are mutually exclusive; prefer --channel when set.
-		if spec.Channel == "" && spec.ChannelGroup != ocm.DefaultChannelGroup {
+		if spec.Channel == "" && spec.ChannelGroup != "" && spec.ChannelGroup != ocm.DefaultChannelGroup {
 			command += fmt.Sprintf(" --channel-group %s", spec.ChannelGroup)
 		}
 		command += fmt.Sprintf(" --version %s", commandVersion)
@@ -4853,6 +4853,17 @@ func reconcileChannelGroupVersion(
 		return "", "", fmt.Errorf("expected a valid OpenShift version for channel group '%s': %w", channelGroup, err)
 	}
 	return version, channelGroup, nil
+}
+
+// resolveSpecChannelGroup decides the channel group to send in the create cluster request.
+// --channel-group defaults to "stable" for version lookups even when the user never passed it,
+// so without this check the CLI would always send channel_group on the API request and trigger
+// a server-side deprecation warning for a field the user never specified.
+func resolveSpecChannelGroup(cmd *cobra.Command, channelGroup string) string {
+	if !cmd.Flags().Changed("channel-group") {
+		return ""
+	}
+	return channelGroup
 }
 
 func setSpotTerminationQueueURLForCreate(clusterConfig *ocm.Spec, isHostedCP bool, queueURL string) error {

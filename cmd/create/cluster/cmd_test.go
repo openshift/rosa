@@ -47,6 +47,7 @@ var _ = Describe("Validate build command", func() {
 		expectedOperatorRolePath = "operator-role-path"
 		userSelectedAvailabilityZones = false
 		defaultMachinePoolLabels = "machine-pool-label"
+		argsDotProperties = nil
 	})
 
 	Context("build command", func() {
@@ -108,6 +109,18 @@ var _ = Describe("Validate build command", func() {
 					"rosa create cluster --cluster-name cluster-name" +
 						" --external-id 223B9588-36A5-ECA4-BE8D-7C673B77CEC1" +
 						" --operator-roles-prefix prefix"))
+			})
+		})
+
+		When("Version is set and Channel/ChannelGroup are empty", func() {
+			It("prints --version but not --channel-group or --channel", func() {
+				clusterConfig.Version = "openshift-v4.19.16"
+				command := buildCommand(clusterConfig, operatorRolesPrefix,
+					expectedOperatorRolePath, userSelectedAvailabilityZones,
+					defaultMachinePoolLabels, argsDotProperties)
+				Expect(command).To(Equal(
+					"rosa create cluster --cluster-name cluster-name --operator-roles-prefix prefix" +
+						" --version 4.19.16"))
 			})
 		})
 
@@ -184,6 +197,7 @@ var _ = Describe("Validate build command", func() {
 		When("--external-auth-providers-enabled is true", func() {
 			It("prints --external-auth-providers-enabled", func() {
 				args.externalAuthProvidersEnabled = true
+				argsDotProperties = []string{"prop1", "prop2"}
 				command := buildCommand(clusterConfig, operatorRolesPrefix,
 					expectedOperatorRolePath, userSelectedAvailabilityZones,
 					defaultMachinePoolLabels, argsDotProperties)
@@ -473,6 +487,38 @@ var _ = Describe("resolveSTSMode", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(isSTS).To(BeTrue())
 		Expect(isIAM).To(BeFalse())
+	})
+})
+
+var _ = Describe("resolveSpecChannelGroup", func() {
+	var cmd *cobra.Command
+
+	BeforeEach(func() {
+		cmd = makeCmd()
+		initFlags(cmd)
+	})
+
+	It("returns empty when --channel-group was not explicitly passed", func() {
+		Expect(resolveSpecChannelGroup(cmd, ocm.DefaultChannelGroup)).To(BeEmpty())
+	})
+
+	It("returns the channel group when --channel-group was explicitly passed", func() {
+		Expect(cmd.Flags().Set("channel-group", ocm.DefaultChannelGroup)).To(Succeed())
+		Expect(resolveSpecChannelGroup(cmd, ocm.DefaultChannelGroup)).To(Equal(ocm.DefaultChannelGroup))
+	})
+
+	It("returns a non-default channel group when explicitly passed", func() {
+		Expect(cmd.Flags().Set("channel-group", "fast")).To(Succeed())
+		Expect(resolveSpecChannelGroup(cmd, "fast")).To(Equal("fast"))
+	})
+
+	It("clears the channel group derived from --channel when --channel-group was not explicitly passed", func() {
+		// Mirrors --channel candidate-4.22 with no --channel-group: ChannelGroupFromChannel
+		// derives "candidate" internally for version resolution (see reconcileChannelGroupVersion),
+		// but that derived value must not leak into the API request as an implicit channel_group.
+		derivedChannelGroup := ocm.ChannelGroupFromChannel("candidate-4.22")
+		Expect(derivedChannelGroup).To(Equal("candidate"))
+		Expect(resolveSpecChannelGroup(cmd, derivedChannelGroup)).To(BeEmpty())
 	})
 })
 

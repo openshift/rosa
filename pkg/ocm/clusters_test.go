@@ -258,6 +258,29 @@ var _ = Describe("Helper Functions", func() {
 	})
 })
 
+var _ = Describe("buildVersion regression: --channel without explicit --channel-group", func() {
+	It("preserves the candidate version id and channel, and omits channel_group", func() {
+		// Regression for the combination of #3493 (derive channel group from --channel for
+		// version ID construction) and the #3637 fix (don't send channel_group unless
+		// --channel-group was explicitly passed). By the time buildVersion runs, ChannelGroup
+		// has already been cleared by resolveSpecChannelGroup even though channel group
+		// "candidate" was used internally to validate and construct the version ID.
+		builder := cmv1.NewCluster()
+		config := Spec{
+			Version:      "openshift-v4.22.8-candidate",
+			Channel:      "candidate-4.22",
+			ChannelGroup: "",
+		}
+		Expect(buildVersion(config, builder)).Error().NotTo(HaveOccurred())
+		cluster, err := builder.Build()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cluster.Channel()).To(Equal("candidate-4.22"))
+		Expect(cluster.Version().ID()).To(Equal("openshift-v4.22.8-candidate"))
+		_, set := cluster.Version().GetChannelGroup()
+		Expect(set).To(BeFalseBecause("version.channel_group should be omitted"))
+	})
+})
+
 var _ = Describe("Spot termination queue URL wiring", func() {
 	It("createClusterSpec maps termination handler queue URL into the AWS builder", func() {
 		client := &Client{}
