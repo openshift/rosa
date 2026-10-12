@@ -405,6 +405,7 @@ Use this to plan future additions to the Hyperfleet path.
 | `--ec2-metadata-http-tokens` | Not used | Optional (HCP only) |
 | `--capacity-reservation-id` / `--capacity-reservation-preference` | Not used | Optional |
 | `--tags` | Not used | Optional |
+| `--max-surge` / `--max-unavailable` | Optional¹ | Optional |
 
 ### Cluster Edit
 
@@ -440,7 +441,13 @@ Use this to plan future additions to the Hyperfleet path.
 | `--tuning-configs` | Not used | Optional (HCP only) |
 | `--kubelet-configs` | Not used | Optional (HCP only) |
 | `--node-drain-grace-period` | Not used | Optional (HCP only) |
-| `--max-surge` / `--max-unavailable` | Not used | Optional |
+| `--max-surge` / `--max-unavailable` | Optional¹ | Optional |
+
+¹ The CLI sends these as top-level `spec.maxSurge` / `spec.maxUnavailable`,
+encoded by hand because `spec.nodePool.management` is service-set and therefore
+absent from the generated input types. The Platform API has to expose those two
+fields — the way it already exposes `spec.autoRepair` and renders
+`management.autoRepair` from it — before the values take effect.
 
 ---
 

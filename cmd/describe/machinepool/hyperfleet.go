@@ -124,7 +124,7 @@ func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
 		})
 	}
 
-	return map[string]interface{}{
+	m := map[string]interface{}{
 		"id":                 string(np.UID),
 		"name":               np.Name,
 		"state":              string(np.Status.Phase),
@@ -139,6 +139,32 @@ func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
 		"labels":             np.Spec.Labels,
 		"taints":             np.Spec.NodePool.Taints,
 	}
+
+	// The rolling-update settings are reported under "management_upgrade" to
+	// match the OCM-based machine pool describe output, where they come from
+	// the node pool's management upgrade.
+	if upgrade := hfManagementUpgradeToMap(np); upgrade != nil {
+		m["management_upgrade"] = upgrade
+	}
+	return m
+}
+
+// hfManagementUpgradeToMap reports the upgrade settings the Platform API
+// renders for a node pool, or nil when it has not reported any.
+func hfManagementUpgradeToMap(np *v1alpha1.NodePool) map[string]interface{} {
+	upgradeType, upgrade := hyperfleet.NodePoolUpgradeSettings(np)
+	if upgradeType == "" && upgrade == nil {
+		return nil
+	}
+	m := map[string]interface{}{}
+	if upgradeType != "" {
+		m["type"] = upgradeType
+	}
+	if upgrade != nil {
+		m["max_surge"] = upgrade.MaxSurge
+		m["max_unavailable"] = upgrade.MaxUnavailable
+	}
+	return m
 }
 
 func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
@@ -284,6 +310,15 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		nodeDrainTimeout,
 		np.CreationTimestamp.UTC().Format("2006-01-02 15:04:05 UTC"),
 	)
+
+	if upgradeType, upgrade := hyperfleet.NodePoolUpgradeSettings(np); upgradeType != "" || upgrade != nil {
+		s += "Management upgrade:                    \n"
+		s += fmt.Sprintf(" - Type:                               %s\n", upgradeType)
+		if upgrade != nil {
+			s += fmt.Sprintf(" - Max surge:                          %s\n", upgrade.MaxSurge)
+			s += fmt.Sprintf(" - Max unavailable:                    %s\n", upgrade.MaxUnavailable)
+		}
+	}
 
 	if len(np.Status.Conditions) > 0 {
 		s += "Conditions:\n"

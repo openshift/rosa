@@ -72,7 +72,7 @@ var (
 		handler.clusterUID = clusterUID
 		if err := hfpathbind.RunCreateNodePool(
 			context.Background(),
-			r,
+			handler.runtimeWithUpgrade(r),
 			cmd,
 			&hfNodePoolInput,
 			handler,
@@ -122,7 +122,7 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	handler.clusterUID = clusterUID
 	if err := hfpathbind.RunCreateNodePool(
 		context.Background(),
-		r,
+		handler.runtimeWithUpgrade(r),
 		nil,
 		&hfNodePoolInput,
 		handler,
@@ -130,6 +130,18 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 	); err != nil {
 		exitFn(1)
 	}
+}
+
+// runtimeWithUpgrade returns a runtime whose client encodes the rolling-update
+// settings by hand. The generated client is reused unchanged when the user did
+// not ask for them, so the common create path keeps the SDK request body.
+func (h *hyperfleetNodePoolCreate) runtimeWithUpgrade(r *rosa.Runtime) *rosa.Runtime {
+	if h.upgrade == nil {
+		return r
+	}
+	runtime := *r
+	runtime.HyperFleetClient = hyperfleet.WithNodePoolUpgrade(r.HyperFleetClient, h.upgrade)
+	return &runtime
 }
 
 // hyperfleetNodePoolCreate implements hfpathbind.NodePoolCreateHandler for rosa create machinepool.
@@ -144,6 +156,7 @@ type hyperfleetNodePoolCreate struct {
 	labels               map[string]string
 	taints               []hypershiftv1beta1.Taint
 	resourceTags         []hypershiftv1beta1.AWSResourceTag
+	upgrade              *hyperfleet.NodePoolUpgrade
 }
 
 func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
@@ -187,11 +200,45 @@ func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
 		return err
 	}
 
+	upgrade, err := h.parseUpgrade()
+	if err != nil {
+		return err
+	}
+
 	h.labels = labels
 	h.taints = taints
 	h.resourceTags = resourceTags
+	h.upgrade = upgrade
 	h.userOptionsValidated = true
 	return nil
+}
+
+// parseUpgrade builds the rolling-update settings for the create request.
+// --max-surge and --max-unavailable default to "1" and "0", so they are only
+// sent when the user set either of them, the way the OCM path decides whether
+// to build a management upgrade. Both values travel together: the Platform API
+// renders one rolling update, so sending half of it would drop the other half
+// back to its default.
+func (h *hyperfleetNodePoolCreate) parseUpgrade() (*hyperfleet.NodePoolUpgrade, error) {
+	maxSurge := h.userOptions.MaxSurge
+	maxUnavailable := h.userOptions.MaxUnavailable
+	if !h.upgradeFlagSet("max-surge", maxSurge) && !h.upgradeFlagSet("max-unavailable", maxUnavailable) {
+		return nil, nil
+	}
+	if err := mpHelpers.ValidateHyperfleetUpgrade(maxSurge, maxUnavailable); err != nil {
+		return nil, err
+	}
+	return &hyperfleet.NodePoolUpgrade{MaxSurge: maxSurge, MaxUnavailable: maxUnavailable}, nil
+}
+
+// upgradeFlagSet reports whether the user asked for a rolling-update value.
+// Callers that invoke the handler without a cobra command signal that through
+// a non-empty user option.
+func (h *hyperfleetNodePoolCreate) upgradeFlagSet(name string, value string) bool {
+	if h.cmd == nil {
+		return value != ""
+	}
+	return h.cmd.Flags().Changed(name)
 }
 
 func (h *hyperfleetNodePoolCreate) validateReplicas() error {

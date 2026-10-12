@@ -71,10 +71,16 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 		return
 	}
 
+	// The wrapper is built before the handler runs, so both share the upgrade:
+	// PostExpand completes and validates it before any request is sent.
+	overrides := hyperfleet.NodePoolUpdateOverrides{
+		LabelsChanged: cmd.Flags().Changed("labels"),
+		TaintsChanged: cmd.Flags().Changed("taints"),
+		Upgrade:       nodePoolUpgradeFromFlags(cmd, userOptions),
+	}
 	runtime := *r
-	if cmd.Flags().Changed("labels") || cmd.Flags().Changed("taints") {
-		runtime.HyperFleetClient = hyperfleet.WithNodePoolMetadataUpdates(r.HyperFleetClient,
-			cmd.Flags().Changed("labels"), cmd.Flags().Changed("taints"))
+	if overrides.Needed() {
+		runtime.HyperFleetClient = hyperfleet.WithNodePoolUpdates(r.HyperFleetClient, overrides)
 	}
 	if err := hfpathbind.RunUpdateNodePool(ctx, &runtime, cmd, nodePoolUID, &hfNodePoolUpdateInput,
 		&hyperfleetNodePoolUpdate{
@@ -84,11 +90,25 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 			nodePoolUID: nodePoolUID,
 			userOptions: userOptions,
 			cmd:         cmd,
+			upgrade:     overrides.Upgrade,
 		},
 		clusterNamespacePrefix+clusterUID,
 	); err != nil {
 		r.Reporter.Errorf("Failed to update node pool: %v", err)
 		exitFn(1)
+	}
+}
+
+// nodePoolUpgradeFromFlags returns the rolling-update settings the user asked
+// for, or nil when neither flag was set. Both flags default to empty here, so
+// the half the user left out is completed from the node pool in PostExpand.
+func nodePoolUpgradeFromFlags(cmd *cobra.Command,
+	userOptions *EditMachinepoolUserOptions) *hyperfleet.NodePoolUpgrade {
+	if !cmd.Flags().Changed("max-surge") && !cmd.Flags().Changed("max-unavailable") {
+		return nil
+	}
+	return &hyperfleet.NodePoolUpgrade{
+		MaxSurge: userOptions.maxSurge, MaxUnavailable: userOptions.maxUnavailable,
 	}
 }
 
@@ -103,6 +123,9 @@ type hyperfleetNodePoolUpdate struct {
 	cmd         *cobra.Command
 	labels      map[string]string
 	taints      []hypershiftv1beta1.Taint
+	// upgrade is the same value the request wrapper holds; PostExpand completes
+	// it from the node pool's current settings.
+	upgrade *hyperfleet.NodePoolUpgrade
 }
 
 func (h *hyperfleetNodePoolUpdate) PreRequest(
@@ -118,10 +141,11 @@ func (h *hyperfleetNodePoolUpdate) PreRequest(
 
 	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged &&
 		!h.cmd.Flags().Changed("labels") && !h.cmd.Flags().Changed("taints") &&
-		!h.cmd.Flags().Changed("autorepair") {
+		!h.cmd.Flags().Changed("autorepair") && h.upgrade == nil {
 		return fmt.Errorf(
 			"specify at least one supported flag: --replicas, --enable-autoscaling, " +
-				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair",
+				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair, " +
+				"--max-surge, --max-unavailable",
 		)
 	}
 
@@ -247,6 +271,10 @@ func (h *hyperfleetNodePoolUpdate) PostExpand(
 		merged.Spec.NodePool.Taints = h.taints
 	}
 
+	if err := h.completeUpgrade(np); err != nil {
+		return err
+	}
+
 	// The Platform API rejects non-zero service-set management values on PUT,
 	// including values returned by Get. The operator derives these from the
 	// mutable top-level spec fields when rendering the HyperShift NodePool.
@@ -255,6 +283,26 @@ func (h *hyperfleetNodePoolUpdate) PostExpand(
 
 	*obj = *merged
 	return nil
+}
+
+// completeUpgrade carries the rolling-update value the user did not set forward
+// from the node pool's current settings, the way the OCM edit path does, and
+// validates the resulting pair. The request wrapper shares this value, so the
+// completed pair is what reaches the Platform API.
+func (h *hyperfleetNodePoolUpdate) completeUpgrade(np *v1alpha1.NodePool) error {
+	if h.upgrade == nil {
+		return nil
+	}
+	_, current := hyperfleet.NodePoolUpgradeSettings(np)
+	if current != nil {
+		if h.upgrade.MaxSurge == "" {
+			h.upgrade.MaxSurge = current.MaxSurge
+		}
+		if h.upgrade.MaxUnavailable == "" {
+			h.upgrade.MaxUnavailable = current.MaxUnavailable
+		}
+	}
+	return mpHelpers.ValidateHyperfleetUpgrade(h.upgrade.MaxSurge, h.upgrade.MaxUnavailable)
 }
 
 func (h *hyperfleetNodePoolUpdate) PostResponse(_ context.Context, r *rosa.Runtime, obj *v1alpha1.NodePool) error {

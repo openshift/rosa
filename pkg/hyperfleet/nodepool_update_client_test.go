@@ -26,7 +26,7 @@ import (
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
 )
 
-func metadataTestClient(handler http.HandlerFunc) (*hfmocks.MockInterface, *hfmocks.MockNodePoolInterface) {
+func nodePoolUpdateTestClient(handler http.HandlerFunc) (*hfmocks.MockInterface, *hfmocks.MockNodePoolInterface) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		defer GinkgoRecover()
 		w.Header().Set("Content-Type", "application/json")
@@ -48,7 +48,7 @@ func metadataTestClient(handler http.HandlerFunc) (*hfmocks.MockInterface, *hfmo
 	return hf, pools
 }
 
-var _ = Describe("Nodepool metadata updates", func() {
+var _ = Describe("Nodepool updates", func() {
 	DescribeTable("preserves request fields and explicit clearing", func(labelsChanged, taintsChanged, empty bool) {
 		replicas := int32(3)
 		pool := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: types.UID("pool-uid")}, Spec: v1alpha1.NodePoolSpec{
@@ -72,7 +72,7 @@ var _ = Describe("Nodepool metadata updates", func() {
 				expected["spec"].(map[string]any)["nodePool"].(map[string]any)["taints"] = nil
 			}
 		}
-		hf, _ := metadataTestClient(func(w http.ResponseWriter, req *http.Request) {
+		hf, _ := nodePoolUpdateTestClient(func(w http.ResponseWriter, req *http.Request) {
 			Expect(req.Method).To(Equal(http.MethodPut))
 			Expect(req.URL.Path).To(Equal("/nodepools/pool-uid"))
 			Expect(req.URL.Query().Get("clusterId")).To(Equal("cluster-uid"))
@@ -82,7 +82,7 @@ var _ = Describe("Nodepool metadata updates", func() {
 			_, err := w.Write([]byte(`{"metadata":{"name":"workers","uid":"pool-uid"}}`))
 			Expect(err).NotTo(HaveOccurred())
 		})
-		updated, err := WithNodePoolMetadataUpdates(hf, labelsChanged, taintsChanged).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), pool, platform.UpdateOptions{})
+		updated, err := WithNodePoolUpdates(hf, NodePoolUpdateOverrides{LabelsChanged: labelsChanged, TaintsChanged: taintsChanged}).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), pool, platform.UpdateOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(updated.Name).To(Equal("workers"))
 		Expect(pool).To(Equal(original))
@@ -92,31 +92,76 @@ var _ = Describe("Nodepool metadata updates", func() {
 		Entry("clear labels without clearing taints", true, false, true), Entry("clear taints without clearing labels", false, true, true),
 	)
 	It("delegates reads to the SDK", func() {
-		hf, pools := metadataTestClient(func(http.ResponseWriter, *http.Request) { Fail("unexpected HTTP request") })
+		hf, pools := nodePoolUpdateTestClient(func(http.ResponseWriter, *http.Request) { Fail("unexpected HTTP request") })
 		pools.EXPECT().Get(gomock.Any(), "pool-uid", platform.GetOptions{}).Return(&v1alpha1.NodePool{}, nil)
-		_, err := WithNodePoolMetadataUpdates(hf, true, true).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Get(context.Background(), "pool-uid", platform.GetOptions{})
+		_, err := WithNodePoolUpdates(hf, NodePoolUpdateOverrides{LabelsChanged: true, TaintsChanged: true}).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Get(context.Background(), "pool-uid", platform.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 	})
 	DescribeTable("rejects pools without a UID", func(pool *v1alpha1.NodePool) {
-		hf, _ := metadataTestClient(func(http.ResponseWriter, *http.Request) { Fail("unexpected HTTP request") })
-		_, err := WithNodePoolMetadataUpdates(hf, true, true).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), pool, platform.UpdateOptions{})
+		hf, _ := nodePoolUpdateTestClient(func(http.ResponseWriter, *http.Request) { Fail("unexpected HTTP request") })
+		_, err := WithNodePoolUpdates(hf, NodePoolUpdateOverrides{LabelsChanged: true, TaintsChanged: true}).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), pool, platform.UpdateOptions{})
 		Expect(err).To(MatchError("node pool UID is required"))
 	}, Entry("nil pool", (*v1alpha1.NodePool)(nil)), Entry("empty UID", &v1alpha1.NodePool{}))
 	It("preserves API error details", func() {
-		hf, _ := metadataTestClient(func(w http.ResponseWriter, _ *http.Request) {
+		hf, _ := nodePoolUpdateTestClient(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte(`{"kind":"Status","apiVersion":"v1","status":"Failure","message":"invalid labels","code":400}`))
 			Expect(err).NotTo(HaveOccurred())
 		})
-		_, err := WithNodePoolMetadataUpdates(hf, true, false).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{UID: "pool-uid"}}, platform.UpdateOptions{})
+		_, err := WithNodePoolUpdates(hf, NodePoolUpdateOverrides{LabelsChanged: true}).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{UID: "pool-uid"}}, platform.UpdateOptions{})
 		Expect(err).To(MatchError("invalid labels"))
 	})
 	It("reports malformed API responses", func() {
-		hf, _ := metadataTestClient(func(w http.ResponseWriter, _ *http.Request) {
+		hf, _ := nodePoolUpdateTestClient(func(w http.ResponseWriter, _ *http.Request) {
 			_, err := w.Write([]byte("{"))
 			Expect(err).NotTo(HaveOccurred())
 		})
-		_, err := WithNodePoolMetadataUpdates(hf, true, false).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{UID: "pool-uid"}}, platform.UpdateOptions{})
+		_, err := WithNodePoolUpdates(hf, NodePoolUpdateOverrides{LabelsChanged: true}).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{UID: "pool-uid"}}, platform.UpdateOptions{})
 		Expect(err).To(MatchError(ContainSubstring("failed to decode node pool update")))
 	})
+	It("sends the rolling update settings alongside the SDK request", func() {
+		pool := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: types.UID("pool-uid")}}
+		original := pool.DeepCopy()
+		hf, _ := nodePoolUpdateTestClient(func(w http.ResponseWriter, req *http.Request) {
+			body := map[string]any{}
+			Expect(json.NewDecoder(req.Body).Decode(&body)).To(Succeed())
+			spec := body["spec"].(map[string]any)
+			Expect(spec["maxSurge"]).To(Equal("2"))
+			Expect(spec["maxUnavailable"]).To(Equal("20%"))
+			_, err := w.Write([]byte(`{"metadata":{"name":"workers","uid":"pool-uid"}}`))
+			Expect(err).NotTo(HaveOccurred())
+		})
+		overrides := NodePoolUpdateOverrides{Upgrade: &NodePoolUpgrade{MaxSurge: "2", MaxUnavailable: "20%"}}
+		_, err := WithNodePoolUpdates(hf, overrides).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").
+			Update(context.Background(), pool, platform.UpdateOptions{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(pool).To(Equal(original))
+	})
+	It("omits the rolling update settings when the user did not ask for them", func() {
+		hf, _ := nodePoolUpdateTestClient(func(w http.ResponseWriter, req *http.Request) {
+			body := map[string]any{}
+			Expect(json.NewDecoder(req.Body).Decode(&body)).To(Succeed())
+			Expect(body["spec"]).NotTo(HaveKey("maxSurge"))
+			Expect(body["spec"]).NotTo(HaveKey("maxUnavailable"))
+			_, err := w.Write([]byte(`{"metadata":{"name":"workers","uid":"pool-uid"}}`))
+			Expect(err).NotTo(HaveOccurred())
+		})
+		_, err := WithNodePoolUpdates(hf, NodePoolUpdateOverrides{LabelsChanged: true}).
+			HyperfleetV1alpha1().NodePools("cluster-cluster-uid").
+			Update(context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{UID: "pool-uid"}},
+				platform.UpdateOptions{})
+		Expect(err).NotTo(HaveOccurred())
+	})
+})
+
+var _ = Describe("NodePoolUpdateOverrides", func() {
+	DescribeTable("reports whether the hand-encoded body is needed",
+		func(overrides NodePoolUpdateOverrides, needed bool) {
+			Expect(overrides.Needed()).To(Equal(needed))
+		},
+		Entry("nothing set", NodePoolUpdateOverrides{}, false),
+		Entry("labels", NodePoolUpdateOverrides{LabelsChanged: true}, true),
+		Entry("taints", NodePoolUpdateOverrides{TaintsChanged: true}, true),
+		Entry("upgrade", NodePoolUpdateOverrides{Upgrade: &NodePoolUpgrade{MaxSurge: "1"}}, true),
+	)
 })

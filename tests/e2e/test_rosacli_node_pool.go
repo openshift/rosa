@@ -1197,8 +1197,11 @@ var _ = Describe("Edit nodepool",
 						"ERR: invalid tag format for tag '[#.bar]'. Expected tag format: 'key value'"))
 			})
 
+		// Deferred on HyperFleet: the CLI sends the rolling update settings on
+		// both create and edit, but the Platform API still has to expose them
+		// as customer-settable spec fields before a cluster reports them back.
 		It("create/edit/describe maxunavailable/maxsurge for HCP nodepools - [id:74387]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
 			func() {
 				By("Retrieve help for create/edit machinepool")
 				output, err := machinePoolService.RetrieveHelpForCreate()

@@ -6,6 +6,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -42,6 +43,22 @@ func buildTestNodePool() *v1alpha1.NodePool {
 					Reason:  "AsExpected",
 					Message: "All nodes are ready",
 				},
+			},
+		},
+	}
+}
+
+// withRollingUpdate adds the rolling-update settings the Platform API renders
+// for a node pool.
+func withRollingUpdate(np *v1alpha1.NodePool, maxSurge, maxUnavailable string) {
+	surge := intstr.Parse(maxSurge)
+	unavailable := intstr.Parse(maxUnavailable)
+	np.Spec.NodePool.Management = hypershiftv1beta1.NodePoolManagement{
+		UpgradeType: hypershiftv1beta1.UpgradeTypeReplace,
+		Replace: &hypershiftv1beta1.ReplaceUpgrade{
+			Strategy: hypershiftv1beta1.UpgradeStrategyRollingUpdate,
+			RollingUpdate: &hypershiftv1beta1.RollingUpdate{
+				MaxSurge: &surge, MaxUnavailable: &unavailable,
 			},
 		},
 	}
@@ -141,6 +158,23 @@ var _ = Describe("hfNodePoolToMap", func() {
 		Expect(ok).To(BeTrue())
 		Expect(conds).To(BeEmpty())
 	})
+
+	It("reports the rolling update settings under management_upgrade", func() {
+		np := buildTestNodePool()
+		withRollingUpdate(np, "2", "20%")
+		m := hfNodePoolToMap(np)
+
+		Expect(m["management_upgrade"]).To(Equal(map[string]interface{}{
+			"type":            "Replace",
+			"max_surge":       "2",
+			"max_unavailable": "20%",
+		}))
+	})
+
+	It("omits management_upgrade when the API has not reported one", func() {
+		m := hfNodePoolToMap(buildTestNodePool())
+		Expect(m).NotTo(HaveKey("management_upgrade"))
+	})
 })
 
 var _ = Describe("hfSecurityGroupIDs", func() {
@@ -219,6 +253,23 @@ var _ = Describe("hfNodePoolToString", func() {
 		s := hfNodePoolToString(np, "my-cluster")
 
 		Expect(strings.Contains(s, "0")).To(BeTrue())
+	})
+
+	It("reports the rolling update settings like the OCM output", func() {
+		np := buildTestNodePool()
+		withRollingUpdate(np, "1", "0")
+		s := hfNodePoolToString(np, "my-cluster")
+
+		Expect(s).To(ContainSubstring(
+			"Management upgrade:                    \n" +
+				" - Type:                               Replace\n" +
+				" - Max surge:                          1\n" +
+				" - Max unavailable:                    0\n"))
+	})
+
+	It("omits the management upgrade block when the API has not reported one", func() {
+		s := hfNodePoolToString(buildTestNodePool(), "my-cluster")
+		Expect(s).NotTo(ContainSubstring("Management upgrade:"))
 	})
 })
 

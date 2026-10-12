@@ -67,3 +67,28 @@ func ParseHyperfleetTaints(input string) ([]hypershiftv1beta1.Taint, error) {
 	}
 	return taints, nil
 }
+
+// ValidateHyperfleetUpgrade validates the rolling-update values for HyperFleet
+// requests. It reuses the value rules of the OCM path so both paths reject the
+// same input, and adds the HyperShift constraint that maxSurge and
+// maxUnavailable cannot both be zero: a rolling update that neither surges nor
+// takes a node out can never make progress.
+func ValidateHyperfleetUpgrade(maxSurge string, maxUnavailable string) error {
+	if err := ValidateUpgradeMaxSurgeUnavailable(maxSurge); err != nil {
+		return fmt.Errorf("invalid --max-surge: %v", err)
+	}
+	if err := ValidateUpgradeMaxSurgeUnavailable(maxUnavailable); err != nil {
+		return fmt.Errorf("invalid --max-unavailable: %v", err)
+	}
+	if isZeroUpgradeValue(maxSurge) && isZeroUpgradeValue(maxUnavailable) {
+		return fmt.Errorf("only one of --max-surge and --max-unavailable can be zero")
+	}
+	return nil
+}
+
+// isZeroUpgradeValue reports whether a rolling-update value is an explicit
+// zero, in absolute ("0") or percentage ("0%") form. Empty means unset.
+func isZeroUpgradeValue(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	return trimmed == "0" || trimmed == "0%"
+}
