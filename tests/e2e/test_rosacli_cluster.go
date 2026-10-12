@@ -2976,6 +2976,66 @@ var _ = Describe("Classic cluster creation negative testing",
 			})
 	})
 
+var _ = Describe("HyperFleet HCP cluster creation with no CNI",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+			clusterHandler handler.ClusterHandler
+		)
+
+		BeforeEach(func() {
+			if !isHyperfleetMode() {
+				Skip("This case is only for HyperFleet")
+			}
+			profile := handler.LoadProfileYamlFileByENV()
+			if profile.Name != "rosa-hyperfleet-nocni" {
+				Skip("This case requires TEST_PROFILE=rosa-hyperfleet-nocni")
+			}
+
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+			var err error
+			profile.Region, err = hyperfleet.ExtractRegion(hyperfleetEndpointForTests())
+			Expect(err).NotTo(HaveOccurred())
+			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, profile)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			if clusterHandler != nil {
+				errs := clusterHandler.Destroy()
+				Expect(errs).To(BeEmpty())
+			}
+		})
+
+		It("creates an HCP cluster with no CNI and reports Other network type",
+			labels.High, labels.Runtime.Day1, labels.Hyperfleet.Validated,
+			func() {
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(flags).To(ContainElement("--no-cni"))
+
+				By("Create the no-CNI HCP cluster")
+				Expect(clusterHandler.CreateCluster(true)).To(Succeed())
+				clusterID := clusterHandler.GetClusterDetail().ClusterID
+				Expect(clusterID).NotTo(BeEmpty())
+
+				By("Verify the Platform API stores networkType Other")
+				jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(jsonData.DigString("networking", "network_type")).To(Equal("Other"))
+
+				By("Verify cluster describe reports Other")
+				description, err := clusterService.DescribeCluster(clusterID)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(description.String()).To(ContainSubstring(" - Type:                    Other"))
+			})
+	})
+
 var _ = Describe("HCP cluster creation negative testing",
 	labels.Feature.Cluster,
 	func() {
@@ -3075,7 +3135,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(output.String()).
 					To(
 						ContainSubstring(
-							"expected a valid network type. Valid values: [OpenShiftSDN OVNKubernetes]"))
+							"expected a valid network type. Valid values: [OVNKubernetes]"))
 
 				By("Create HCP cluster with invalid --no-cni value")
 				rosalCommand.DeleteFlag("--network-type", true)
