@@ -5103,6 +5103,54 @@ var _ = Describe("Sts cluster creation supplemental testing",
 				}
 			})
 
+		It("creates a HyperFleet cluster with autoscaler configuration",
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Hyperfleet.Validated,
+			func() {
+				if !hyperfleetMode {
+					Skip("This case exercises HyperFleet cluster creation")
+				}
+				testingClusterName = helper.GenerateRandomName("hf-as", 2)
+				flags, err := clusterHandler.GenerateClusterCreateFlags()
+				Expect(err).ToNot(HaveOccurred())
+				flags = append(flags,
+					"--autoscaler-max-nodes-total", "10",
+					"--autoscaler-pod-priority-threshold", "-8",
+					"--autoscaler-max-pod-grace-period", "600",
+					"--autoscaler-max-node-provision-time", "15m",
+				)
+				_, _, err = clusterService.Create(testingClusterName, flags...)
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(func() (string, error) {
+					out, err := clusterService.List()
+					if err != nil {
+						return "", err
+					}
+					clusters, err := clusterService.ReflectClusterList(out)
+					if err != nil {
+						return "", err
+					}
+					clusterID = clusters.ClusterByName(testingClusterName).ID
+					return clusterID, nil
+				}, 5*time.Minute, 10*time.Second).ShouldNot(BeEmpty())
+				Expect(clusterHandler.RegisterClusterID(clusterID)).To(Succeed())
+				Eventually(func() string {
+					description, err := clusterService.DescribeClusterAndReflect(clusterID)
+					if err != nil {
+						return ""
+					}
+					return strings.TrimSpace(description.State)
+				}, 60*time.Minute, 3*time.Minute).Should(Equal(constants.Ready))
+
+				rosaClient.Runner.YamlFormat()
+				out, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
+				rosaClient.Runner.UnsetFormat()
+				Expect(err).ToNot(HaveOccurred())
+				var autoscaler rosacli.Autoscaler
+				Expect(rosaClient.Parser.TextData.Input(out).Parse().YamlToObj(&autoscaler)).To(Succeed())
+				Expect(autoscaler.ResourcesLimits.MaxNodesTotal).To(Equal(10))
+			})
+
 		It("User can set availability zones to create rosa multi-az STS cluster - [id:56224]",
 			labels.Critical, labels.Runtime.Day1Supplemental, labels.Hyperfleet.NotApplicable,
 			func() {

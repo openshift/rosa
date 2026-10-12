@@ -28,6 +28,7 @@ type ClusterHandler interface {
 	GenerateClusterCreateFlags() ([]string, error)
 	CreateCluster(waitForClusterReady bool) error
 	WaitForClusterReady(timeoutMin int) error
+	RegisterClusterID(clusterID string) error
 	Destroy() []error
 	GetClusterDetail() *ClusterDetail
 	GetResourcesHandler() ResourcesHandler
@@ -1294,6 +1295,16 @@ func (ch *clusterHandler) Destroy() (errors []error) {
 		errors = append(errors, errDestroyUserData...)
 	}
 	return errors
+}
+
+// RegisterClusterID associates a cluster created outside the handler with this
+// handler so Destroy can remove it before cleaning dependent resources.
+func (ch *clusterHandler) RegisterClusterID(clusterID string) error {
+	if ch.clusterDetail == nil {
+		ch.clusterDetail = &ClusterDetail{}
+	}
+	ch.clusterDetail.ClusterID = clusterID
+	return ch.resourcesHandler.registerClusterID(clusterID)
 }
 
 func (ch *clusterHandler) elaborateKMSKeyForSTSCluster(etcdKMS bool) error {

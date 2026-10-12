@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	rosaaws "github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/clusterautoscaler"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -122,13 +123,14 @@ func runHyperfleetCreate(ctx context.Context, r *rosa.Runtime, cmd *cobra.Comman
 		runtime.HyperFleetClient = hyperfleet.WithClusterProxy(r.HyperFleetClient, proxy, args.additionalTrustBundleFile)
 	}
 	return hfpathbind.RunCreateCluster(ctx, &runtime, cmd, &hfClusterInput,
-		&hyperfleetClusterCreate{describeSubnets: hfDescribeSubnets})
+		&hyperfleetClusterCreate{cmd: cmd, describeSubnets: hfDescribeSubnets})
 }
 
 // hyperfleetClusterCreate implements hfpathbind.ClusterCreateHandler for rosa create cluster.
 type hyperfleetClusterCreate struct {
 	// interactive prompting for required fields
 	hfpathbind.GeneratedClusterCreatePrompt
+	cmd             *cobra.Command
 	describeSubnets func(context.Context, awssdk.Config, string) (*ec2svc.DescribeSubnetsOutput, error)
 }
 
@@ -233,6 +235,48 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	if err := convertNetworkingFlags(input); err != nil {
 		return err
 	}
+	if err := convertAutoscalerFlags(h.cmd, input); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func convertAutoscalerFlags(cmd *cobra.Command, input *hfpathbind.ClusterCreateInput) error {
+	if cmd == nil || input == nil {
+		return nil
+	}
+	// Depending on registration order, the generated HyperFleet flags may bind
+	// directly to input instead of the legacy autoscalerArgs structure. Merge
+	// both sources before using the shared validation/conversion helper.
+	effectiveArgs := clusterautoscaler.AutoscalerArgs{}
+	if autoscalerArgs != nil {
+		effectiveArgs = *autoscalerArgs
+	}
+	if input.MaxNodeProvisionTime != "" {
+		effectiveArgs.MaxNodeProvisionTime = input.MaxNodeProvisionTime
+	}
+	if input.MaxNodesTotal != nil {
+		effectiveArgs.ResourceLimits.MaxNodesTotal = int(*input.MaxNodesTotal)
+	}
+	if input.MaxPodGracePeriod != nil {
+		effectiveArgs.MaxPodGracePeriod = int(*input.MaxPodGracePeriod)
+	}
+	if input.PodPriorityThreshold != nil {
+		effectiveArgs.PodPriorityThreshold = int(*input.PodPriorityThreshold)
+	}
+	config, err := clusterautoscaler.BuildHyperfleetAutoscalingConfig(
+		cmd, clusterAutoscalerFlagsPrefix, &effectiveArgs, false,
+	)
+	if err != nil || config == nil {
+		return err
+	}
+	if config.MaxNodeProvisionTime != nil {
+		input.MaxNodeProvisionTime = *config.MaxNodeProvisionTime
+	}
+	input.MaxNodesTotal = config.MaxNodesTotal
+	input.MaxPodGracePeriod = config.MaxPodGracePeriod
+	input.PodPriorityThreshold = config.PodPriorityThreshold
 
 	return nil
 }

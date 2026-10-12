@@ -3,10 +3,11 @@ package ingress
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
+	"sort"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
@@ -32,11 +33,16 @@ func NewDescribeIngressCommand() *cobra.Command {
 		Use:     use,
 		Short:   short,
 		Example: example,
-		Args:    cobra.MaximumNArgs(1),
+		Args: func(cmd *cobra.Command, argv []string) error {
+			if hyperfleet.Enabled() && len(argv) != 0 {
+				return fmt.Errorf("HyperFleet describe ingress does not accept an ingress ID")
+			}
+			return cobra.MaximumNArgs(1)(cmd, argv)
+		},
 		Run: func(c *cobra.Command, argv []string) {
 			if hyperfleet.Enabled() {
-				fmt.Fprintln(os.Stderr, "HyperFleet Platform API does not expose ingress resources")
-				os.Exit(1)
+				rosa.DefaultRunner(rosa.RuntimeWithHyperFleet(), DescribeHyperfleetIngressRunner())(c, argv)
+				return
 			}
 			rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeIngressRunner(options))(c, argv)
 		},
@@ -53,6 +59,38 @@ func NewDescribeIngressCommand() *cobra.Command {
 	ocm.AddClusterFlag(cmd)
 	output.AddFlag(cmd)
 	return cmd
+}
+
+func DescribeHyperfleetIngressRunner() rosa.CommandRunner {
+	return func(ctx context.Context, runtime *rosa.Runtime, _ *cobra.Command, _ []string) error {
+		clusterUID, err := hyperfleet.ResolveClusterUID(ctx, runtime.HyperFleetClient, runtime.GetClusterKey())
+		if err != nil {
+			return err
+		}
+		cluster, err := runtime.HyperFleetClient.HyperfleetV1alpha1().Clusters().Get(ctx, clusterUID, platform.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get cluster: %w", err)
+		}
+		var routes []string
+		if cluster.Spec.HostedCluster.Configuration != nil && cluster.Spec.HostedCluster.Configuration.Ingress != nil {
+			for _, route := range cluster.Spec.HostedCluster.Configuration.Ingress.ComponentRoutes {
+				routes = append(routes, fmt.Sprintf("%s: hostname=%s;tlsSecretRef=%s", route.Name, route.Hostname, route.ServingCertKeyPairSecret.Name))
+			}
+		}
+		sort.Strings(routes)
+		if output.HasFlag() {
+			return output.Print(routes)
+		}
+		if len(routes) == 0 {
+			fmt.Printf("No custom component routes configured for cluster '%s'\n", runtime.GetClusterKey())
+			return nil
+		}
+		fmt.Printf("Custom component routes for cluster '%s':\n", runtime.GetClusterKey())
+		for _, route := range routes {
+			fmt.Printf("%s\n", route)
+		}
+		return nil
+	}
 }
 
 func DescribeIngressRunner(userOptions DescribeIngressUserOptions) rosa.CommandRunner {

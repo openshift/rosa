@@ -40,8 +40,12 @@ var _ = Describe("Edit default ingress",
 
 			By("Check cluster is hosted")
 			var err error
-			isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
-			Expect(err).ToNot(HaveOccurred())
+			if isHyperfleetMode() {
+				isHosted = true
+			} else {
+				isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+			}
 
 			By("Load the profile")
 			profile = *handler.LoadProfileYamlFileByENV()
@@ -476,6 +480,27 @@ var _ = Describe("Edit ingress",
 			isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("can edit and describe component routes in default ingress on HyperFleet cluster",
+			labels.Low, labels.Runtime.Day2, labels.Hyperfleet.Validated,
+			func() {
+				if !isHosted || !isHyperfleetMode() {
+					Skip("This case exercises HyperFleet ingress component routes")
+				}
+				output, err := ingressService.EditDefaultIngress(clusterID,
+					"--component-routes", "console: hostname=console.example.com;tlsSecretRef=console-tls")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Updated default ingress component routes"))
+				DeferCleanup(func() {
+					_, cleanupErr := ingressService.EditDefaultIngress(clusterID,
+						"--component-routes", "console: hostname=;tlsSecretRef=")
+					Expect(cleanupErr).ToNot(HaveOccurred())
+				})
+
+				output, err = ingressService.DescribeDefaultIngress(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("console"))
+			})
 
 		It("can validate well - [id:38837]",
 			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,

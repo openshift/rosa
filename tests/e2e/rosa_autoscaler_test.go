@@ -27,8 +27,12 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 		rosaClient = rosacli.NewClient()
 		clusterService = rosaClient.Cluster
 
-		hostedCluster, err = clusterService.IsHostedCPCluster(clusterID)
-		Expect(err).ToNot(HaveOccurred())
+		if isHyperfleetMode() {
+			hostedCluster = true
+		} else {
+			hostedCluster, err = clusterService.IsHostedCPCluster(clusterID)
+			Expect(err).ToNot(HaveOccurred())
+		}
 
 		clusterConfig, err = config.ParseClusterProfile()
 		Expect(err).ToNot(HaveOccurred())
@@ -306,6 +310,45 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				Expect(costomAutoscalerConfig.MaxNodeProvisionTime).To(Equal(maxNodeProvisionTime))
 				Expect(strconv.Itoa(costomAutoscalerConfig.MaxPodGracePeriod)).To(Equal(maxPodGracePeriod))
 				Expect(strconv.Itoa(costomAutoscalerConfig.ResourcesLimits.MaxNodesTotal)).To(Equal(maxNodesTotal))
+			})
+	})
+
+	Describe("autoscaler testing on hyperfleet cluster", func() {
+		It("edits and describes the cluster autoscaler",
+			labels.Low, labels.Runtime.Day2, labels.Hyperfleet.Validated,
+			func() {
+				if !isHyperfleetMode() {
+					Skip("This case exercises the HyperFleet autoscaler flow")
+				}
+				rosaClient.Runner.YamlFormat()
+				output, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				rosaClient.Runner.UnsetFormat()
+				var original rosacli.Autoscaler
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().YamlToObj(&original)).To(Succeed())
+
+				output, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, "--max-nodes-total", "10")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output.String()).To(ContainSubstring("Successfully updated autoscaler configuration"))
+
+				rosaClient.Runner.YamlFormat()
+				output, err = rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				rosaClient.Runner.UnsetFormat()
+				var updated rosacli.Autoscaler
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().YamlToObj(&updated)).To(Succeed())
+				Expect(updated.ResourcesLimits.MaxNodesTotal).To(Equal(10))
+
+				restoreArgs := []string{
+					"--max-nodes-total", strconv.Itoa(original.ResourcesLimits.MaxNodesTotal),
+					"--pod-priority-threshold", strconv.Itoa(original.PodPriorityThresold),
+					"--max-pod-grace-period", strconv.Itoa(original.MaxPodGracePeriod),
+				}
+				if original.MaxNodeProvisionTime != "" {
+					restoreArgs = append(restoreArgs, "--max-node-provision-time", original.MaxNodeProvisionTime)
+				}
+				_, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, restoreArgs...)
+				Expect(err).ToNot(HaveOccurred())
 			})
 	})
 

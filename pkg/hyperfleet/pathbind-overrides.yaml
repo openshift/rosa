@@ -100,6 +100,52 @@ resources:
         description: "Scheduler profile. Valid values are LowNodeUtilization, HighNodeUtilization, and NoScoring."
         operations: [create, update]
 
+      # Match the existing ROSA HCP behavior: expose only the four supported
+      # cluster-autoscaler options. Create uses their existing --autoscaler-*
+      # names; day-2 updates remain under `rosa edit autoscaler`.
+      - path: spec.hostedCluster.autoscaling.balancingIgnoredLabels
+        type: string
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.maxNodeProvisionTime
+        flag: autoscaler-max-node-provision-time
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.maxNodesTotal
+        flag: autoscaler-max-nodes-total
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.maxPodGracePeriod
+        flag: autoscaler-max-pod-grace-period
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.podPriorityThreshold
+        flag: autoscaler-pod-priority-threshold
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.delayAfterAddSeconds
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.delayAfterDeleteSeconds
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.delayAfterFailureSeconds
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.unneededDurationSeconds
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.utilizationThresholdPercent
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaling
+        flag: ""
+        operations: [create]
+
+      - path: spec.hostedCluster.autoscaling.expanders
+        type: string
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.maxFreeDifferenceRatioPercent
+        flag: ""
+        operations: [create]
+
       # ── Derived fields: in struct for PreRequest use, no cobra flag ─────────
       - path: spec.hostedCluster.platform.aws.region
         alias: region
