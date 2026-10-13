@@ -5,6 +5,7 @@ RUN git config --global --add safe.directory /opt/app-root/src && \
     make release
 
 FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+LABEL cpe="cpe:/a:redhat:openshift_service_on_aws:1.2::el9"
 LABEL description="Red Hat OpenShift Service on AWS (ROSA) CLI"
 LABEL io.k8s.description="Red Hat OpenShift Service on AWS (ROSA) CLI"
 LABEL io.k8s.display-name="Red Hat OpenShift Service on AWS (ROSA) CLI"
