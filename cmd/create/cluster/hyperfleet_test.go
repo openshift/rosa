@@ -362,12 +362,27 @@ var _ = Describe("runHyperfleet", func() {
 		Expect(err.Error()).To(ContainSubstring("expected a valid network type"))
 	})
 
+	It("rejects OpenShiftSDN for HyperFleet clusters", func() {
+		args.networkType = "OpenShiftSDN"
+		handler := &hyperfleetClusterCreate{}
+		err := handler.PreRequest(context.Background(), t.RosaRuntime, &hfpathbind.ClusterCreateInput{})
+		Expect(err).To(MatchError("expected a valid network type. Valid values: [OVNKubernetes]"))
+	})
+
 	It("rejects no CNI together with a network type before creating a cluster", func() {
 		args.noCni = true
 		args.networkType = "OVNKubernetes"
 		handler := &hyperfleetClusterCreate{}
 		err := handler.PreRequest(context.Background(), t.RosaRuntime, &hfpathbind.ClusterCreateInput{})
 		Expect(err).To(MatchError("--no-cni and --network-type are mutually exclusive parameters"))
+	})
+
+	It("translates no CNI to the Other network type", func() {
+		args.noCni = true
+		input := &hfpathbind.ClusterCreateInput{}
+		err := convertNetworkingFlags(input)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(input.NetworkType).To(Equal("Other"))
 	})
 
 	It("exits when DescribeSubnets fails", func() {
