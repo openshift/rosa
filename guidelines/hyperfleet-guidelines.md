@@ -343,9 +343,10 @@ terminating the process.
 make generate
 ```
 
-The `Makefile` runs `mockgen` against the vendored clientset interfaces and
-applies a `perl` fixup to rewrite the import path from the vendor-prefixed
-form back to the canonical module path.
+The `Makefile` runs `mockgen` in package mode against the clientset import
+paths (`github.com/openshift-online/rosa-hyperfleet-api/clientset` and its
+`platform` package), resolved from the Go module cache, so the generated mocks
+reference the canonical module path directly.
 
 Do not edit mock files by hand.
 

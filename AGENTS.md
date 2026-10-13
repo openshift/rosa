@@ -10,7 +10,7 @@ Use this file as the starting point for repository context. When this file point
 - This repository ships frequently and supports real customer workflows. Be conservative. Small mistakes can break release builds, presubmits, E2E flows, or user-facing command behavior.
 - The human submitter owns every change. Agents are helpers, not decision makers.
 - Do not perform release work or release automation from an agent session.
-- Do not duplicate code from the Go standard library or vendored dependencies when an existing implementation already covers the need.
+- Do not duplicate code from the Go standard library or third-party dependencies when an existing implementation already covers the need.
 
 ## Key Reference Files
 
@@ -64,8 +64,8 @@ Use this file as the starting point for repository context. When this file point
   - Generated asset file. Do not edit by hand.
 - `pkg/*/mocks/`, `cmd/create/idp/mocks/`
   - Generated mocks. Do not edit by hand.
-- `vendor/`
-  - Vendored dependencies. Do not edit directly.
+- `go.mod`, `go.sum`
+  - Go module dependencies. `vendor/` is not committed (it is gitignored); do not reintroduce it.
 
 ## CI Container Images
 
@@ -90,7 +90,6 @@ Update these together so compile, presubmits, E2E builds, and product images sta
 - `go.mod` (`go` directive)
 - `Dockerfile`, `Dockerfile.clients`, `images/Dockerfile.e2e`, `images/Dockerfile.konflux` — `ubi9/go-toolset` tag
 - `.ci-operator.yaml` — `build_root_image.tag` (match an available `ocp/builder:rhel-9-golang-*` for pipeline plumbing; presubmit compile uses `Dockerfile.clients`)
-- Regenerate `vendor/` when required by `CONTRIBUTING.md`
 
 Not tied to source Go version: `images/Dockerfile.release` (downloads a released CLI binary from GitHub).
 
@@ -154,7 +153,7 @@ When adding hyperfleet support to a command:
 - Do not change tests to accommodate broken behavior. Tests should prove correctness, not hide regressions.
 - Use Ginkgo v2 and Gomega in the style already used by the surrounding package.
 - Generated mocks must come from `make generate`, not manual edits.
-- Do not run `go mod tidy`, `go mod vendor`, or `make verify` unless the task explicitly requires dependency-state changes or the user asked for that workflow. `make verify` rewrites dependency state.
+- Do not run `go mod tidy` or `make verify` unless the task explicitly requires dependency-state changes or the user asked for that workflow. `make verify` rewrites dependency state.
 
 ## AWS And Product Truth Sources
 
@@ -212,7 +211,7 @@ Cross-check the docs when the change involves:
 
 ## Human-In-The-Loop Triggers
 
-- A change wants to bump `aws-sdk-go-v2`, `ocm-sdk-go`, Cobra, Ginkgo, or otherwise requires `go mod tidy`, `go mod vendor`, or broad dependency rewrites.
+- A change wants to bump `aws-sdk-go-v2`, `ocm-sdk-go`, Cobra, Ginkgo, or otherwise requires `go mod tidy` or broad dependency rewrites.
 - A new feature or command flow appears to duplicate an existing ROSA workflow, Jira ticket, or merged PR and the intended scope is unclear.
 - The change touches login, authentication, token storage, keyrings, credentials, STS, IAM, OIDC, break-glass, or other security-sensitive paths.
 - The change alters command structure, flags, prompts, JSON output, or user-facing setup behavior in a way that may affect backward compatibility.

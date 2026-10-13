@@ -15,6 +15,9 @@ RUN wget  https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stabl
 RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.13.2
 RUN go env -w GOFLAGS=-buildvcs=false
 RUN make release
+# Download the full module graph (including test-only modules such as Ginkgo and
+# Gomega) so the runtime image can compile ./tests/e2e without network access.
+RUN GOTOOLCHAIN=auto go mod download
 
 FROM registry.access.redhat.com/ubi9/ubi:latest
 WORKDIR /rosa
@@ -22,6 +25,7 @@ RUN mkdir /rosa/tests
 
 COPY --from=builder /rosa/ /rosa/
 COPY --from=builder /usr/lib/golang/ /usr/lib/golang/
+COPY --from=builder /opt/app-root/src/go/pkg/mod/ /opt/app-root/src/go/pkg/mod/
 COPY --from=builder /usr/local/bin/oc /usr/local/bin/oc
 COPY --from=builder /opt/app-root/src/go/bin/ginkgo /usr/local/bin/ginkgo
 COPY --from=builder /awscli /awscli
@@ -33,6 +37,7 @@ RUN mv /rosa/rosa /usr/local/bin/rosa
 
 ENV PYTHONPATH=/awscli
 ENV PATH="/usr/lib/golang/bin:${PATH}"
+ENV GOMODCACHE=/opt/app-root/src/go/pkg/mod
 
 
 CMD ["/bin/bash"]
