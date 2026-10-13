@@ -133,7 +133,12 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 	)
 	ch.clusterConfig.Networking = networking
 	log.Logger.Info("V2 Add Networking.Type")
-	ch.clusterConfig.Networking.Type = "OVNKubernetes"
+	if pc.NetworkType == "other" {
+		flags = append(flags, "--no-cni")
+		ch.clusterConfig.Networking.Type = "Other"
+	} else {
+		ch.clusterConfig.Networking.Type = "OVNKubernetes"
+	}
 
 	if pc.ProxyEnabled {
 		proxyName := ch.resourcesHandler.vpc.VPCName
@@ -266,6 +271,14 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 		switch phaseLower {
 		case strings.ToLower(string(v1alpha1.ClusterPhaseReady)):
 			log.Logger.Infof("Cluster %s is ready now.", clusterKey)
+			if ch.profile.ClusterConfig.NetworkType == "other" {
+				// A no-CNI cluster requires a customer-provided network plugin before
+				// node pools can be provisioned. Leave node-pool creation to the test
+				// or environment that configures that network plugin.
+				log.Logger.Infof("Skipping default HyperFleet node-pool creation for no-CNI cluster %s", clusterKey)
+				ch.recordHyperfleetClusterVersion(clusterKey)
+				return nil
+			}
 			if err := ch.createHyperfleetNodePoolsAfterReady(); err != nil {
 				return err
 			}

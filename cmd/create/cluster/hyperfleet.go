@@ -151,7 +151,7 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	if input.SubnetID == "" {
 		return fmt.Errorf("--subnet-id (or --subnet-ids) is required")
 	}
-	if err := validateNetworkType(args.networkType); err != nil {
+	if err := validateHyperfleetNetworkType(args.networkType); err != nil {
 		return err
 	}
 	if args.noCni && args.networkType != "" {
@@ -348,8 +348,9 @@ func convertNetworkingFlags(input *hfpathbind.ClusterCreateInput) error {
 		input.ClusterNetwork = fmt.Sprintf(`[{"cidr":"%s","hostPrefix":%d}]`, args.podCIDR.String(), hostPrefix)
 	}
 
-	// Set network type if not already set
-	if input.NetworkType == "" && args.networkType != "" {
+	if args.noCni {
+		input.NetworkType = "Other"
+	} else if args.networkType != "" {
 		input.NetworkType = args.networkType
 	}
 
@@ -359,6 +360,13 @@ func convertNetworkingFlags(input *hfpathbind.ClusterCreateInput) error {
 	}
 
 	return nil
+}
+
+func validateHyperfleetNetworkType(networkType string) error {
+	if networkType == "" || networkType == ocm.NetworkTypeOvn {
+		return nil
+	}
+	return fmt.Errorf("expected a valid network type. Valid values: [%s]", ocm.NetworkTypeOvn)
 }
 
 // isEmptyCIDR checks if a CIDR is empty (all zeros)
