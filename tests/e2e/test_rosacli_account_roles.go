@@ -998,7 +998,7 @@ var _ = Describe("Create account roles", labels.Feature.AccountRoles, func() {
 				"--channel-group", "fakecg",
 				"-y")
 			Expect(err).ToNot(BeNil())
-			Expect(output.String()).To(ContainSubstring("Error getting version: could not find versions for the " +
+			Expect(output.String()).To(ContainSubstring("error getting version: could not find versions for the " +
 				"provided channel-group: 'fakecg'"))
 
 		})
