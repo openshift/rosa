@@ -21,6 +21,13 @@ import (
 const (
 	defaultYStreamPollInterval = time.Second
 	defaultYStreamPollTimeout  = time.Second
+
+	defaultUpdateInProgressRetryInterval = time.Second
+	defaultUpdateInProgressRetryTimeout  = time.Second
+
+	// updateInProgressMessage is returned by OCM when an upgrade cannot be scheduled because
+	// the cluster still reports an update in its Progressing condition.
+	updateInProgressMessage = "An update is already in progress"
 )
 
 type UpgradeService interface {
@@ -32,6 +39,11 @@ type UpgradeService interface {
 	DescribeUpgradeAndReflect(clusterID string) (*UpgradeDescription, error)
 	DeleteUpgrade(flags ...string) (bytes.Buffer, error)
 	Upgrade(flags ...string) (bytes.Buffer, error)
+	UpgradeRetryingWhileUpdateInProgress(
+		waitInterval time.Duration,
+		waitTimeout time.Duration,
+		flags ...string,
+	) (bytes.Buffer, error)
 
 	WaitForUpgradeToState(clusterID string, state string, timeout int) error
 	WaitForAvailableYStreamUpgrade(
@@ -181,6 +193,93 @@ func (u *upgradeService) Upgrade(flags ...string) (bytes.Buffer, error) {
 	return upgrade.Run()
 }
 
+// pollUntilDone calls done immediately and then every waitInterval until it returns true or
+// waitTimeout elapses. Non-positive values fall back to the given defaults. It returns the
+// effective timeout so callers can report it.
+func pollUntilDone(
+	waitInterval time.Duration,
+	waitTimeout time.Duration,
+	defaultInterval time.Duration,
+	defaultTimeout time.Duration,
+	done func() bool,
+) (time.Duration, error) {
+	if waitInterval <= 0 {
+		waitInterval = defaultInterval
+	}
+	if waitTimeout <= 0 {
+		waitTimeout = defaultTimeout
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), waitTimeout)
+	defer cancel()
+
+	return waitTimeout, wait.PollUntilContextCancel(ctx, waitInterval, true,
+		func(ctx context.Context) (bool, error) {
+			return done(), nil
+		},
+	)
+}
+
+func isUpdateInProgressError(output bytes.Buffer, err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), updateInProgressMessage) ||
+		strings.Contains(output.String(), updateInProgressMessage)
+}
+
+// upgradeRetryingWhileUpdateInProgress retries run while OCM rejects the upgrade because
+// the cluster still reports an update in progress. Any other error is returned immediately.
+func upgradeRetryingWhileUpdateInProgress(
+	waitInterval time.Duration,
+	waitTimeout time.Duration,
+	run func() (bytes.Buffer, error),
+) (bytes.Buffer, error) {
+	var lastOutput bytes.Buffer
+	var lastErr error
+
+	effectiveTimeout, pollErr := pollUntilDone(
+		waitInterval,
+		waitTimeout,
+		defaultUpdateInProgressRetryInterval,
+		defaultUpdateInProgressRetryTimeout,
+		func() bool {
+			lastOutput, lastErr = run()
+			if isUpdateInProgressError(lastOutput, lastErr) {
+				log.Logger.Infof("Cluster update is still in progress. Retrying the upgrade command")
+				return false
+			}
+			return true
+		},
+	)
+
+	if pollErr == nil {
+		return lastOutput, lastErr
+	}
+
+	return lastOutput, fmt.Errorf(
+		"timeout after %s waiting for the in-progress cluster update to finish before upgrading: "+
+			"%w: last error: %w",
+		effectiveTimeout,
+		pollErr,
+		lastErr,
+	)
+}
+
+func (u *upgradeService) UpgradeRetryingWhileUpdateInProgress(
+	waitInterval time.Duration,
+	waitTimeout time.Duration,
+	flags ...string,
+) (bytes.Buffer, error) {
+	return upgradeRetryingWhileUpdateInProgress(
+		waitInterval,
+		waitTimeout,
+		func() (bytes.Buffer, error) {
+			return u.Upgrade(flags...)
+		},
+	)
+}
+
 func waitForAvailableYStreamUpgrade(
 	clusterID string,
 	preparation *YStreamUpgradePreparation,
@@ -197,39 +296,33 @@ func waitForAvailableYStreamUpgrade(
 			"y-stream upgrade preparation is required for cluster %s", clusterID)
 	}
 
-	if waitInterval <= 0 {
-		waitInterval = defaultYStreamPollInterval
-	}
-	if waitTimeout <= 0 {
-		waitTimeout = defaultYStreamPollTimeout
-	}
-
 	var lastOutput bytes.Buffer
 	var lastList UpgradeVersionList
 	var lastErr error
 	var result string
 
-	ctx, cancel := context.WithTimeout(context.Background(), waitTimeout)
-	defer cancel()
-
-	pollErr := wait.PollUntilContextCancel(ctx, waitInterval, true,
-		func(ctx context.Context) (bool, error) {
+	effectiveTimeout, pollErr := pollUntilDone(
+		waitInterval,
+		waitTimeout,
+		defaultYStreamPollInterval,
+		defaultYStreamPollTimeout,
+		func() bool {
 			output, upgradeVersionList, err := fetch()
 			lastOutput = output
 			lastList = upgradeVersionList
 			if err != nil {
 				lastErr = err
-				return false, nil
+				return false
 			}
 			upgradingVersion, findErr := upgradeVersionList.FindNextMinorUpgrade(
 				preparation.ClusterVersion)
 			if findErr != nil {
 				lastErr = findErr
-				return false, nil
+				return false
 			}
 			lastErr = nil
 			result = upgradingVersion
-			return upgradingVersion != "", nil
+			return upgradingVersion != ""
 		},
 	)
 
@@ -239,12 +332,13 @@ func waitForAvailableYStreamUpgrade(
 
 	timeoutErr := fmt.Errorf(
 		"timeout after %s waiting for y-stream upgrade target for cluster %s "+
-			"(version=%s, current channel=%q, desired channel=%q)",
-		waitTimeout,
+			"(version=%s, current channel=%q, desired channel=%q): %w",
+		effectiveTimeout,
 		clusterID,
 		preparation.ClusterVersion,
 		preparation.CurrentChannel,
 		preparation.DesiredChannel,
+		pollErr,
 	)
 	if lastErr != nil {
 		return "", lastList, fmt.Errorf(

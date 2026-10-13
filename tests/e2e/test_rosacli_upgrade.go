@@ -28,6 +28,9 @@ import (
 const (
 	yStreamUpgradeWaitInterval = 10 * time.Second
 	yStreamUpgradeWaitTimeout  = 3 * time.Minute
+
+	upgradeInProgressRetryInterval = 30 * time.Second
+	upgradeInProgressRetryTimeout  = 10 * time.Minute
 )
 
 func prepareYStreamUpgradeVersion(
@@ -48,6 +51,13 @@ func prepareYStreamUpgradeVersion(
 		yStreamUpgradeWaitTimeout,
 	)
 	return upgradingVersion, err
+}
+
+// upgradeScheduleAt returns the UTC date and time that are offset from now, formatted for
+// the --schedule-date and --schedule-time flags.
+func upgradeScheduleAt(offset time.Duration) (scheduledDate string, scheduledTime string) {
+	scheduledAt := time.Now().UTC().Add(offset)
+	return scheduledAt.Format("2006-01-02"), scheduledAt.Format("15:04")
 }
 
 var _ = Describe("Cluster Upgrade testing",
@@ -308,7 +318,9 @@ var _ = Describe("Cluster Upgrade testing",
 				}
 			}
 			By("Update cluster with --dry-run")
-			output, err = upgradeService.Upgrade(
+			output, err = upgradeService.UpgradeRetryingWhileUpdateInProgress(
+				upgradeInProgressRetryInterval,
+				upgradeInProgressRetryTimeout,
 				"-c", clusterID,
 				"--version", upgradingVersion,
 				"--mode", "auto",
@@ -327,7 +339,9 @@ var _ = Describe("Cluster Upgrade testing",
 			// It needs to add step to wait the cluster upgrade done
 			// and to check the `rosa describe/list upgrade` in both of these two case.
 
-			output, err = upgradeService.Upgrade(
+			output, err = upgradeService.UpgradeRetryingWhileUpdateInProgress(
+				upgradeInProgressRetryInterval,
+				upgradeInProgressRetryTimeout,
 				"-c", clusterID,
 				"--version", upgradingVersion,
 				"--mode", "auto",
@@ -358,9 +372,10 @@ var _ = Describe("Cluster Upgrade testing",
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Upgrade cluster")
-			scheduledDate := time.Now().Format("2006-01-02")
-			scheduledTime := time.Now().Add(200 * time.Minute).UTC().Format("15:04")
-			output, err := upgradeService.Upgrade(
+			scheduledDate, scheduledTime := upgradeScheduleAt(200 * time.Minute)
+			output, err := upgradeService.UpgradeRetryingWhileUpdateInProgress(
+				upgradeInProgressRetryInterval,
+				upgradeInProgressRetryTimeout,
 				"-c", clusterID,
 				"--version", upgradingVersion,
 				"--schedule-date", scheduledDate,
@@ -388,7 +403,9 @@ var _ = Describe("Cluster Upgrade testing",
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Update cluster with --dry-run")
-				output, err := upgradeService.Upgrade(
+				output, err := upgradeService.UpgradeRetryingWhileUpdateInProgress(
+					upgradeInProgressRetryInterval,
+					upgradeInProgressRetryTimeout,
 					"-c", clusterID,
 					"--version", upgradingVersion,
 					"--mode", "auto",
@@ -732,14 +749,11 @@ var _ = Describe("Describe/List rosa upgrade",
 					Expect(err).ToNot(HaveOccurred())
 
 					By("Upgrade cluster and check list/describe upgrade")
-					scheduledDate := time.Now().Format("2006-01-02")
-					scheduledTime := time.Now().Add(20 * time.Minute).UTC().Format("15:04")
-
-					By("Upgrade cluster")
 					if clusterConfig.Sts {
-
 						By("Update cluster with --dry-run")
-						output, err := upgradeService.Upgrade(
+						output, err := upgradeService.UpgradeRetryingWhileUpdateInProgress(
+							upgradeInProgressRetryInterval,
+							upgradeInProgressRetryTimeout,
 							"-c", clusterID,
 							"--version", upgradingVersion,
 							"--mode", "auto",
@@ -749,29 +763,26 @@ var _ = Describe("Describe/List rosa upgrade",
 						Expect(err).To(BeNil())
 						Expect(output.String()).To(ContainSubstring("should succeed. Please wait 1 to 2 minutes"))
 						time.Sleep(3 * time.Minute)
-
-						output, errSTSUpgrade := upgradeService.Upgrade(
-							"-c", clusterID,
-							"--version", upgradingVersion,
-							"--schedule-date", scheduledDate,
-							"--schedule-time", scheduledTime,
-							"-m", "auto",
-							"-y",
-						)
-						Expect(errSTSUpgrade).To(BeNil())
-						Expect(output.String()).NotTo(ContainSubstring("There is already a scheduled upgrade"))
-
-					} else {
-						output, errUpgrade := upgradeService.Upgrade(
-							"-c", clusterID,
-							"--version", upgradingVersion,
-							"--schedule-date", scheduledDate,
-							"--schedule-time", scheduledTime,
-							"-y",
-						)
-						Expect(errUpgrade).To(BeNil())
-						Expect(output.String()).NotTo(ContainSubstring("There is already a scheduled upgrade"))
 					}
+
+					By("Upgrade cluster")
+					scheduledDate, scheduledTime := upgradeScheduleAt(20 * time.Minute)
+					upgradeFlags := []string{
+						"-c", clusterID,
+						"--version", upgradingVersion,
+						"--schedule-date", scheduledDate,
+						"--schedule-time", scheduledTime,
+					}
+					if clusterConfig.Sts {
+						upgradeFlags = append(upgradeFlags, "-m", "auto")
+					}
+					output, err = upgradeService.UpgradeRetryingWhileUpdateInProgress(
+						upgradeInProgressRetryInterval,
+						upgradeInProgressRetryTimeout,
+						append(upgradeFlags, "-y")...,
+					)
+					Expect(err).To(BeNil())
+					Expect(output.String()).NotTo(ContainSubstring("There is already a scheduled upgrade"))
 
 					time.Sleep(2 * time.Minute)
 					By("Check list upgrade")
