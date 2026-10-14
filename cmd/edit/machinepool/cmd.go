@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -33,11 +34,15 @@ const (
 	short   = "Edit machine pool"
 	long    = "Edit machine pools on a cluster."
 	example = `  # Set 4 replicas on machine pool 'mp1' on cluster 'mycluster'
-	rosa edit machinepool --replicas=4 --cluster=mycluster mp1
-	# Enable autoscaling and Set 3-5 replicas on machine pool 'mp1' on cluster 'mycluster'
-	rosa edit machinepool --enable-autoscaling --min-replicas=3 --max-replicas=5 --cluster=mycluster mp1
-	# Set the node drain grace period to 1 hour on machine pool 'mp1' on cluster 'mycluster'
-	rosa edit machinepool --node-drain-grace-period="1 hour" --cluster=mycluster mp1`
+  rosa edit machinepool --replicas=4 --cluster=mycluster mp1
+  # Enable autoscaling and Set 3-5 replicas on machine pool 'mp1' on cluster 'mycluster'
+  rosa edit machinepool --enable-autoscaling --min-replicas=3 --max-replicas=5 --cluster=mycluster mp1
+  # Set the node drain grace period to 1 hour on machine pool 'mp1' on cluster 'mycluster'
+  rosa edit machinepool --node-drain-grace-period="1 hour" --cluster=mycluster mp1
+  # Replace the user-defined AWS tags on machine pool 'mp1'; inherited cluster tags stay in place
+  rosa edit machinepool --cluster=mycluster mp1 --tags '"Cost Center":"Finance Team"'
+  # Remove all user-defined AWS tags specific to machine pool 'mp1'; inherited cluster tags stay in place
+  rosa edit machinepool --cluster=mycluster mp1 --tags ''`
 )
 
 var (
@@ -102,6 +107,14 @@ func NewEditMachinePoolCommand() *cobra.Command {
 		"Labels for machine pool. Format should be a comma-separated list of 'key=value'. "+
 			"This list will overwrite any modifications made to node labels on an ongoing basis.",
 	)
+	flags.StringArrayVar(&options.tags, "tags", nil,
+		"Replace user-defined AWS tags on resources created for this machine pool. "+
+			"This flag is only supported for Hosted Control Planes. "+
+			"Omitted pool-specific tags are removed. "+
+			"Existing keys with different values are overwritten. "+
+			"Cluster tags are inherited unless the machine pool overrides the same key. "+
+			"--tags '' removes all pool-specific tags "+
+			"(enter \"\" at the interactive prompt). "+aws.UserTagsDay2FlagHelpSuffix)
 
 	flags.StringVar(
 		&options.taints,

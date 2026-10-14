@@ -4,6 +4,7 @@
 - name: expiration
 - name: enable-delete-protection
 - name: notification-contacts
+- name: tags
 - name: private
 - name: disable-workload-monitoring
 - name: http-proxy
