@@ -13,6 +13,7 @@ import (
 type EditMachinepoolUserOptions struct {
 	machinepool          string
 	labels               string
+	tags                 []string
 	replicas             int
 	autoscalingEnabled   bool
 	minReplicas          int
