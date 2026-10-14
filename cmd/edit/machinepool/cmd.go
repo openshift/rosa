@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -37,7 +38,11 @@ const (
 	# Enable autoscaling and Set 3-5 replicas on machine pool 'mp1' on cluster 'mycluster'
 	rosa edit machinepool --enable-autoscaling --min-replicas=3 --max-replicas=5 --cluster=mycluster mp1
 	# Set the node drain grace period to 1 hour on machine pool 'mp1' on cluster 'mycluster'
-	rosa edit machinepool --node-drain-grace-period="1 hour" --cluster=mycluster mp1`
+	rosa edit machinepool --node-drain-grace-period="1 hour" --cluster=mycluster mp1
+	# Replace this HCP 4.20+ pool's own AWS tags; inherited cluster tags stay in place
+	rosa edit machinepool --cluster=mycluster mp1 --tags '"Cost Center":"Finance Team"'
+	# Remove all pool-specific AWS tags
+	rosa edit machinepool --cluster=mycluster mp1 --tags ''`
 )
 
 var (
@@ -102,6 +107,12 @@ func NewEditMachinePoolCommand() *cobra.Command {
 		"Labels for machine pool. Format should be a comma-separated list of 'key=value'. "+
 			"This list will overwrite any modifications made to node labels on an ongoing basis.",
 	)
+	flags.StringArrayVar(&options.tags, "tags", nil,
+		"Replace this ROSA HCP 4.20+ pool's own AWS tags. Omitted pool-specific tags are removed; "+
+			"cluster tags remain inherited. A pool override equal to a cluster tag is treated as "+
+			"inherited, so changing that cluster tag later can change the pool tag. "+
+			"--tags '' removes all pool-specific tags "+
+			"(enter \"\" at the interactive prompt). "+aws.UserTagsFlagHelpSuffix)
 
 	flags.StringVar(
 		&options.taints,
