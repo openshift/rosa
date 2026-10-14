@@ -116,6 +116,8 @@ type Spec struct {
 
 	// User-defined tags for AWS resources
 	Tags map[string]string
+	// TagChanges contains nullable day-2 AWS tag changes; nil leaves tags untouched.
+	TagChanges map[string]*string
 
 	// Simulate creating a cluster but don't actually create it
 	DryRun *bool
@@ -627,6 +629,7 @@ func buildVersion(config Spec, builder *cmv1.ClusterBuilder) error {
 	return nil
 }
 
+// UpdateCluster applies the requested cluster configuration, including nullable AWS tag changes.
 func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config Spec) error {
 	cluster, err := c.GetCluster(clusterKey, creator)
 	if err != nil {
@@ -778,6 +781,9 @@ func (c *Client) UpdateCluster(clusterKey string, creator *aws.Creator, config S
 		return err
 	}
 
+	if len(config.TagChanges) > 0 {
+		return c.updateClusterWithTags(cluster.ID(), clusterSpec, config.TagChanges)
+	}
 	response, err := c.ocm.ClustersMgmt().V1().Clusters().
 		Cluster(cluster.ID()).
 		Update().
