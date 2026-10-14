@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strings"
 
 	v1alpha1 "github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-seaplane-api/clientset/platform"
@@ -108,10 +109,10 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 
 	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged &&
 		!h.cmd.Flags().Changed("labels") && !h.cmd.Flags().Changed("taints") &&
-		!h.cmd.Flags().Changed("autorepair") {
+		!h.cmd.Flags().Changed("autorepair") && !h.cmd.Flags().Changed("additional-security-group-ids") {
 		return fmt.Errorf(
 			"specify at least one supported flag: --replicas, --enable-autoscaling, " +
-				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair",
+				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair, --additional-security-group-ids",
 		)
 	}
 
@@ -266,6 +267,49 @@ func (h *seaplaneNodePoolUpdate) PostExpand(
 		merged.Spec.NodePool.Taints = h.taints
 	}
 
+	// Security groups - convert comma-separated string to []AWSResourceReference
+	if h.cmd.Flags().Changed("additional-security-group-ids") {
+		if merged.Spec.NodePool.Platform.AWS == nil {
+			return fmt.Errorf("cannot update security groups on a non-AWS node pool")
+		}
+
+		securityGroupIDsStr, err := h.cmd.Flags().GetString("additional-security-group-ids")
+		if err != nil {
+			return fmt.Errorf("failed to get additional-security-group-ids flag: %w", err)
+		}
+
+		if securityGroupIDsStr == "" {
+			// User explicitly set to empty - clear security groups
+			merged.Spec.NodePool.Platform.AWS.SecurityGroups = nil
+		} else {
+			// Parse comma-separated list, trim and filter empty values
+			rawIDs := strings.Split(securityGroupIDsStr, ",")
+			validIDs := make([]string, 0, len(rawIDs))
+			for _, sgID := range rawIDs {
+				trimmed := strings.TrimSpace(sgID)
+				if trimmed != "" {
+					validIDs = append(validIDs, trimmed)
+				}
+			}
+
+			// Only create SecurityGroups if we have valid IDs, otherwise clear
+			if len(validIDs) > 0 {
+				merged.Spec.NodePool.Platform.AWS.SecurityGroups = make(
+					[]hypershiftv1beta1.AWSResourceReference,
+					len(validIDs),
+				)
+				for i, sgID := range validIDs {
+					id := sgID
+					merged.Spec.NodePool.Platform.AWS.SecurityGroups[i] = hypershiftv1beta1.AWSResourceReference{
+						ID: &id,
+					}
+				}
+			} else {
+				merged.Spec.NodePool.Platform.AWS.SecurityGroups = nil
+			}
+		}
+	}
+
 	// Management is service-set: the API field validator accepts it unchanged
 	// from Get, but rejects clearing or changing it during an update.
 	merged.Spec.NodePool.NodeLabels = nil
@@ -293,5 +337,18 @@ func (h *seaplaneNodePoolUpdate) PostResponse(_ context.Context, r *rosa.Runtime
 		obj.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice != "" {
 		fmt.Printf("  Spot Max Price: $%s\n", obj.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice)
 	}
+
+	if obj.Spec.NodePool.Platform.AWS != nil && len(obj.Spec.NodePool.Platform.AWS.SecurityGroups) > 0 {
+		sgIDs := make([]string, 0, len(obj.Spec.NodePool.Platform.AWS.SecurityGroups))
+		for _, sg := range obj.Spec.NodePool.Platform.AWS.SecurityGroups {
+			if sg.ID != nil {
+				sgIDs = append(sgIDs, *sg.ID)
+			}
+		}
+		if len(sgIDs) > 0 {
+			fmt.Printf("  Additional Security Groups: %s\n", strings.Join(sgIDs, ", "))
+		}
+	}
+
 	return nil
 }
