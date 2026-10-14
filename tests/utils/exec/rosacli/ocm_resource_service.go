@@ -85,8 +85,8 @@ type OCMResourceService interface {
 
 	UpgradeRoles(flags ...string) (bytes.Buffer, error)
 
-	GetConfig(flags ...string) (bytes.Buffer, error)
-	SetConfig(flags ...string) (bytes.Buffer, error)
+	GetConfig(flags ...string) (bytes.Buffer, bytes.Buffer, error)
+	SetConfig(flags ...string) (bytes.Buffer, bytes.Buffer, error)
 }
 
 type ocmResourceService struct {
@@ -772,17 +772,17 @@ func (ors *ocmResourceService) UpgradeRoles(flags ...string) (bytes.Buffer, erro
 }
 
 // run `rosa config get` command
-func (ors *ocmResourceService) GetConfig(flags ...string) (bytes.Buffer, error) {
+func (ors *ocmResourceService) GetConfig(flags ...string) (bytes.Buffer, bytes.Buffer, error) {
 	getConfig := ors.client.Runner
 	getConfig = getConfig.Cmd("config", "get").CmdFlags(flags...)
-	return getConfig.Run()
+	return getConfig.RunSeparateOutput()
 }
 
 // run `rosa config set` command
-func (ors *ocmResourceService) SetConfig(flags ...string) (bytes.Buffer, error) {
+func (ors *ocmResourceService) SetConfig(flags ...string) (bytes.Buffer, bytes.Buffer, error) {
 	setConfig := ors.client.Runner
 	setConfig = setConfig.Cmd("config", "set").CmdFlags(flags...)
-	return setConfig.Run()
+	return setConfig.RunSeparateOutput()
 }
 
 // run `rosa register oidc-config` command

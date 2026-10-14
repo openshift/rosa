@@ -37,7 +37,7 @@ var _ = Describe("rosacli config",
 			if len(originalConfig) > 0 {
 				for key, value := range originalConfig {
 					if key != "scopes" {
-						_, err := ocmService.SetConfig(key, value)
+						_, _, err := ocmService.SetConfig(key, value)
 						Expect(err).To(BeNil())
 					}
 				}
@@ -58,13 +58,13 @@ var _ = Describe("rosacli config",
 				"fedramp",
 			}
 			for _, name := range configName {
-				config, err := ocmService.GetConfig(name)
+				config, _, err := ocmService.GetConfig(name)
 				Expect(err).To(BeNil())
 				if name == "client_secret" {
 					Expect(strings.TrimSuffix(config.String(), "\n")).To(Equal(""))
 					originalConfig[name] = ""
 				} else {
-					Expect(config).ToNot(Equal(""))
+					Expect(config.String()).ToNot(Equal(""))
 					originalConfig[name] = strings.TrimSuffix(config.String(), "\n")
 				}
 			}
@@ -80,19 +80,19 @@ var _ = Describe("rosacli config",
 				"fedramp":       "true",
 			}
 			for key, value := range testingConfig {
-				_, err := ocmService.SetConfig(key, value)
+				_, _, err := ocmService.SetConfig(key, value)
 				Expect(err).To(BeNil())
 			}
 			By("Check if the set operation works")
 			for key, value := range testingConfig {
-				config, err := ocmService.GetConfig(key)
+				config, _, err := ocmService.GetConfig(key)
 				configString := strings.TrimSuffix(config.String(), "\n")
 				Expect(err).To(BeNil())
 				Expect(configString).To(Equal(value))
 			}
 			By("Set not supported config via rosacli")
-			out, err := ocmService.SetConfig("scopes", "test_scopes")
+			_, stderr, err := ocmService.SetConfig("scopes", "test_scopes")
 			Expect(err).ToNot(BeNil())
-			Expect(out.String()).To(ContainSubstring("Setting scopes is unsupported"))
+			Expect(stderr.String()).To(ContainSubstring("Setting scopes is unsupported"))
 		})
 	})
