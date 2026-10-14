@@ -31,6 +31,12 @@ type NodePoolUpdateInput struct {
 	MaxPrice                      string `hfsdk:"spec.nodePool.platform.aws.placement.spot.maxPrice"`
 	Tenancy                       string `hfsdk:"spec.nodePool.platform.aws.placement.tenancy"`
 	ResourceTags                  string `hfsdk:"spec.nodePool.platform.aws.resourceTags"`
+	Encrypted                     *bool  `hfsdk:"spec.nodePool.platform.aws.rootVolume.encrypted"`
+	EncryptionKey                 string `hfsdk:"spec.nodePool.platform.aws.rootVolume.encryptionKey"`
+	Iops                          *int64 `hfsdk:"spec.nodePool.platform.aws.rootVolume.iops"`
+	Size                          *int64 `hfsdk:"spec.nodePool.platform.aws.rootVolume.size"`
+	RootVolumeType                string `hfsdk:"spec.nodePool.platform.aws.rootVolume.type"`
+	SecurityGroupIds              string `hfsdk:"spec.nodePool.platform.aws.securityGroups"`
 	Filters                       string `hfsdk:"spec.nodePool.platform.aws.subnet.filters"`
 	Image                         string `hfsdk:"spec.nodePool.release.image"`
 	Replicas                      *int32 `hfsdk:"spec.nodePool.replicas"`
@@ -56,6 +62,12 @@ var NodePoolUpdatePlatformAPIFlags = []string{
 	"max-price",
 	"tenancy",
 	"resource-tags",
+	"encrypted",
+	"encryption-key",
+	"iops",
+	"size",
+	"root-volume-type",
+	"additional-security-group-ids",
 	"filters",
 	"image",
 	"replicas",
@@ -79,6 +91,14 @@ func RegisterNodePoolUpdateFlags(cmd *cobra.Command, input *NodePoolUpdateInput)
 	registerIfNew(f, "max-price", func() { f.StringVar(&input.MaxPrice, "max-price", "", "") })
 	registerIfNew(f, "tenancy", func() { f.StringVar(&input.Tenancy, "tenancy", "", "") })
 	registerIfNew(f, "resource-tags", func() { f.StringVar(&input.ResourceTags, "resource-tags", "", "") })
+	registerIfNew(f, "encrypted", func() { input.Encrypted = new(bool); f.BoolVar(input.Encrypted, "encrypted", false, "") })
+	registerIfNew(f, "encryption-key", func() { f.StringVar(&input.EncryptionKey, "encryption-key", "", "") })
+	registerIfNew(f, "iops", func() { input.Iops = new(int64); f.Int64Var(input.Iops, "iops", 0, "") })
+	registerIfNew(f, "size", func() { input.Size = new(int64); f.Int64Var(input.Size, "size", 0, "") })
+	registerIfNew(f, "root-volume-type", func() { f.StringVar(&input.RootVolumeType, "root-volume-type", "", "") })
+	registerIfNew(f, "additional-security-group-ids", func() {
+		f.StringVar(&input.SecurityGroupIds, "additional-security-group-ids", "", "Additional AWS Security Group IDs to attach to node pool instances. Format should be a comma-separated list.")
+	})
 	registerIfNew(f, "filters", func() { f.StringVar(&input.Filters, "filters", "", "") })
 	registerIfNew(f, "image", func() { f.StringVar(&input.Image, "image", "", "") })
 	registerIfNew(f, "replicas", func() {

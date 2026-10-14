@@ -334,3 +334,252 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		}).To(Panic())
 	})
 })
+
+var _ = Describe("PostExpand (edit machinepool security groups)", func() {
+	var t *test.TestingRuntime
+
+	BeforeEach(func() {
+		t = test.NewTestRuntime()
+	})
+
+	It("updates security groups when flag is set", func() {
+		cmd := makeEditCmd("")
+		Expect(cmd.Flags().Set("additional-security-group-ids", "sg-new1,sg-new2")).To(Succeed())
+
+		h := &hyperfleetNodePoolUpdate{
+			clusterKey:   "cluster1",
+			nodePoolKey:  "my-np",
+			nodePoolName: "np-uid",
+			userOptions:  &EditMachinepoolUserOptions{},
+			cmd:          cmd,
+		}
+
+		// Current node pool with existing security groups
+		current := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas: ptr.To(int32(3)),
+					Platform: v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{
+						InstanceType: "m5.xlarge",
+						SecurityGroups: []hypershiftv1beta1.AWSResourceReference{
+							{ID: ptr.To("sg-old1")},
+							{ID: ptr.To("sg-old2")},
+						},
+					}},
+				},
+			},
+		}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, _, nodePools := newEditMPMocks(ctrl)
+		nodePools.EXPECT().Get(gomock.Any(), "np-uid", gomock.Any()).Return(current, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		obj := &v1alpha1.NodePool{}
+		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Verify new security groups are set
+		Expect(obj.Spec.NodePool.Platform.AWS.SecurityGroups).To(HaveLen(2))
+		Expect(*obj.Spec.NodePool.Platform.AWS.SecurityGroups[0].ID).To(Equal("sg-new1"))
+		Expect(*obj.Spec.NodePool.Platform.AWS.SecurityGroups[1].ID).To(Equal("sg-new2"))
+	})
+
+	It("clears security groups when flag is set to empty string", func() {
+		cmd := makeEditCmd("")
+		Expect(cmd.Flags().Set("additional-security-group-ids", "")).To(Succeed())
+
+		h := &hyperfleetNodePoolUpdate{
+			clusterKey:   "cluster1",
+			nodePoolKey:  "my-np",
+			nodePoolName: "np-uid",
+			userOptions:  &EditMachinepoolUserOptions{},
+			cmd:          cmd,
+		}
+
+		// Current node pool with existing security groups
+		current := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas: ptr.To(int32(3)),
+					Platform: v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{
+						InstanceType: "m5.xlarge",
+						SecurityGroups: []hypershiftv1beta1.AWSResourceReference{
+							{ID: ptr.To("sg-1")},
+						},
+					}},
+				},
+			},
+		}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, _, nodePools := newEditMPMocks(ctrl)
+		nodePools.EXPECT().Get(gomock.Any(), "np-uid", gomock.Any()).Return(current, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		obj := &v1alpha1.NodePool{}
+		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Verify security groups are cleared
+		Expect(obj.Spec.NodePool.Platform.AWS.SecurityGroups).To(BeNil())
+	})
+
+	It("leaves security groups unchanged when flag is not set", func() {
+		cmd := makeEditCmd("")
+		// Don't set the additional-security-group-ids flag
+
+		h := &hyperfleetNodePoolUpdate{
+			clusterKey:   "cluster1",
+			nodePoolKey:  "my-np",
+			nodePoolName: "np-uid",
+			userOptions:  &EditMachinepoolUserOptions{},
+			cmd:          cmd,
+		}
+
+		// Current node pool with existing security groups
+		current := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas: ptr.To(int32(3)),
+					Platform: v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{
+						InstanceType: "m5.xlarge",
+						SecurityGroups: []hypershiftv1beta1.AWSResourceReference{
+							{ID: ptr.To("sg-existing")},
+						},
+					}},
+				},
+			},
+		}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, _, nodePools := newEditMPMocks(ctrl)
+		nodePools.EXPECT().Get(gomock.Any(), "np-uid", gomock.Any()).Return(current, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		obj := &v1alpha1.NodePool{}
+		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Verify security groups remain the same
+		Expect(obj.Spec.NodePool.Platform.AWS.SecurityGroups).To(HaveLen(1))
+		Expect(*obj.Spec.NodePool.Platform.AWS.SecurityGroups[0].ID).To(Equal("sg-existing"))
+	})
+
+	It("filters out empty entries from security group list", func() {
+		cmd := makeEditCmd("")
+		Expect(cmd.Flags().Set("additional-security-group-ids", "sg-1,,sg-2, ,sg-3")).To(Succeed())
+
+		h := &hyperfleetNodePoolUpdate{
+			clusterKey:   "cluster1",
+			nodePoolKey:  "my-np",
+			nodePoolName: "np-uid",
+			userOptions:  &EditMachinepoolUserOptions{},
+			cmd:          cmd,
+		}
+
+		current := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas: ptr.To(int32(3)),
+					Platform: v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{
+						InstanceType: "m5.xlarge",
+					}},
+				},
+			},
+		}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, _, nodePools := newEditMPMocks(ctrl)
+		nodePools.EXPECT().Get(gomock.Any(), "np-uid", gomock.Any()).Return(current, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		obj := &v1alpha1.NodePool{}
+		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Verify empty entries are filtered out, only valid IDs remain
+		Expect(obj.Spec.NodePool.Platform.AWS.SecurityGroups).To(HaveLen(3))
+		Expect(*obj.Spec.NodePool.Platform.AWS.SecurityGroups[0].ID).To(Equal("sg-1"))
+		Expect(*obj.Spec.NodePool.Platform.AWS.SecurityGroups[1].ID).To(Equal("sg-2"))
+		Expect(*obj.Spec.NodePool.Platform.AWS.SecurityGroups[2].ID).To(Equal("sg-3"))
+	})
+
+	It("clears security groups when all entries are empty/whitespace", func() {
+		cmd := makeEditCmd("")
+		Expect(cmd.Flags().Set("additional-security-group-ids", "  ,  ,  ")).To(Succeed())
+
+		h := &hyperfleetNodePoolUpdate{
+			clusterKey:   "cluster1",
+			nodePoolKey:  "my-np",
+			nodePoolName: "np-uid",
+			userOptions:  &EditMachinepoolUserOptions{},
+			cmd:          cmd,
+		}
+
+		current := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas: ptr.To(int32(3)),
+					Platform: v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{
+						InstanceType: "m5.xlarge",
+						SecurityGroups: []hypershiftv1beta1.AWSResourceReference{
+							{ID: ptr.To("sg-old")},
+						},
+					}},
+				},
+			},
+		}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, _, nodePools := newEditMPMocks(ctrl)
+		nodePools.EXPECT().Get(gomock.Any(), "np-uid", gomock.Any()).Return(current, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		obj := &v1alpha1.NodePool{}
+		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Verify security groups are cleared when all entries are empty/whitespace
+		Expect(obj.Spec.NodePool.Platform.AWS.SecurityGroups).To(BeNil())
+	})
+
+	It("fails when trying to update security groups on a non-AWS node pool", func() {
+		cmd := makeEditCmd("")
+		Expect(cmd.Flags().Set("additional-security-group-ids", "sg-1")).To(Succeed())
+
+		h := &hyperfleetNodePoolUpdate{
+			clusterKey:   "cluster1",
+			nodePoolKey:  "my-np",
+			nodePoolName: "np-uid",
+			userOptions:  &EditMachinepoolUserOptions{},
+			cmd:          cmd,
+		}
+
+		// Current node pool WITHOUT AWS platform (e.g., GCP or Azure)
+		current := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas: ptr.To(int32(3)),
+					Platform: v1alpha1.NodePoolPlatform{AWS: nil}, // Non-AWS
+				},
+			},
+		}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf, _, nodePools := newEditMPMocks(ctrl)
+		nodePools.EXPECT().Get(gomock.Any(), "np-uid", gomock.Any()).Return(current, nil)
+		t.RosaRuntime.HyperFleetClient = hf
+
+		obj := &v1alpha1.NodePool{}
+		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("cannot update security groups on a non-AWS node pool"))
+	})
+})
