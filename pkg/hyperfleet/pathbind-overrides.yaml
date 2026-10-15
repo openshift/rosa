@@ -258,6 +258,13 @@ resources:
         description: "Additional AWS Security Group IDs to attach to node pool instances. Format should be a comma-separated list."
         operations: [create]
 
+      # Root volume size: use existing --disk-size flag (v1 compat), suppress pathbind-generated --size
+      - path: spec.nodePool.platform.aws.rootVolume.size
+        alias: diskSize
+        type: "*int64"
+        flag: ""
+        operations: [create]
+
       # ── Derived: no flag
       - path: spec.nodePool.clusterName
         alias: clusterName
