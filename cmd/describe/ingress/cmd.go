@@ -66,18 +66,19 @@ func NewDescribeIngressCommand() *cobra.Command {
 
 func DescribeHyperfleetIngressRunner() rosa.CommandRunner {
 	return func(ctx context.Context, runtime *rosa.Runtime, _ *cobra.Command, _ []string) error {
-		clusterUID, err := hyperfleet.ResolveClusterUID(ctx, runtime.HyperFleetClient, runtime.GetClusterKey())
+		clusterName, err := hyperfleet.ResolveClusterName(ctx, runtime.HyperFleetClient, runtime.GetClusterKey())
 		if err != nil {
 			return err
 		}
-		cluster, err := runtime.HyperFleetClient.HyperfleetV1alpha1().Clusters().Get(ctx, clusterUID, platform.GetOptions{})
+		cluster, err := runtime.HyperFleetClient.HyperfleetV1alpha1().Clusters().Get(ctx, clusterName, platform.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get cluster: %w", err)
 		}
 		var routes []string
 		if cluster.Spec.HostedCluster.Configuration != nil && cluster.Spec.HostedCluster.Configuration.Ingress != nil {
 			for _, route := range cluster.Spec.HostedCluster.Configuration.Ingress.ComponentRoutes {
-				routes = append(routes, fmt.Sprintf("%s: hostname=%s;tlsSecretRef=%s", route.Name, route.Hostname, route.ServingCertKeyPairSecret.Name))
+				routes = append(routes, fmt.Sprintf("%s: hostname=%s;tlsSecretRef=%s",
+					route.Name, route.Hostname, route.ServingCertKeyPairSecret.Name))
 			}
 		}
 		sort.Strings(routes)

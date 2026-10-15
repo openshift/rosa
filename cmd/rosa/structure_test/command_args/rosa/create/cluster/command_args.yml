@@ -122,11 +122,12 @@
 # hyperfleet only commands
 # currently manually set, maybe generate as part of generate-hyperfleet?
 - name: "additional-trust-bundle"
+- name: "dns-reservation-id"
 - name: "platform"
 - name: "provisioner-config-name"
+- name: "authentication-type"
 - name: "component-routes"
 - name: "delete-protection"
-- name: "display-name"
 - name: "scheduler-profile"
 - name: "container-log-max-files"
 - name: "container-log-max-size"
@@ -169,4 +170,3 @@
 - name: "control-plane-arn"
 - name: "shared-vpc-roles-ref-ingress-arn"
 - name: "termination-handler-queue-url"
-- name: "type"

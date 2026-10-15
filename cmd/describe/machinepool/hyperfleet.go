@@ -9,7 +9,6 @@ import (
 
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
-	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -44,14 +43,15 @@ func runHyperfleetDescribe(r *rosa.Runtime, userOptions *DescribeMachinepoolUser
 		exitFn(1)
 	}
 
-	clusterUID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
+	cluster, err := hyperfleet.ResolveCluster(ctx, r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
 	}
 
-	nodePools, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).
-		List(ctx, platform.ListOptions{})
+	clusterUID := string(cluster.UID)
+	nodePools, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools().
+		List(ctx, platform.NodePoolListOptions{ClusterUID: clusterUID})
 	if err != nil {
 		r.Reporter.Errorf("Failed to list node pools for cluster '%s': %v", clusterKey, err)
 		exitFn(1)
@@ -59,7 +59,8 @@ func runHyperfleetDescribe(r *rosa.Runtime, userOptions *DescribeMachinepoolUser
 
 	var np *v1alpha1.NodePool
 	for i := range nodePools.Items {
-		if nodePools.Items[i].Name == nodePoolName {
+		if nodePools.Items[i].Name == nodePoolName ||
+			strings.TrimPrefix(nodePools.Items[i].Name, cluster.Name+".") == nodePoolName {
 			np = &nodePools.Items[i]
 			break
 		}
@@ -70,7 +71,7 @@ func runHyperfleetDescribe(r *rosa.Runtime, userOptions *DescribeMachinepoolUser
 	}
 
 	if output.HasFlag() {
-		m := hfNodePoolToMap(np)
+		m := hfNodePoolToMap(np, cluster.Name)
 		if err := output.Print(m); err != nil {
 			r.Reporter.Errorf("%s", err)
 			exitFn(1)
@@ -78,13 +79,13 @@ func runHyperfleetDescribe(r *rosa.Runtime, userOptions *DescribeMachinepoolUser
 		return
 	}
 
-	fmt.Print(hfNodePoolToString(np, clusterKey))
+	fmt.Print(hfNodePoolToString(np, cluster.Name))
 }
 
 // hfSecurityGroupIDs extracts the additional security group IDs from an AWS node
 // pool platform spec, in the order the API returns them. Returns an empty (non-nil)
 // slice when aws is nil or no security groups are set.
-func hfSecurityGroupIDs(aws *hypershiftv1beta1.AWSNodePoolPlatform) []string {
+func hfSecurityGroupIDs(aws *v1alpha1.AWSNodePoolPlatform) []string {
 	sgIDs := make([]string, 0)
 	if aws == nil {
 		return sgIDs
@@ -97,7 +98,7 @@ func hfSecurityGroupIDs(aws *hypershiftv1beta1.AWSNodePoolPlatform) []string {
 	return sgIDs
 }
 
-func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
+func hfNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string]interface{} {
 	replicas := int32(0)
 	if np.Spec.NodePool.Replicas != nil {
 		replicas = *np.Spec.NodePool.Replicas
@@ -126,7 +127,7 @@ func hfNodePoolToMap(np *v1alpha1.NodePool) map[string]interface{} {
 
 	return map[string]interface{}{
 		"id":                 string(np.UID),
-		"name":               np.Name,
+		"name":               hyperfleet.NodePoolDisplayName(clusterName, np.Name),
 		"state":              string(np.Status.Phase),
 		"replicas":           replicas,
 		"instanceType":       instanceType,
@@ -260,7 +261,7 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		"Additional security group IDs:         %s\n"+
 		"Node drain grace period:               %s\n"+
 		"Created:                               %s\n",
-		np.Name,
+		hyperfleet.NodePoolDisplayName(clusterName, np.Name),
 		string(np.UID),
 		clusterName,
 		string(np.Status.Phase),

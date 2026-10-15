@@ -18,12 +18,6 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-// clusterNamespacePrefix is the prefix the Platform API requires on the
-// metadata.namespace field of NodePool resources ("cluster-<uuid>").
-// TODO: this derivation ideally belongs in the SDK so consumers don't need
-// to know the namespace format.
-const clusterNamespacePrefix = "cluster-"
-
 // hfNodePoolUpdateInput is the backing store for hyperfleet-specific edit machinepool flags.
 var hfNodePoolUpdateInput hfpathbind.NodePoolUpdateInput
 
@@ -57,14 +51,14 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 		return
 	}
 
-	clusterUID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
+	cluster, err := hyperfleet.ResolveCluster(ctx, r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
 		return
 	}
 
-	nodePoolUID, err := hyperfleet.ResolveNodePoolUID(ctx, r.HyperFleetClient, clusterUID, nodePoolName)
+	resourceName, err := hyperfleet.ResolveNodePoolName(ctx, r.HyperFleetClient, string(cluster.UID), nodePoolName)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
@@ -72,20 +66,16 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 	}
 
 	runtime := *r
-	if cmd.Flags().Changed("labels") || cmd.Flags().Changed("taints") {
-		runtime.HyperFleetClient = hyperfleet.WithNodePoolMetadataUpdates(r.HyperFleetClient,
-			cmd.Flags().Changed("labels"), cmd.Flags().Changed("taints"))
-	}
-	if err := hfpathbind.RunUpdateNodePool(ctx, &runtime, cmd, nodePoolUID, &hfNodePoolUpdateInput,
+	runtime.HyperFleetClient = hyperfleet.WithNodePoolMetadataUpdates(r.HyperFleetClient,
+		cmd.Flags().Changed("labels"), cmd.Flags().Changed("taints"))
+	if err := hfpathbind.RunUpdateNodePool(ctx, &runtime, cmd, resourceName, &hfNodePoolUpdateInput,
 		&hyperfleetNodePoolUpdate{
-			clusterKey:  clusterKey,
-			clusterUID:  clusterUID,
-			nodePoolKey: nodePoolName,
-			nodePoolUID: nodePoolUID,
-			userOptions: userOptions,
-			cmd:         cmd,
+			clusterKey:   clusterKey,
+			nodePoolKey:  nodePoolName,
+			nodePoolName: resourceName,
+			userOptions:  userOptions,
+			cmd:          cmd,
 		},
-		clusterNamespacePrefix+clusterUID,
 	); err != nil {
 		r.Reporter.Errorf("Failed to update node pool: %v", err)
 		exitFn(1)
@@ -95,14 +85,13 @@ func runHyperfleetEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions,
 // hyperfleetNodePoolUpdate implements hfpathbind.NodePoolUpdateHandler for rosa edit machinepool.
 type hyperfleetNodePoolUpdate struct {
 	hfpathbind.GeneratedNodePoolUpdatePrompt
-	clusterKey  string
-	clusterUID  string
-	nodePoolKey string
-	nodePoolUID string
-	userOptions *EditMachinepoolUserOptions
-	cmd         *cobra.Command
-	labels      map[string]string
-	taints      []hypershiftv1beta1.Taint
+	clusterKey   string
+	nodePoolKey  string
+	nodePoolName string
+	userOptions  *EditMachinepoolUserOptions
+	cmd          *cobra.Command
+	labels       map[string]string
+	taints       []hypershiftv1beta1.Taint
 }
 
 func (h *hyperfleetNodePoolUpdate) PreRequest(
@@ -168,14 +157,14 @@ func (h *hyperfleetNodePoolUpdate) PostExpand(
 	// Get current node pool to preserve fields not covered by this update.
 	// TODO: this Get-then-merge could be eliminated if the Platform API
 	// supports PATCH or the SDK bridge wrapper handles partial updates.
-	np, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterNamespacePrefix+h.clusterUID).
-		Get(ctx, h.nodePoolUID, platform.GetOptions{})
+	np, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools().
+		Get(ctx, h.nodePoolName, platform.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get node pool %q: %w", h.nodePoolKey, err)
 	}
 
 	// Start from the current object — preserves UID and all existing spec fields.
-	// The bridge wrapper routes the Update by obj.UID, which is carried over here.
+	// The bridge wrapper routes the Update by obj.Name, which is carried over here.
 	merged := np.DeepCopy()
 
 	enableAutoscalingChanged := h.cmd.Flags().Changed("enable-autoscaling")
@@ -277,10 +266,8 @@ func (h *hyperfleetNodePoolUpdate) PostExpand(
 		merged.Spec.NodePool.Taints = h.taints
 	}
 
-	// The Platform API rejects non-zero service-set management values on PUT,
-	// including values returned by Get. The operator derives these from the
-	// mutable top-level spec fields when rendering the HyperShift NodePool.
-	merged.Spec.NodePool.Management = hypershiftv1beta1.NodePoolManagement{}
+	// Management is service-set: the API field validator accepts it unchanged
+	// from Get, but rejects clearing or changing it during an update.
 	merged.Spec.NodePool.NodeLabels = nil
 
 	*obj = *merged

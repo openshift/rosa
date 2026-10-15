@@ -34,18 +34,19 @@ var _ = Describe("HyperFleet label and taint editing", func() {
 		hf, _, pools := newEditMPMocks(ctrl)
 		t.RosaRuntime.HyperFleetClient = hf
 		replicas, repair := int32(3), true
-		current := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: "pool-uid"}, Spec: v1alpha1.NodePoolSpec{
-			DisplayName: "Workers", AutoRepair: &repair, Labels: map[string]string{"old": "value"},
+		current := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "cluster1.workers", UID: "pool-uid"}, Spec: v1alpha1.NodePoolSpec{
+			AutoRepair: &repair, Labels: map[string]string{"old": "value"},
 			NodePool: v1alpha1.NodePoolSpecPassthrough{
 				Replicas: &replicas, NodeLabels: map[string]string{"operator": "managed"},
-				Taints:   []hypershiftv1beta1.Taint{{Key: "old", Value: "value", Effect: "NoSchedule"}},
-				Platform: v1alpha1.NodePoolPlatform{AWS: &hypershiftv1beta1.AWSNodePoolPlatform{InstanceType: "c5.xlarge", RootVolume: &hypershiftv1beta1.Volume{Size: 75}}},
+				Management: hypershiftv1beta1.NodePoolManagement{AutoRepair: true},
+				Taints:     []hypershiftv1beta1.Taint{{Key: "old", Value: "value", Effect: "NoSchedule"}},
+				Platform:   v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{InstanceType: "c5.xlarge", RootVolume: &v1alpha1.Volume{Size: 75}}},
 			},
 		}}
 		original := current.DeepCopy()
-		pools.EXPECT().Get(gomock.Any(), "pool-uid", gomock.Any()).Return(current, nil)
+		pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil)
 		opts := &EditMachinepoolUserOptions{}
-		handler := &hyperfleetNodePoolUpdate{clusterUID: "cluster-uid", nodePoolUID: "pool-uid", nodePoolKey: "workers", userOptions: opts, cmd: metadataEditCmd(opts, flags)}
+		handler := &hyperfleetNodePoolUpdate{clusterKey: "cluster1", nodePoolKey: "workers", nodePoolName: "cluster1.workers", userOptions: opts, cmd: metadataEditCmd(opts, flags)}
 		input := &hfpathbind.NodePoolUpdateInput{}
 		Expect(handler.PreRequest(context.Background(), t.RosaRuntime, input)).To(Succeed())
 		updated := &v1alpha1.NodePool{}
@@ -54,7 +55,6 @@ var _ = Describe("HyperFleet label and taint editing", func() {
 		expected.Spec.Labels = expectedLabels
 		expected.Spec.NodePool.Taints = expectedTaints
 		expected.Spec.NodePool.NodeLabels = nil
-		expected.Spec.NodePool.Management = hypershiftv1beta1.NodePoolManagement{}
 		Expect(updated).To(Equal(expected))
 		Expect(current).To(Equal(original))
 	},

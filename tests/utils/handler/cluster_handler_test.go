@@ -133,4 +133,23 @@ var _ = Describe("GenerateClusterCreateFlags hyperfleet", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(flags).To(ContainElements("--version", releaseImage))
 	})
+
+	It("keeps the HYPERFLEET_VERSION override in the saved cluster configuration", func() {
+		const profileVersion = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+		const overrideVersion = "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
+		hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		GinkgoT().Setenv("CLUSTER_NAME", "hf-e2e-12345")
+		GinkgoT().Setenv("HYPERFLEET_VERSION", overrideVersion)
+		ch := &clusterHandler{
+			profile:          &Profile{Version: profileVersion, Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
+			clusterConfig:    &ClusterConfigure.ClusterConfig{},
+			clusterDetail:    &ClusterDetail{},
+			resourcesHandler: &resourcesHandler{persist: false, resources: &Resources{}},
+		}
+
+		flags, err := ch.GenerateClusterCreateFlags()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(flags).To(ContainElements("--version", overrideVersion))
+		Expect(ch.clusterConfig.Version.VersionRequirement).To(Equal(overrideVersion))
+	})
 })

@@ -1,23 +1,18 @@
 package cluster
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 
 	"go.uber.org/mock/gomock"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/rest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
-	hfscheme "github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/scheme"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
@@ -27,37 +22,27 @@ import (
 	"github.com/openshift/rosa/pkg/test"
 )
 
-func newDescribeClusterMocks(ctrl *gomock.Controller, clusterUID string) (*hfmocks.MockInterface, *hfmocks.MockClusterInterface) {
+func newDescribeClusterMocks(ctrl *gomock.Controller, _ string) (*hfmocks.MockInterface, *hfmocks.MockClusterInterface) {
 	hf := hfmocks.NewMockInterface(ctrl)
 	v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
 	clusters := hfmocks.NewMockClusterInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
 	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
-	if clusterUID != "" {
-		nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
-		v1.EXPECT().NodePools(clusterUID).Return(nodePools).AnyTimes()
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).
-			Return(&v1alpha1.NodePoolList{}, nil).AnyTimes()
-	}
+	nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
+	v1.EXPECT().NodePools().Return(nodePools).AnyTimes()
+	nodePools.EXPECT().List(gomock.Any(), gomock.Any()).
+		Return(&v1alpha1.NodePoolList{}, nil).AnyTimes()
 	return hf, clusters
 }
 
-func expectDescribeClusterGet(hf *hfmocks.MockInterface, response any, statusCode int) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		defer GinkgoRecover()
-		Expect(req.Method).To(Equal(http.MethodGet))
-		Expect(req.URL.Path).To(Equal("/clusters/cluster-uid"))
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		Expect(json.NewEncoder(w).Encode(response)).To(Succeed())
-	}))
-	DeferCleanup(server.Close)
-	baseURL, err := url.Parse(server.URL)
-	Expect(err).NotTo(HaveOccurred())
-	client, err := rest.NewRESTClient(baseURL, "", rest.ClientContentConfig{Negotiator: runtime.NewClientNegotiator(hfscheme.Codecs.WithoutConversion(), schema.GroupVersion{Version: "v1"})}, nil, server.Client())
-	Expect(err).NotTo(HaveOccurred())
-	v1 := hf.HyperfleetV1alpha1().(*hfmocks.MockV1alpha1PublicInterface)
-	v1.EXPECT().RESTClient().Return(client).AnyTimes()
+func expectDescribeClusterGet(clusters *hfmocks.MockClusterInterface, response any, statusCode int) {
+	if statusCode != http.StatusOK {
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", platform.GetOptions{}).Return(nil, errors.New("get failed"))
+		return
+	}
+	cluster, ok := response.(*v1alpha1.Cluster)
+	Expect(ok).To(BeTrue())
+	clusters.EXPECT().Get(gomock.Any(), cluster.Name, platform.GetOptions{}).Return(cluster, nil)
 }
 
 var _ = Describe("runHyperfleetDescribe (cluster)", func() {
@@ -85,7 +70,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		expectDescribeClusterGet(hf, cluster, http.StatusOK)
+		expectDescribeClusterGet(clusters, cluster, http.StatusOK)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetDescribe(t.RosaRuntime, nil, nil)
@@ -100,7 +85,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		expectDescribeClusterGet(hf, cluster, http.StatusOK)
+		expectDescribeClusterGet(clusters, cluster, http.StatusOK)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		cmd := &cobra.Command{Use: "test"}
@@ -120,7 +105,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		expectDescribeClusterGet(hf, cluster, http.StatusOK)
+		expectDescribeClusterGet(clusters, cluster, http.StatusOK)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetDescribe(t.RosaRuntime, nil, nil)
@@ -164,7 +149,7 @@ var _ = Describe("runHyperfleetDescribe (cluster)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		expectDescribeClusterGet(hf, map[string]string{"message": "get failed"}, http.StatusBadRequest)
+		expectDescribeClusterGet(clusters, map[string]string{"message": "get failed"}, http.StatusBadRequest)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() { runHyperfleetDescribe(t.RosaRuntime, nil, nil) }).To(Panic())

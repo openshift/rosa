@@ -2,14 +2,16 @@
 
 package public
 
+import (
+	"k8s.io/apimachinery/pkg/util/intstr"
+)
+
 // NodePoolSpec defines the desired state of a NodePool.
-// The parent Cluster is identified by the shared metadata.Namespace (cluster UUID).
+// The parent Cluster is resolved from the cluster-name prefix in metadata.name within the account namespace.
+// +kubebuilder:validation:XValidation:rule="!((!has(self.maxUnavailable) || string(self.maxUnavailable) == '0' || string(self.maxUnavailable) == '0%') && has(self.maxSurge) && (string(self.maxSurge) == '0' || string(self.maxSurge) == '0%'))",message="maxUnavailable and maxSurge cannot both be 0: an upgrade can neither remove an existing node nor add a new one, so it would never make progress. maxUnavailable defaults to 0 when omitted"
+// +kubebuilder:validation:XValidation:rule="!has(self.maxUnavailable) || type(self.maxUnavailable) == string || !has(self.nodePool) || !has(self.nodePool.replicas) || self.maxUnavailable <= self.nodePool.replicas",message="maxUnavailable cannot exceed spec.nodePool.replicas"
+// +kubebuilder:validation:XValidation:rule="!has(self.maxSurge) || !has(self.nodePool) || !has(self.nodePool.management) || self.nodePool.management.upgradeType == 'Replace'",message="maxSurge is only valid when the upgrade type is Replace: InPlace upgrades never provision additional nodes"
 type NodePoolSpec struct {
-	// DisplayName is a human-readable name for the node pool.
-	// +hyperfleet:write-mode=mutable
-	// +kubebuilder:validation:MaxLength=256
-	// +optional
-	DisplayName string `json:"displayName,omitempty"`
 	// AutoRepair controls whether unhealthy nodes are automatically replaced.
 	// +hyperfleet:write-mode=mutable
 	// +optional
@@ -19,6 +21,32 @@ type NodePoolSpec struct {
 	// +kubebuilder:validation:MaxProperties=100
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
+	// MaxUnavailable is the largest number of nodes in this pool that may be
+	// unavailable at the same time while the pool is upgrading. It applies to
+	// both the Replace and the InPlace upgrade type.
+	// The value is either an absolute node count (for example 2) or a
+	// percentage of the desired replica count (for example "30%"), which is
+	// rounded down. An absolute value may not exceed spec.nodePool.replicas.
+	// Omitting the field means 0, the behavior node pools had before the
+	// field existed: no node is taken out of service until its replacement is
+	// ready.
+	// +hyperfleet:write-mode=mutable
+	// +kubebuilder:validation:XValidation:rule="type(self) == int ? self >= 0 : self.matches('^(0|[1-9][0-9]?|100)%$')",message="maxUnavailable must be a non-negative whole number of nodes or a percentage from 0% to 100%"
+	// +optional
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
+	// MaxSurge is the largest number of nodes that may be provisioned above
+	// the desired replica count while the pool is upgrading. It is only valid
+	// with the Replace upgrade type, because an InPlace upgrade updates the
+	// existing instances and never creates extra ones.
+	// The value is either an absolute node count (for example 2) or a
+	// percentage of the desired replica count (for example "30%"), which is
+	// rounded up.
+	// Omitting the field means 1, the behavior node pools had before the
+	// field existed: one replacement node is built at a time.
+	// +hyperfleet:write-mode=mutable
+	// +kubebuilder:validation:XValidation:rule="type(self) == int ? self >= 0 : self.matches('^(0|[1-9][0-9]*)%$')",message="maxSurge must be a non-negative whole number of nodes or a percentage"
+	// +optional
+	MaxSurge *intstr.IntOrString `json:"maxSurge,omitempty"`
 	// NodePool contains the upstream HyperShift fields, mirrored as
 	// passthrough types with per-field visibility and write-mode markers.
 	// +kubebuilder:validation:Required

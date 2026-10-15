@@ -4,6 +4,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"sync/atomic"
 
@@ -67,4 +68,18 @@ var _ = Describe("waitForSubnetsVisible", func() {
 		err := waitForSubnetsVisible(ctx, []string{"subnet-aaa"}, checker)
 		Expect(err).To(HaveOccurred())
 	})
+})
+
+var _ = Describe("oidcConfigIDFromCreateOutput", func() {
+	DescribeTable("selects the resource identifier from the create response",
+		func(responseJSON, expected string) {
+			var response bytes.Buffer
+			_, err := response.WriteString(responseJSON)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(oidcConfigIDFromCreateOutput(response)).To(Equal(expected))
+		},
+		Entry("legacy OCM id", `{"id":"legacy-id","metadata":{"name":"legacy-name"}}`, "legacy-id"),
+		Entry("Platform API UID", `{"metadata":{"name":"managed-name","uid":"platform-uid"}}`, "platform-uid"),
+		Entry("name-only compatibility response", `{"metadata":{"name":"legacy-name"}}`, "legacy-name"),
+	)
 })

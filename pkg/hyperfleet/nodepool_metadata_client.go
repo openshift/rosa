@@ -37,18 +37,17 @@ type nodePoolMetadataPublicClient struct {
 	labelsChanged, taintsChanged bool
 }
 
-func (c *nodePoolMetadataPublicClient) NodePools(namespace string) platform.NodePoolInterface {
+func (c *nodePoolMetadataPublicClient) NodePools() platform.NodePoolInterface {
 	return &nodePoolMetadataUpdateClient{
-		NodePoolInterface: c.V1alpha1PublicInterface.NodePools(namespace),
-		restClient:        c.RESTClient(), namespace: namespace,
-		labelsChanged: c.labelsChanged, taintsChanged: c.taintsChanged,
+		NodePoolInterface: c.V1alpha1PublicInterface.NodePools(),
+		restClient:        c.RESTClient(),
+		labelsChanged:     c.labelsChanged, taintsChanged: c.taintsChanged,
 	}
 }
 
 type nodePoolMetadataUpdateClient struct {
 	platform.NodePoolInterface
 	restClient                   rest.Interface
-	namespace                    string
 	labelsChanged, taintsChanged bool
 }
 
@@ -70,8 +69,14 @@ type nodePoolMetadataPassthrough struct {
 
 func (c *nodePoolMetadataUpdateClient) Update(ctx context.Context, obj *v1alpha1.NodePool,
 	_ platform.UpdateOptions) (*v1alpha1.NodePool, error) {
-	if obj == nil || obj.UID == "" {
+	if obj == nil || obj.Name == "" {
+		return nil, fmt.Errorf("node pool name is required")
+	}
+	if obj.UID == "" {
 		return nil, fmt.Errorf("node pool UID is required")
+	}
+	if c.restClient == nil {
+		return c.NodePoolInterface.Update(ctx, obj, platform.UpdateOptions{})
 	}
 	request := nodePoolMetadataUpdateRequest{
 		NodePool: obj,
@@ -95,14 +100,13 @@ func (c *nodePoolMetadataUpdateClient) Update(ctx context.Context, obj *v1alpha1
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode node pool update: %w", err)
 	}
-	result := c.restClient.Put().Namespace(c.namespace).Resource("nodepools").
-		Name(string(obj.UID)).Body(data).Do(ctx)
+	result := c.restClient.Put().Resource("nodepools").Name(obj.Name).Body(data).Do(ctx)
+	response, rawErr := result.Raw()
 	if err := result.Error(); err != nil {
-		return nil, err
+		return nil, WithAPIErrorBodyDetails(err, response)
 	}
-	response, err := result.Raw()
-	if err != nil {
-		return nil, err
+	if rawErr != nil {
+		return nil, rawErr
 	}
 	updated := &v1alpha1.NodePool{}
 	if err := json.Unmarshal(response, updated); err != nil {

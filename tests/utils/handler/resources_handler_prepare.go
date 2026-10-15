@@ -919,17 +919,23 @@ func (rh *resourcesHandler) PrepareOIDCConfig(
 	if err != nil {
 		return oidcConfigID, err
 	}
-	parser := rosacli.NewParser()
-	parsed := parser.JsonData.Input(output).Parse()
-	oidcConfigID = parsed.DigString("id")
-	if oidcConfigID == "" {
-		oidcConfigID = parsed.DigString("metadata", "name")
-	}
+	oidcConfigID = oidcConfigIDFromCreateOutput(output)
 	if oidcConfigID == "" {
 		return "", fmt.Errorf("OIDC config ID not found in create output")
 	}
 	err = rh.registerOIDCConfigID(oidcConfigID)
 	return oidcConfigID, err
+}
+
+func oidcConfigIDFromCreateOutput(output bytes.Buffer) string {
+	parsed := rosacli.NewParser().JsonData.Input(output).Parse()
+	if id := parsed.DigString("id"); id != "" {
+		return id
+	}
+	if uid := parsed.DigString("metadata", "uid"); uid != "" {
+		return uid
+	}
+	return parsed.DigString("metadata", "name")
 }
 
 func (rh *resourcesHandler) PrepareOIDCProvider(oidcConfigID string) error {

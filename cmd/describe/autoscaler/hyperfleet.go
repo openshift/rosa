@@ -20,12 +20,12 @@ import (
 func describeHyperfleetAutoscalerRunner() rosa.CommandRunner {
 	return func(ctx context.Context, r *rosa.Runtime, _ *cobra.Command, _ []string) error {
 		clusterKey := r.GetClusterKey()
-		clusterUID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
+		clusterName, err := hyperfleet.ResolveClusterName(ctx, r.HyperFleetClient, clusterKey)
 		if err != nil {
 			return err
 		}
 		cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().Get(
-			ctx, clusterUID, platform.GetOptions{})
+			ctx, clusterName, platform.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get cluster %q: %w", clusterKey, err)
 		}

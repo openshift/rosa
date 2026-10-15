@@ -43,4 +43,13 @@ var _ = Describe("Platform API error details", func() {
 		}}
 		Expect(WithAPIErrorDetails(apiErr)).To(MatchError("validation failed (unsupported update)"))
 	})
+
+	It("includes the Platform API errors field from the raw response", func() {
+		err := errors.New("NODEPOOLS-MGMT-VALIDATION-001: validation failed")
+		body := []byte(`{"errors":[{"field":"spec.nodePool.replicas","message":"replicas exceeds the pool limit"}]}`)
+
+		detailedErr := WithAPIErrorBodyDetails(err, body)
+		Expect(detailedErr).To(MatchError(ContainSubstring(`"field":"spec.nodePool.replicas"`)))
+		Expect(errors.Is(detailedErr, err)).To(BeTrue())
+	})
 })

@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
 )
@@ -27,7 +28,7 @@ func newResolveMocks(ctrl *gomock.Controller) (
 	nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
 	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
-	v1.EXPECT().NodePools(gomock.Any()).Return(nodePools).AnyTimes()
+	v1.EXPECT().NodePools().Return(nodePools).AnyTimes()
 	return hf, clusters, nodePools
 }
 
@@ -99,9 +100,9 @@ var _ = Describe("ResolveNodePoolUID", func() {
 		hf, _, nodePools := newResolveMocks(ctrl)
 
 		np := v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-nodepool", UID: types.UID("np-uid-456")},
+			ObjectMeta: metav1.ObjectMeta{Name: "my-cluster.my-nodepool", UID: types.UID("np-uid-456")},
 		}
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{np}}, nil)
 
 		uid, err := ResolveNodePoolUID(ctx, hf, "cluster-uid", "my-nodepool")
@@ -133,5 +134,47 @@ var _ = Describe("ResolveNodePoolUID", func() {
 		_, err := ResolveNodePoolUID(ctx, hf, "cluster-uid", "any")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("failed to list node pools"))
+	})
+})
+
+var _ = Describe("ResolveNodePoolName", func() {
+	ctx := context.Background()
+
+	It("maps a CLI child name to the account-scoped resource name", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf, _, nodePools := newResolveMocks(ctrl)
+
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).Return(
+			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-cluster.workers"},
+			}}}, nil)
+
+		name, err := ResolveNodePoolName(ctx, hf, "cluster-uid", "workers")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(name).To(Equal("my-cluster.workers"))
+	})
+
+	It("accepts an account-scoped resource name", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf, _, nodePools := newResolveMocks(ctrl)
+
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).Return(
+			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-cluster.workers"},
+			}}}, nil)
+
+		name, err := ResolveNodePoolName(ctx, hf, "cluster-uid", "my-cluster.workers")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(name).To(Equal("my-cluster.workers"))
+	})
+})
+
+var _ = Describe("NodePoolDisplayName", func() {
+	It("strips the cluster prefix from account-scoped resource names", func() {
+		Expect(NodePoolDisplayName("my-cluster", "my-cluster.workers")).To(Equal("workers"))
+	})
+
+	It("leaves names without the cluster prefix unchanged", func() {
+		Expect(NodePoolDisplayName("my-cluster", "workers")).To(Equal("workers"))
 	})
 })

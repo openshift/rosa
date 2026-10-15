@@ -139,8 +139,8 @@ func (h *hyperfleetClusterCreate) PreRequest(
 		input.ExpirationTimestamp = expiry.UTC().Format(time.RFC3339)
 	}
 
-	// input.DisplayName and input.DeleteProtection arrive directly from cobra via
-	// the new HF-only flags (--display-name, --delete-protection) — no bridge needed.
+	// input.DeleteProtection arrives directly from cobra via the Platform API flag
+	// --delete-protection — no bridge needed.
 
 	if input.Name == "" {
 		return fmt.Errorf("--cluster-name is required")
@@ -165,8 +165,12 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	if args.oidcConfigId == "" {
 		r.Reporter.Warnf("--oidc-config-id not provided, cluster will use auto-generated OIDC config")
 	} else {
-		r.Reporter.Infof("Using OIDC config ID: %s", args.oidcConfigId)
-		input.OidcConfigId = args.oidcConfigId
+		oidcConfig, err := hyperfleet.ResolveOidcConfig(ctx, r.HyperFleetClient, args.oidcConfigId)
+		if err != nil {
+			return fmt.Errorf("failed to resolve OIDC config %q: %w", args.oidcConfigId, err)
+		}
+		input.OidcConfigId = string(oidcConfig.UID)
+		r.Reporter.Infof("Using OIDC config ID: %s", input.OidcConfigId)
 	}
 
 	// --tags is OCM-registered as a string slice, so registerIfNew skips the HF
@@ -239,9 +243,22 @@ func convertAutoscalerFlags(cmd *cobra.Command, input *hfpathbind.ClusterCreateI
 	if input.PodPriorityThreshold != nil {
 		effectiveArgs.PodPriorityThreshold = int(*input.PodPriorityThreshold)
 	}
+	if !clusterautoscaler.IsAutoscalerSetViaCLI(cmd.Flags(), clusterAutoscalerFlagsPrefix) {
+		return nil
+	}
+	supported, err := clusterautoscaler.ValidateAutoscalerFlagsForHostedCp(
+		clusterAutoscalerFlagsPrefix, cmd)
+	if !supported || err != nil {
+		return err
+	}
+	changes := clusterautoscaler.HyperfleetAutoscalingChanges{
+		MaxNodeProvisionTime: cmd.Flags().Changed(clusterAutoscalerFlagsPrefix + "max-node-provision-time"),
+		MaxNodesTotal:        cmd.Flags().Changed(clusterAutoscalerFlagsPrefix + "max-nodes-total"),
+		MaxPodGracePeriod:    cmd.Flags().Changed(clusterAutoscalerFlagsPrefix + "max-pod-grace-period"),
+		PodPriorityThreshold: cmd.Flags().Changed(clusterAutoscalerFlagsPrefix + "pod-priority-threshold"),
+	}
 	config, err := clusterautoscaler.BuildHyperfleetAutoscalingConfig(
-		cmd, clusterAutoscalerFlagsPrefix, &effectiveArgs, false,
-	)
+		&effectiveArgs, clusterAutoscalerFlagsPrefix, changes)
 	if err != nil || config == nil {
 		return err
 	}

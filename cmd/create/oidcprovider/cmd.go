@@ -24,7 +24,6 @@ import (
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
@@ -363,8 +362,8 @@ func runHyperfleet(cmd *cobra.Command, argv []string) {
 }
 
 // handleHyperfleetOIDCProvider handles OIDC provider operations for Platform API v2 (hyperfleet) clusters.
-func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcConfigID, mode string) {
-	r.Reporter.Debugf("Handling HyperFleet OIDC provider for cluster '%s' and config '%s'", clusterKey, oidcConfigID)
+func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcKey, mode string) {
+	r.Reporter.Debugf("Handling HyperFleet OIDC provider for cluster '%s' and config '%s'", clusterKey, oidcKey)
 
 	ctx := context.Background()
 
@@ -373,13 +372,12 @@ func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcConfigID, mod
 		oidcIssuerURL string
 		err           error
 	)
-	if oidcConfigID != "" {
-		// An OIDC config ID is an alternate issuer source. The provider check
+	if oidcKey != "" {
+		// An OIDC config key is an alternate issuer source. The provider check
 		// and auto/manual recovery below are shared with the cluster path.
-		config, getErr := r.HyperFleetClient.HyperfleetV1alpha1().OidcConfigs().Get(
-			ctx, oidcConfigID, platform.GetOptions{})
+		config, getErr := hyperfleet.ResolveOidcConfig(ctx, r.HyperFleetClient, oidcKey)
 		if getErr != nil {
-			r.Reporter.Errorf("Failed to get OIDC config '%s': %v", oidcConfigID, getErr)
+			r.Reporter.Errorf("Failed to get OIDC config '%s': %v", oidcKey, getErr)
 			os.Exit(1)
 		}
 		oidcIssuerURL = config.Spec.IssuerUrl
@@ -400,8 +398,8 @@ func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcConfigID, mod
 	}
 
 	if oidcIssuerURL == "" {
-		if oidcConfigID != "" {
-			r.Reporter.Errorf("OIDC config '%s' does not have an issuer URL configured", oidcConfigID)
+		if oidcKey != "" {
+			r.Reporter.Errorf("OIDC config '%s' does not have an issuer URL configured", oidcKey)
 		} else {
 			r.Reporter.Errorf("Cluster '%s' does not have an OIDC issuer URL configured", clusterKey)
 		}

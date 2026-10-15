@@ -1086,7 +1086,7 @@ func initFlags(cmd *cobra.Command) {
 	confirm.AddFlag(flags)
 
 	// ── HyperFleet-specific flags ────────────────────────────────────────────
-	// Registers new HF-only flags (e.g. --display-name, --subnet-id, --delete-protection).
+	// Registers available Platform API flags that do not conflict with OCM flags.
 	// Flags already registered by OCM (e.g. --cluster-name, --version) are silently skipped.
 	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
 		func() { hfpathbind.RegisterClusterCreateFlags(cmd, &hfClusterInput) },

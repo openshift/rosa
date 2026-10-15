@@ -6,7 +6,6 @@ import (
 	"os"
 
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
@@ -30,10 +29,10 @@ var (
 
 // getOidcConfigIssuerUrl retrieves the OIDC config issuer URL from the Platform API.
 // This is used in the hyperfleet v2 flow when creating operator roles with --oidc-config-id.
-func getOidcConfigIssuerUrl(r *rosa.Runtime, oidcConfigId string) (string, error) {
+func getOidcConfigIssuerUrl(r *rosa.Runtime, oidcKey string) (string, error) {
 	if !hyperfleet.Enabled() {
 		// Fall back to OCM API for v1 flow
-		oidcConfig, err := r.OCMClient.GetOidcConfig(oidcConfigId)
+		oidcConfig, err := r.OCMClient.GetOidcConfig(oidcKey)
 		if err != nil {
 			return "", err
 		}
@@ -42,19 +41,15 @@ func getOidcConfigIssuerUrl(r *rosa.Runtime, oidcConfigId string) (string, error
 
 	// Platform API v2 flow
 	ctx := context.Background()
-	r.Reporter.Debugf("Retrieving OIDC config '%s' from Platform API", oidcConfigId)
+	r.Reporter.Debugf("Retrieving OIDC config '%s' from Platform API", oidcKey)
 
-	oidcConfig, err := r.HyperFleetClient.HyperfleetV1alpha1().OidcConfigs().Get(
-		ctx,
-		oidcConfigId,
-		platform.GetOptions{},
-	)
+	oidcConfig, err := hyperfleet.ResolveOidcConfig(ctx, r.HyperFleetClient, oidcKey)
 	if err != nil {
 		return "", err
 	}
 
 	if oidcConfig.Spec.IssuerUrl == "" {
-		r.Reporter.Errorf("OIDC config '%s' does not have an issuer URL", oidcConfigId)
+		r.Reporter.Errorf("OIDC config '%s' does not have an issuer URL", oidcKey)
 		os.Exit(1)
 	}
 

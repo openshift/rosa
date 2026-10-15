@@ -14,12 +14,13 @@ import (
 type ClusterUpdateInput struct {
 	AdditionalTrustBundle          string `hfsdk:"spec.additionalTrustBundle"`
 	DeleteProtection               *bool  `hfsdk:"spec.deleteProtection"`
-	DisplayName                    string `hfsdk:"spec.displayName"`
 	ExpirationTimestamp            string `hfsdk:"spec.expirationTimestamp"`
 	RoleARN                        string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.aws.roleARN"`
 	Platform                       string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.platform"`
 	ProvisionerConfigName          string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.name"`
 	Channel                        string `hfsdk:"spec.hostedCluster.channel"`
+	OidcProviders                  string `hfsdk:"spec.hostedCluster.configuration.authentication.oidcProviders"`
+	AuthenticationType             string `hfsdk:"spec.hostedCluster.configuration.authentication.type"`
 	ComponentRoutes                string `hfsdk:"spec.hostedCluster.configuration.ingress.componentRoutes"`
 	ContainerLogMaxFiles           *int32 `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxFiles"`
 	ContainerLogMaxSize            string `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxSize"`
@@ -70,12 +71,12 @@ type ClusterUpdateInput struct {
 var ClusterUpdatePlatformAPIFlags = []string{
 	"additional-trust-bundle",
 	"delete-protection",
-	"display-name",
 	"expiration-time",
 	"role-arn",
 	"platform",
 	"provisioner-config-name",
 	"channel",
+	"authentication-type",
 	"component-routes",
 	"container-log-max-files",
 	"container-log-max-size",
@@ -129,9 +130,6 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 		input.DeleteProtection = new(bool)
 		f.BoolVar(input.DeleteProtection, "delete-protection", false, "Enable delete protection on the cluster.")
 	})
-	registerIfNew(f, "display-name", func() {
-		f.StringVar(&input.DisplayName, "display-name", "", "Human-readable display name for the cluster.")
-	})
 	registerIfNew(f, "expiration-time", func() {
 		f.StringVar(&input.ExpirationTimestamp, "expiration-time", "", "Cluster expiration time (RFC3339).")
 	})
@@ -139,6 +137,7 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	registerIfNew(f, "platform", func() { f.StringVar(&input.Platform, "platform", "", "") })
 	registerIfNew(f, "provisioner-config-name", func() { f.StringVar(&input.ProvisionerConfigName, "provisioner-config-name", "", "") })
 	registerIfNew(f, "channel", func() { f.StringVar(&input.Channel, "channel", "", "") })
+	registerIfNew(f, "authentication-type", func() { f.StringVar(&input.AuthenticationType, "authentication-type", "", "") })
 	registerIfNew(f, "component-routes", func() { f.StringVar(&input.ComponentRoutes, "component-routes", "", "") })
 	registerIfNew(f, "container-log-max-files", func() {
 		input.ContainerLogMaxFiles = new(int32)
@@ -279,8 +278,8 @@ func normalizeClusterUpdateInput(cmd *cobra.Command, input *ClusterUpdateInput) 
 }
 
 // RunUpdateCluster executes the update dispatch. Generated; do not edit.
-// uid is the server-assigned UID of the resource to update.
-func RunUpdateCluster(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, uid string, input *ClusterUpdateInput, h ClusterUpdateHandler) error {
+// name is the account-scoped metadata.name used to address the resource in the Platform API.
+func RunUpdateCluster(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, name string, input *ClusterUpdateInput, h ClusterUpdateHandler) error {
 	if interactive.Enabled() {
 		if err := h.Prompt(ctx, r, cmd, input); err != nil {
 			return err
@@ -294,7 +293,7 @@ func RunUpdateCluster(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, 
 	if err := pathbind.Expand(ctx, *input, obj); err != nil {
 		return err
 	}
-	obj.Name = uid
+	obj.Name = name
 	if err := h.PostExpand(ctx, r, input, obj); err != nil {
 		return err
 	}

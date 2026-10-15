@@ -409,7 +409,7 @@ func helper_v2_oidc_configs(rosaClient *rosacli.Client, ocmResourceService rosac
 	createdConfig := rosaClient.Parser.JsonData.Input(output).Parse()
 	managedOIDCConfigID = createdConfig.DigString("id")
 	if managedOIDCConfigID == "" {
-		managedOIDCConfigID = createdConfig.DigString("metadata", "name")
+		managedOIDCConfigID = createdConfig.DigString("metadata", "uid")
 	}
 	Expect(managedOIDCConfigID).ToNot(BeEmpty(), "create response should include the new OIDC config ID")
 	oidcConfigIDsNeedToClean = append(oidcConfigIDsNeedToClean, managedOIDCConfigID)

@@ -60,6 +60,7 @@ func DescribeAutoscalerRunner() rosa.CommandRunner {
 		}
 
 		if autoscaler == nil {
+			//nolint:staticcheck // preserve OCM-compatible CLI wording
 			return fmt.Errorf("No autoscaler exists for cluster '%s'", runtime.ClusterKey)
 		}
 

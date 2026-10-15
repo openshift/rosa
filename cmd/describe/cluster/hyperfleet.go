@@ -97,13 +97,13 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 		exitFn(1)
 	}
 
-	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
+	clusterName, err := hyperfleet.ResolveClusterName(ctx, r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
 	}
 
-	description, err := hyperfleet.GetClusterDescription(ctx, r.HyperFleetClient, clusterID)
+	description, err := hyperfleet.GetClusterDescription(ctx, r.HyperFleetClient, clusterName)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		exitFn(1)
@@ -111,8 +111,8 @@ func runHyperfleetDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 	cluster := description.Cluster
 
 	// Get nodepools to determine data plane availability
-	nodePools := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(string(cluster.UID))
-	npList, err := nodePools.List(ctx, platform.ListOptions{})
+	nodePools := r.HyperFleetClient.HyperfleetV1alpha1().NodePools()
+	npList, err := nodePools.List(ctx, platform.NodePoolListOptions{ClusterUID: string(cluster.UID)})
 	if err != nil {
 		r.Reporter.Warnf("Failed to list nodepools: %v", err)
 		npList = nil

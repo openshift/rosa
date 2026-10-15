@@ -140,7 +140,7 @@ var _ = Describe("OIDC provider by OIDC config ID",
 					createdConfig := rosaClient.Parser.JsonData.Input(output).Parse()
 					oidcConfigID = createdConfig.DigString("id")
 					if oidcConfigID == "" {
-						oidcConfigID = createdConfig.DigString("metadata", "name")
+						oidcConfigID = createdConfig.DigString("metadata", "uid")
 					}
 				} else {
 					By("Create a managed OIDC config through OCM")

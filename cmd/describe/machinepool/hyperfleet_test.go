@@ -26,9 +26,9 @@ func buildTestNodePool() *v1alpha1.NodePool {
 				Replicas: &replicas,
 				Release:  hypershiftv1beta1.Release{Image: "v4.17.0-ec.2"},
 				Platform: v1alpha1.NodePoolPlatform{
-					AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
+					AWS: &v1alpha1.AWSNodePoolPlatform{
 						InstanceType: "m5.xlarge",
-						RootVolume:   &hypershiftv1beta1.Volume{Size: 75},
+						RootVolume:   &v1alpha1.Volume{Size: 75},
 					},
 				},
 			},
@@ -76,7 +76,7 @@ var _ = Describe("hyperfleet dispatch", func() {
 var _ = Describe("hfNodePoolToMap", func() {
 	It("maps all core fields", func() {
 		np := buildTestNodePool()
-		m := hfNodePoolToMap(np)
+		m := hfNodePoolToMap(np, "my-cluster")
 
 		Expect(m["id"]).To(Equal("np-uid-789"))
 		Expect(m["name"]).To(Equal("my-nodepool"))
@@ -90,7 +90,7 @@ var _ = Describe("hfNodePoolToMap", func() {
 
 	It("maps conditions", func() {
 		np := buildTestNodePool()
-		m := hfNodePoolToMap(np)
+		m := hfNodePoolToMap(np, "my-cluster")
 
 		conds, ok := m["conditions"].([]map[string]interface{})
 		Expect(ok).To(BeTrue())
@@ -104,14 +104,14 @@ var _ = Describe("hfNodePoolToMap", func() {
 	It("handles nil replicas as zero", func() {
 		np := buildTestNodePool()
 		np.Spec.NodePool.Replicas = nil
-		m := hfNodePoolToMap(np)
+		m := hfNodePoolToMap(np, "my-cluster")
 		Expect(m["replicas"]).To(Equal(int32(0)))
 	})
 
 	It("handles nil AWS platform", func() {
 		np := buildTestNodePool()
 		np.Spec.NodePool.Platform.AWS = nil
-		m := hfNodePoolToMap(np)
+		m := hfNodePoolToMap(np, "my-cluster")
 		Expect(m["instanceType"]).To(Equal(""))
 		Expect(m["security_group_ids"]).To(BeEmpty())
 	})
@@ -122,20 +122,20 @@ var _ = Describe("hfNodePoolToMap", func() {
 		np.Spec.NodePool.Platform.AWS.SecurityGroups = []hypershiftv1beta1.AWSResourceReference{
 			{ID: &sg1}, {ID: &sg2},
 		}
-		m := hfNodePoolToMap(np)
+		m := hfNodePoolToMap(np, "my-cluster")
 		Expect(m["security_group_ids"]).To(Equal([]string{"sg-1", "sg-2"}))
 	})
 
 	It("returns an empty slice when no security groups are set", func() {
 		np := buildTestNodePool()
-		m := hfNodePoolToMap(np)
+		m := hfNodePoolToMap(np, "my-cluster")
 		Expect(m["security_group_ids"]).To(Equal([]string{}))
 	})
 
 	It("returns empty conditions slice when no conditions", func() {
 		np := buildTestNodePool()
 		np.Status.Conditions = nil
-		m := hfNodePoolToMap(np)
+		m := hfNodePoolToMap(np, "my-cluster")
 
 		conds, ok := m["conditions"].([]map[string]interface{})
 		Expect(ok).To(BeTrue())
@@ -149,13 +149,13 @@ var _ = Describe("hfSecurityGroupIDs", func() {
 	})
 
 	It("returns an empty slice when no security groups are set", func() {
-		aws := &hypershiftv1beta1.AWSNodePoolPlatform{}
+		aws := &v1alpha1.AWSNodePoolPlatform{}
 		Expect(hfSecurityGroupIDs(aws)).To(Equal([]string{}))
 	})
 
 	It("extracts IDs in order, skipping entries with a nil ID", func() {
 		sg1, sg3 := "sg-1", "sg-3"
-		aws := &hypershiftv1beta1.AWSNodePoolPlatform{
+		aws := &v1alpha1.AWSNodePoolPlatform{
 			SecurityGroups: []hypershiftv1beta1.AWSResourceReference{
 				{ID: &sg1}, {ID: nil}, {ID: &sg3},
 			},
@@ -248,7 +248,7 @@ var _ = Describe("HyperFleet nodepool label and taint output", func() {
 		pool.Spec.NodePool.Taints = []hypershiftv1beta1.Taint{{Key: "dedicated", Value: "", Effect: "NoSchedule"}}
 		securityGroupID := "sg-customer"
 		pool.Spec.NodePool.Platform.AWS.SecurityGroups = []hypershiftv1beta1.AWSResourceReference{{ID: &securityGroupID}}
-		mapped := hfNodePoolToMap(pool)
+		mapped := hfNodePoolToMap(pool, "cluster")
 		Expect(mapped["labels"]).To(Equal(pool.Spec.Labels))
 		Expect(mapped["taints"]).To(Equal(pool.Spec.NodePool.Taints))
 		Expect(mapped["security_group_ids"]).To(Equal([]string{securityGroupID}))
@@ -261,7 +261,7 @@ var _ = Describe("HyperFleet nodepool label and taint output", func() {
 	It("shows no customer labels after clearing even with stale operator labels", func() {
 		pool := buildTestNodePool()
 		pool.Spec.NodePool.NodeLabels = map[string]string{"old": "value"}
-		Expect(hfNodePoolToMap(pool)["labels"]).To(BeEmpty())
+		Expect(hfNodePoolToMap(pool, "cluster")["labels"]).To(BeEmpty())
 		Expect(hfNodePoolToString(pool, "cluster")).NotTo(ContainSubstring("old=value"))
 	})
 })
