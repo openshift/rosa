@@ -32,13 +32,15 @@ func runHyperfleetList(r *rosa.Runtime) {
 		exitFn(1)
 	}
 
-	clusterUID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
+	cluster, err := hyperfleet.ResolveCluster(ctx, r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
 	}
 
-	list, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).List(ctx, platform.ListOptions{})
+	list, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools().List(ctx, platform.NodePoolListOptions{
+		ClusterUID: string(cluster.UID),
+	})
 	if err != nil {
 		r.Reporter.Errorf("Failed to list node pools: %v", err)
 		exitFn(1)
@@ -64,7 +66,7 @@ func runHyperfleetList(r *rosa.Runtime) {
 		diskSize := hyperfleet.FormatNodePoolDiskSize(np.Spec.NodePool.Platform.AWS)
 		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			string(np.UID),
-			np.Name,
+			hyperfleet.NodePoolDisplayName(cluster.Name, np.Name),
 			hyperfleet.FormatNodePoolReplicas(&np),
 			instanceType,
 			subnetID,

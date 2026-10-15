@@ -44,8 +44,9 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 		}
 		ch.clusterConfig.Version.ChannelGroup = ch.profile.ChannelGroup
 	}
-	if ch.profile.Version != "" && ch.clusterConfig.Version != nil {
-		ch.clusterConfig.Version.VersionRequirement = ch.profile.Version
+	if versionRequirement := platformAPIVersionRequirement(ch.profile.Version); versionRequirement != "" &&
+		ch.clusterConfig.Version != nil {
+		ch.clusterConfig.Version.VersionRequirement = versionRequirement
 	}
 
 	if r := ch.profile.Region; r != "" {
@@ -201,6 +202,13 @@ func resolvePlatformAPIVersion(profileVersion string) (string, bool) {
 		)
 	}
 	return "", false
+}
+
+func platformAPIVersionRequirement(profileVersion string) string {
+	if version := os.Getenv("HYPERFLEET_VERSION"); version != "" {
+		return version
+	}
+	return profileVersion
 }
 
 func prepareBYOVPCSubnets(
@@ -420,8 +428,8 @@ func (ch *clusterHandler) recordHyperfleetClusterVersion(clusterKey string) {
 	if ch.profile.ChannelGroup != "" {
 		ch.clusterConfig.Version.ChannelGroup = ch.profile.ChannelGroup
 	}
-	if ch.profile.Version != "" {
-		ch.clusterConfig.Version.VersionRequirement = ch.profile.Version
+	if versionRequirement := platformAPIVersionRequirement(ch.profile.Version); versionRequirement != "" {
+		ch.clusterConfig.Version.VersionRequirement = versionRequirement
 	}
 	_ = ch.saveToFile()
 }

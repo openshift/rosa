@@ -31,8 +31,7 @@ var (
 )
 
 // runHyperfleetDelete deletes an HCP cluster via the Platform API v2.
-// It resolves the human-readable cluster name to its server-assigned UID
-// (the Platform API routes mutations by UID, not by name).
+// It resolves a user-provided name or UID to metadata.name for account-scoped routes.
 func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 	ctx := cmd.Context()
 
@@ -42,14 +41,14 @@ func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 		exitFn(1)
 	}
 
-	clusterID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
+	clusterName, err := hyperfleet.ResolveClusterName(ctx, r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
 	}
 
 	clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
-	cluster, err := clusters.Get(ctx, clusterID, platform.GetOptions{})
+	cluster, err := clusters.Get(ctx, clusterName, platform.GetOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to get cluster '%s': %v", clusterKey, err)
 		exitFn(1)
@@ -64,7 +63,7 @@ func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 		return
 	}
 
-	if err = clusters.Delete(ctx, clusterID, platform.DeleteOptions{}); err != nil {
+	if err = clusters.Delete(ctx, clusterName, platform.DeleteOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to delete cluster '%s': %v", clusterKey, err)
 		exitFn(1)
 	}
@@ -75,7 +74,7 @@ func runHyperfleetDelete(r *rosa.Runtime, cmd *cobra.Command) {
 		return
 	}
 
-	err = clusters.WaitUntil(ctx, clusterID, func(c *v1alpha1.Cluster) bool {
+	err = clusters.WaitUntil(ctx, clusterName, func(c *v1alpha1.Cluster) bool {
 		return c == nil
 	}, hfWatchInterval, hfWatchTimeout)
 	if err != nil {

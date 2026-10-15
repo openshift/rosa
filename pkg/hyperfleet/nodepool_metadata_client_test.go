@@ -43,7 +43,7 @@ func metadataTestClient(handler http.HandlerFunc) (*hfmocks.MockInterface, *hfmo
 	ctrl := gomock.NewController(GinkgoT())
 	hf, v1, pools := hfmocks.NewMockInterface(ctrl), hfmocks.NewMockV1alpha1PublicInterface(ctrl), hfmocks.NewMockNodePoolInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
-	v1.EXPECT().NodePools("cluster-cluster-uid").Return(pools).AnyTimes()
+	v1.EXPECT().NodePools().Return(pools).AnyTimes()
 	v1.EXPECT().RESTClient().Return(client).AnyTimes()
 	return hf, pools
 }
@@ -51,8 +51,8 @@ func metadataTestClient(handler http.HandlerFunc) (*hfmocks.MockInterface, *hfmo
 var _ = Describe("Nodepool metadata updates", func() {
 	DescribeTable("preserves request fields and explicit clearing", func(labelsChanged, taintsChanged, empty bool) {
 		replicas := int32(3)
-		pool := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: types.UID("pool-uid")}, Spec: v1alpha1.NodePoolSpec{
-			DisplayName: "Workers", Labels: map[string]string{"team": "test"},
+		pool := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-cluster.workers", UID: types.UID("pool-uid")}, Spec: v1alpha1.NodePoolSpec{
+			Labels:   map[string]string{"team": "test"},
 			NodePool: v1alpha1.NodePoolSpecPassthrough{Replicas: &replicas, Taints: []hypershiftv1beta1.Taint{{Key: "team", Value: "test", Effect: "NoSchedule"}}},
 		}}
 		if empty {
@@ -74,17 +74,17 @@ var _ = Describe("Nodepool metadata updates", func() {
 		}
 		hf, _ := metadataTestClient(func(w http.ResponseWriter, req *http.Request) {
 			Expect(req.Method).To(Equal(http.MethodPut))
-			Expect(req.URL.Path).To(Equal("/nodepools/pool-uid"))
-			Expect(req.URL.Query().Get("clusterId")).To(Equal("cluster-uid"))
+			Expect(req.URL.Path).To(Equal("/nodepools/my-cluster.workers"))
+			Expect(req.URL.Query()).To(BeEmpty())
 			body := map[string]any{}
 			Expect(json.NewDecoder(req.Body).Decode(&body)).To(Succeed())
 			Expect(body).To(Equal(expected))
-			_, err := w.Write([]byte(`{"metadata":{"name":"workers","uid":"pool-uid"}}`))
+			_, err := w.Write([]byte(`{"metadata":{"name":"my-cluster.workers","uid":"pool-uid"}}`))
 			Expect(err).NotTo(HaveOccurred())
 		})
-		updated, err := WithNodePoolMetadataUpdates(hf, labelsChanged, taintsChanged).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), pool, platform.UpdateOptions{})
+		updated, err := WithNodePoolMetadataUpdates(hf, labelsChanged, taintsChanged).HyperfleetV1alpha1().NodePools().Update(context.Background(), pool, platform.UpdateOptions{})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(updated.Name).To(Equal("workers"))
+		Expect(updated.Name).To(Equal("my-cluster.workers"))
 		Expect(pool).To(Equal(original))
 	},
 		Entry("both fields set", true, true, false), Entry("labels only", true, false, false),
@@ -93,30 +93,48 @@ var _ = Describe("Nodepool metadata updates", func() {
 	)
 	It("delegates reads to the SDK", func() {
 		hf, pools := metadataTestClient(func(http.ResponseWriter, *http.Request) { Fail("unexpected HTTP request") })
-		pools.EXPECT().Get(gomock.Any(), "pool-uid", platform.GetOptions{}).Return(&v1alpha1.NodePool{}, nil)
-		_, err := WithNodePoolMetadataUpdates(hf, true, true).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Get(context.Background(), "pool-uid", platform.GetOptions{})
+		pools.EXPECT().Get(gomock.Any(), "my-cluster.workers", platform.GetOptions{}).Return(&v1alpha1.NodePool{}, nil)
+		_, err := WithNodePoolMetadataUpdates(hf, true, true).HyperfleetV1alpha1().NodePools().Get(context.Background(), "my-cluster.workers", platform.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 	})
-	DescribeTable("rejects pools without a UID", func(pool *v1alpha1.NodePool) {
+	DescribeTable("rejects pools without a name", func(pool *v1alpha1.NodePool) {
 		hf, _ := metadataTestClient(func(http.ResponseWriter, *http.Request) { Fail("unexpected HTTP request") })
-		_, err := WithNodePoolMetadataUpdates(hf, true, true).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), pool, platform.UpdateOptions{})
+		_, err := WithNodePoolMetadataUpdates(hf, true, true).HyperfleetV1alpha1().NodePools().Update(context.Background(), pool, platform.UpdateOptions{})
+		Expect(err).To(MatchError("node pool name is required"))
+	}, Entry("nil pool", (*v1alpha1.NodePool)(nil)), Entry("empty name", &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{UID: "pool-uid"}}))
+	It("rejects updates without a UID", func() {
+		hf, _ := metadataTestClient(func(http.ResponseWriter, *http.Request) { Fail("unexpected HTTP request") })
+		pool := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-cluster.workers"}}
+		_, err := WithNodePoolMetadataUpdates(hf, true, true).HyperfleetV1alpha1().NodePools().Update(context.Background(), pool, platform.UpdateOptions{})
 		Expect(err).To(MatchError("node pool UID is required"))
-	}, Entry("nil pool", (*v1alpha1.NodePool)(nil)), Entry("empty UID", &v1alpha1.NodePool{}))
+	})
 	It("preserves API error details", func() {
 		hf, _ := metadataTestClient(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte(`{"kind":"Status","apiVersion":"v1","status":"Failure","message":"invalid labels","code":400}`))
 			Expect(err).NotTo(HaveOccurred())
 		})
-		_, err := WithNodePoolMetadataUpdates(hf, true, false).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{UID: "pool-uid"}}, platform.UpdateOptions{})
+		_, err := WithNodePoolMetadataUpdates(hf, true, false).HyperfleetV1alpha1().NodePools().Update(context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-cluster.workers", UID: "pool-uid"}}, platform.UpdateOptions{})
 		Expect(err).To(MatchError("invalid labels"))
+	})
+	It("includes the Platform API errors field in validation failures", func() {
+		hf, _ := metadataTestClient(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err := w.Write([]byte(`{"kind":"Status","apiVersion":"v1","status":"Failure","message":"NODEPOOLS-MGMT-VALIDATION-001: validation failed","code":400,"errors":[{"field":"spec.nodePool.replicas","message":"replicas exceeds the pool limit"}]}`))
+			Expect(err).NotTo(HaveOccurred())
+		})
+		_, err := WithNodePoolMetadataUpdates(hf, false, false).HyperfleetV1alpha1().NodePools().Update(
+			context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-cluster.workers", UID: "pool-uid"}},
+			platform.UpdateOptions{},
+		)
+		Expect(err).To(MatchError(ContainSubstring("replicas exceeds the pool limit")))
 	})
 	It("reports malformed API responses", func() {
 		hf, _ := metadataTestClient(func(w http.ResponseWriter, _ *http.Request) {
 			_, err := w.Write([]byte("{"))
 			Expect(err).NotTo(HaveOccurred())
 		})
-		_, err := WithNodePoolMetadataUpdates(hf, true, false).HyperfleetV1alpha1().NodePools("cluster-cluster-uid").Update(context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{UID: "pool-uid"}}, platform.UpdateOptions{})
+		_, err := WithNodePoolMetadataUpdates(hf, true, false).HyperfleetV1alpha1().NodePools().Update(context.Background(), &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-cluster.workers", UID: "pool-uid"}}, platform.UpdateOptions{})
 		Expect(err).To(MatchError(ContainSubstring("failed to decode node pool update")))
 	})
 })

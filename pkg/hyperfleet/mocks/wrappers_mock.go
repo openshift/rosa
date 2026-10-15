@@ -148,6 +148,133 @@ func (mr *MockClusterInterfaceMockRecorder) WaitUntil(ctx, id, condition, interv
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitUntil", reflect.TypeOf((*MockClusterInterface)(nil).WaitUntil), ctx, id, condition, interval, timeout)
 }
 
+// MockDNSReservationInterface is a mock of DNSReservationInterface interface.
+type MockDNSReservationInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockDNSReservationInterfaceMockRecorder
+	isgomock struct{}
+}
+
+// MockDNSReservationInterfaceMockRecorder is the mock recorder for MockDNSReservationInterface.
+type MockDNSReservationInterfaceMockRecorder struct {
+	mock *MockDNSReservationInterface
+}
+
+// NewMockDNSReservationInterface creates a new mock instance.
+func NewMockDNSReservationInterface(ctrl *gomock.Controller) *MockDNSReservationInterface {
+	mock := &MockDNSReservationInterface{ctrl: ctrl}
+	mock.recorder = &MockDNSReservationInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockDNSReservationInterface) EXPECT() *MockDNSReservationInterfaceMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockDNSReservationInterface) Create(ctx context.Context, obj *public.DNSReservation, opts platform.CreateOptions) (*public.DNSReservation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, obj, opts)
+	ret0, _ := ret[0].(*public.DNSReservation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockDNSReservationInterfaceMockRecorder) Create(ctx, obj, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockDNSReservationInterface)(nil).Create), ctx, obj, opts)
+}
+
+// Delete mocks base method.
+func (m *MockDNSReservationInterface) Delete(ctx context.Context, name string, opts platform.DeleteOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, name, opts)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockDNSReservationInterfaceMockRecorder) Delete(ctx, name, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDNSReservationInterface)(nil).Delete), ctx, name, opts)
+}
+
+// Get mocks base method.
+func (m *MockDNSReservationInterface) Get(ctx context.Context, name string, opts platform.GetOptions) (*public.DNSReservation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, name, opts)
+	ret0, _ := ret[0].(*public.DNSReservation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockDNSReservationInterfaceMockRecorder) Get(ctx, name, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockDNSReservationInterface)(nil).Get), ctx, name, opts)
+}
+
+// List mocks base method.
+func (m *MockDNSReservationInterface) List(ctx context.Context, opts platform.ListOptions) (*public.DNSReservationList, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, opts)
+	ret0, _ := ret[0].(*public.DNSReservationList)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockDNSReservationInterfaceMockRecorder) List(ctx, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockDNSReservationInterface)(nil).List), ctx, opts)
+}
+
+// Patch mocks base method.
+func (m *MockDNSReservationInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts platform.PatchOptions) (*public.DNSReservation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Patch", ctx, name, pt, data, opts)
+	ret0, _ := ret[0].(*public.DNSReservation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Patch indicates an expected call of Patch.
+func (mr *MockDNSReservationInterfaceMockRecorder) Patch(ctx, name, pt, data, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Patch", reflect.TypeOf((*MockDNSReservationInterface)(nil).Patch), ctx, name, pt, data, opts)
+}
+
+// Update mocks base method.
+func (m *MockDNSReservationInterface) Update(ctx context.Context, obj *public.DNSReservation, opts platform.UpdateOptions) (*public.DNSReservation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, obj, opts)
+	ret0, _ := ret[0].(*public.DNSReservation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockDNSReservationInterfaceMockRecorder) Update(ctx, obj, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockDNSReservationInterface)(nil).Update), ctx, obj, opts)
+}
+
+// WaitUntil mocks base method.
+func (m *MockDNSReservationInterface) WaitUntil(ctx context.Context, id string, condition func(*public.DNSReservation) bool, interval, timeout time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WaitUntil", ctx, id, condition, interval, timeout)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WaitUntil indicates an expected call of WaitUntil.
+func (mr *MockDNSReservationInterfaceMockRecorder) WaitUntil(ctx, id, condition, interval, timeout any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitUntil", reflect.TypeOf((*MockDNSReservationInterface)(nil).WaitUntil), ctx, id, condition, interval, timeout)
+}
+
 // MockNodePoolInterface is a mock of NodePoolInterface interface.
 type MockNodePoolInterface struct {
 	ctrl     *gomock.Controller
@@ -217,7 +344,7 @@ func (mr *MockNodePoolInterfaceMockRecorder) Get(ctx, name, opts any) *gomock.Ca
 }
 
 // List mocks base method.
-func (m *MockNodePoolInterface) List(ctx context.Context, opts platform.ListOptions) (*public.NodePoolList, error) {
+func (m *MockNodePoolInterface) List(ctx context.Context, opts platform.NodePoolListOptions) (*public.NodePoolList, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx, opts)
 	ret0, _ := ret[0].(*public.NodePoolList)
@@ -440,18 +567,32 @@ func (mr *MockV1alpha1PublicInterfaceMockRecorder) Clusters() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clusters", reflect.TypeOf((*MockV1alpha1PublicInterface)(nil).Clusters))
 }
 
-// NodePools mocks base method.
-func (m *MockV1alpha1PublicInterface) NodePools(namespace string) platform.NodePoolInterface {
+// DNSReservations mocks base method.
+func (m *MockV1alpha1PublicInterface) DNSReservations() platform.DNSReservationInterface {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NodePools", namespace)
+	ret := m.ctrl.Call(m, "DNSReservations")
+	ret0, _ := ret[0].(platform.DNSReservationInterface)
+	return ret0
+}
+
+// DNSReservations indicates an expected call of DNSReservations.
+func (mr *MockV1alpha1PublicInterfaceMockRecorder) DNSReservations() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DNSReservations", reflect.TypeOf((*MockV1alpha1PublicInterface)(nil).DNSReservations))
+}
+
+// NodePools mocks base method.
+func (m *MockV1alpha1PublicInterface) NodePools() platform.NodePoolInterface {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NodePools")
 	ret0, _ := ret[0].(platform.NodePoolInterface)
 	return ret0
 }
 
 // NodePools indicates an expected call of NodePools.
-func (mr *MockV1alpha1PublicInterfaceMockRecorder) NodePools(namespace any) *gomock.Call {
+func (mr *MockV1alpha1PublicInterfaceMockRecorder) NodePools() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NodePools", reflect.TypeOf((*MockV1alpha1PublicInterface)(nil).NodePools), namespace)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NodePools", reflect.TypeOf((*MockV1alpha1PublicInterface)(nil).NodePools))
 }
 
 // OidcConfigs mocks base method.

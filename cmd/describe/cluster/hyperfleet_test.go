@@ -270,7 +270,7 @@ var _ = Describe("hfDefaultNodePoolInstanceTypeFromList", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: "custom"},
 			Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
 				Platform: v1alpha1.NodePoolPlatform{
-					AWS: &hypershiftv1beta1.AWSNodePoolPlatform{InstanceType: "m7i.xlarge"},
+					AWS: &v1alpha1.AWSNodePoolPlatform{InstanceType: "m7i.xlarge"},
 				},
 			}},
 		}}}

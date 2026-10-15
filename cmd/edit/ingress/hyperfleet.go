@@ -9,11 +9,12 @@ import (
 	"fmt"
 	"sort"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -42,12 +43,12 @@ func editHyperfleetComponentRoutesRunner() rosa.CommandRunner {
 		}
 
 		clusterKey := r.GetClusterKey()
-		clusterUID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
+		clusterName, err := hyperfleet.ResolveClusterName(ctx, r.HyperFleetClient, clusterKey)
 		if err != nil {
 			return err
 		}
 		clusters := r.HyperFleetClient.HyperfleetV1alpha1().Clusters()
-		cluster, err := clusters.Get(ctx, clusterUID, platform.GetOptions{})
+		cluster, err := clusters.Get(ctx, clusterName, platform.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get cluster %q: %w", clusterKey, err)
 		}
@@ -101,7 +102,7 @@ func editHyperfleetComponentRoutesRunner() rosa.CommandRunner {
 		if err != nil {
 			return fmt.Errorf("failed to build component-routes update: %w", err)
 		}
-		if _, err := clusters.Patch(ctx, clusterUID, types.MergePatchType, patch, platform.PatchOptions{}); err != nil {
+		if _, err := clusters.Patch(ctx, clusterName, types.MergePatchType, patch, platform.PatchOptions{}); err != nil {
 			return fmt.Errorf("failed to update component routes for cluster %q: %w", clusterKey, err)
 		}
 

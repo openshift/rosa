@@ -52,7 +52,7 @@ func runHyperfleetList(r *rosa.Runtime) {
 		configs := make([]map[string]interface{}, 0, len(oidcConfigList.Items))
 		for _, config := range oidcConfigList.Items {
 			configs = append(configs, map[string]interface{}{
-				"id":             config.Name,
+				"id":             string(config.UID),
 				"type":           config.Spec.Type,
 				"issuer_url":     getIssuerUrl(&config),
 				"secret_arn":     config.Spec.SecretArn,
@@ -82,7 +82,7 @@ func runHyperfleetList(r *rosa.Runtime) {
 			managed = "unmanaged"
 		}
 		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
-			config.Name,
+			string(config.UID),
 			managed,
 			getIssuerUrl(&config),
 			config.Spec.SecretArn,

@@ -7,14 +7,9 @@ import (
 )
 
 // ClusterSpec defines the desired state of a ROSA HCP cluster.
-// metadata.Name is the human-readable cluster name; metadata.Namespace is the cluster UUID.
-// The owning AWS account is stored as the label hyperfleet.io/account-id.
+// metadata.Name is the client-chosen account-scoped name; metadata.Namespace
+// is account-<accountID>.
 type ClusterSpec struct {
-	// DisplayName is a human-readable name for the cluster.
-	// +hyperfleet:write-mode=mutable
-	// +kubebuilder:validation:MaxLength=256
-	// +optional
-	DisplayName string `json:"displayName,omitempty"`
 	// DeleteProtection prevents accidental deletion when enabled.
 	// +hyperfleet:write-mode=mutable
 	// +optional
@@ -47,8 +42,14 @@ type ClusterSpec struct {
 	// +kubebuilder:validation:MaxProperties=23
 	// +optional
 	Tags map[string]string `json:"tags,omitempty"`
-	// OidcConfigID selects the OidcConfig-backed issuer flow when set, or the
-	// legacy auto-generated issuer flow when empty. Immutable after creation.
+	// DNSReservationID is the UID of an account-scoped DNSReservation to bind to
+	// this Cluster. If omitted, the operator allocates and binds one automatically.
+	// Immutable after creation.
+	// +hyperfleet:write-mode=immutable
+	// +optional
+	DNSReservationID string `json:"dnsReservationId,omitempty"`
+	// OidcConfigID is the UID of the account-scoped OidcConfig to use for cluster
+	// identity. Empty selects the legacy managed issuer flow. Immutable after creation.
 	// +hyperfleet:write-mode=immutable
 	// +optional
 	OidcConfigID string `json:"oidcConfigId,omitempty"`

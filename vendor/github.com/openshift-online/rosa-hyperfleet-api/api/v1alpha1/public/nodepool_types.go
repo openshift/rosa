@@ -8,13 +8,18 @@ import (
 
 // NodePool is the Schema for the nodepools API.
 // It represents a set of worker nodes for a Cluster.
-// The parent Cluster shares the same metadata.Namespace (cluster UUID).
+// metadata.Namespace is account-<accountID>. metadata.Name is the client-selected
+// <cluster>.<child> name.
+// The parent Cluster name is the prefix of metadata.name; the server sets its
+// ownerReference and cluster-uid label after resolving that Cluster by account namespace/name.
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced
 // +kubebuilder:subresource:status
 // +genclient
+// +genclient:nonNamespaced
 // +bridge:watch=disabled
 // +bridge:wait
+// +bridge:parent=Cluster,label=hyperfleet.io/cluster-uid
 type NodePool struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

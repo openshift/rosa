@@ -2,6 +2,8 @@ package oidcconfig
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
@@ -127,10 +129,21 @@ func (h *hyperfleetOidcConfigCreate) PreRequest(
 	r *rosa.Runtime,
 	input *hfpathbind.OidcConfigCreateInput,
 ) error {
-	// Bridge flags that conflict with OCM v1 registrations (if any)
-	// input.Name comes from --name (or could be from --prefix)
+	// The Platform API requires a caller-chosen resource name. The legacy OCM
+	// endpoint generated the ID, so use the user prefix when provided and generate
+	// a unique managed name otherwise.
 	if input.Name == "" && args.userPrefix != "" {
 		input.Name = args.userPrefix
+	}
+	if input.Name == "" && args.managed {
+		name, err := newManagedOidcConfigName()
+		if err != nil {
+			return err
+		}
+		input.Name = name
+	}
+	if input.Name == "" {
+		return fmt.Errorf("OIDC config name is required; specify --prefix")
 	}
 
 	// Set OIDC config type based on --managed flag
@@ -161,8 +174,18 @@ func (h *hyperfleetOidcConfigCreate) PostExpand(
 	input *hfpathbind.OidcConfigCreateInput,
 	obj *v1alpha1.OidcConfig,
 ) error {
-	// Nothing additional to set - pathbind.Expand handles the field mapping
+	if obj.Name == "" || obj.Spec.Type == "" {
+		return fmt.Errorf("OIDC config name and type are required")
+	}
 	return nil
+}
+
+func newManagedOidcConfigName() (string, error) {
+	suffix := make([]byte, 8)
+	if _, err := rand.Read(suffix); err != nil {
+		return "", fmt.Errorf("failed to generate managed OIDC config name: %w", err)
+	}
+	return "managed-oidc-" + hex.EncodeToString(suffix), nil
 }
 
 func (h *hyperfleetOidcConfigCreate) PostResponse(

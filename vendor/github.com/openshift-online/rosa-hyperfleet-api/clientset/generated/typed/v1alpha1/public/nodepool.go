@@ -32,7 +32,7 @@ import (
 // NodePoolsGetter has a method to return a NodePoolInterface.
 // A group's client should implement this interface.
 type NodePoolsGetter interface {
-	NodePools(namespace string) NodePoolInterface
+	NodePools() NodePoolInterface
 }
 
 // NodePoolInterface has methods to work with NodePool resources.
@@ -56,13 +56,13 @@ type nodePools struct {
 }
 
 // newNodePools returns a NodePools
-func newNodePools(c *V1alpha1PublicClient, namespace string) *nodePools {
+func newNodePools(c *V1alpha1PublicClient) *nodePools {
 	return &nodePools{
 		gentype.NewClientWithList[*v1alpha1public.NodePool, *v1alpha1public.NodePoolList](
 			"nodepools",
 			c.RESTClient(),
 			scheme.ParameterCodec,
-			namespace,
+			"",
 			func() *v1alpha1public.NodePool { return &v1alpha1public.NodePool{} },
 			func() *v1alpha1public.NodePoolList { return &v1alpha1public.NodePoolList{} },
 		),

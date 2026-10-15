@@ -473,7 +473,7 @@ var _ = Describe("Hyperfleet sanity",
 			parsed := rosacli.NewParser().JsonData.Input(oidcCreateOut).Parse()
 			oidcConfigID := parsed.DigString("id")
 			if oidcConfigID == "" {
-				oidcConfigID = parsed.DigString("metadata", "name")
+				oidcConfigID = parsed.DigString("metadata", "uid")
 			}
 			Expect(oidcConfigID).NotTo(BeEmpty(), "OIDC config ID must be returned by create")
 			GinkgoWriter.Printf("OIDC config created with ID %s\n", oidcConfigID)
@@ -559,7 +559,7 @@ var _ = Describe("Hyperfleet sanity",
 				}
 				By("Waiting for cluster to be fully deleted before releasing AWS resources")
 				_ = hfClient.HyperfleetV1alpha1().Clusters().WaitUntil(
-					ctx, clusterID,
+					ctx, clusterName,
 					func(c *v1alpha1.Cluster) bool {
 						if c == nil {
 							GinkgoWriter.Printf("Cluster %s deleted\n", clusterName)
@@ -614,7 +614,7 @@ var _ = Describe("Hyperfleet sanity",
 			var clusterPhase v1alpha1.ClusterPhase
 			err = hfClient.HyperfleetV1alpha1().Clusters().WaitUntil(
 				ctx,
-				clusterID,
+				clusterName,
 				func(c *v1alpha1.Cluster) bool {
 					if c == nil {
 						return false
@@ -642,7 +642,7 @@ var _ = Describe("Hyperfleet sanity",
 
 			By("Describing cluster via CLI and comparing with Get response")
 			getOut, err := hfClient.HyperfleetV1alpha1().Clusters().Get(
-				ctx, clusterID, platform.GetOptions{},
+				ctx, clusterName, platform.GetOptions{},
 			)
 			Expect(err).NotTo(HaveOccurred(), "SDK Get before CLI describe")
 
@@ -679,6 +679,8 @@ var _ = Describe("Hyperfleet sanity",
 			}
 			const np1Name = "np1"
 			const np2Name = "np2"
+			np1ResourceName := clusterName + "." + np1Name
+			np2ResourceName := clusterName + "." + np2Name
 			var np1ID, np2ID string
 
 			deferTeardown(func(ctx SpecContext) {
@@ -712,13 +714,15 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(err).NotTo(HaveOccurred(), "rosa create machinepool %s", np2Name)
 
 			By("Resolving node pool IDs via API")
-			npList, err := hfClient.HyperfleetV1alpha1().NodePools(clusterID).List(ctx, platform.ListOptions{})
+			npList, err := hfClient.HyperfleetV1alpha1().NodePools().List(ctx, platform.NodePoolListOptions{
+				ClusterUID: clusterID,
+			})
 			Expect(err).NotTo(HaveOccurred(), "listing node pools")
 			for i := range npList.Items {
 				switch npList.Items[i].Name {
-				case np1Name:
+				case np1ResourceName:
 					np1ID = string(npList.Items[i].UID)
-				case np2Name:
+				case np2ResourceName:
 					np2ID = string(npList.Items[i].UID)
 				}
 			}
@@ -726,10 +730,10 @@ var _ = Describe("Hyperfleet sanity",
 			Expect(np2ID).NotTo(BeEmpty(), "node pool %s not found in list", np2Name)
 			GinkgoWriter.Printf("NodePool %s id=%s, NodePool %s id=%s\n", np1Name, np1ID, np2Name, np2ID)
 
-			nodePools := hfClient.HyperfleetV1alpha1().NodePools(clusterID)
+			nodePools := hfClient.HyperfleetV1alpha1().NodePools()
 
 			By("Waiting for node pool 1 to become Ready")
-			Expect(nodePools.WaitUntil(ctx, np1ID,
+			Expect(nodePools.WaitUntil(ctx, np1ResourceName,
 				func(n *v1alpha1.NodePool) bool {
 					if n == nil {
 						return false
@@ -744,7 +748,7 @@ var _ = Describe("Hyperfleet sanity",
 			GinkgoWriter.Printf("NodePool %s is Ready\n", np1Name)
 
 			By("Waiting for node pool 2 to become Ready")
-			Expect(nodePools.WaitUntil(ctx, np2ID,
+			Expect(nodePools.WaitUntil(ctx, np2ResourceName,
 				func(n *v1alpha1.NodePool) bool {
 					if n == nil {
 						return false

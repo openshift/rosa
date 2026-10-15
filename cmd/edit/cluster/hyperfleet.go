@@ -53,7 +53,7 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 		return
 	}
 
-	clusterUID, err := hyperfleet.ResolveClusterUID(cmd.Context(), r.HyperFleetClient, clusterKey)
+	clusterName, err := hyperfleet.ResolveClusterName(cmd.Context(), r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
@@ -61,9 +61,9 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 	}
 
 	h := &hyperfleetClusterUpdate{
-		clusterKey: clusterKey,
-		clusterUID: clusterUID,
-		cmd:        cmd,
+		clusterKey:  clusterKey,
+		clusterName: clusterName,
+		cmd:         cmd,
 	}
 	if err := h.PreRequest(cmd.Context(), r, &hfClusterUpdateInput); err != nil {
 		r.Reporter.Errorf("%v", err)
@@ -84,7 +84,7 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 	}
 
 	updated, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().Patch(
-		cmd.Context(), clusterUID, types.MergePatchType, patch, platform.PatchOptions{})
+		cmd.Context(), clusterName, types.MergePatchType, patch, platform.PatchOptions{})
 	if err != nil {
 		r.Reporter.Errorf("Failed to update cluster: %v", hyperfleet.WithAPIErrorDetails(err))
 		exitFn(1)
@@ -99,7 +99,7 @@ func runHyperfleetEdit(r *rosa.Runtime, cmd *cobra.Command) {
 // hyperfleetClusterUpdate implements pre/post hooks for rosa edit cluster (HF).
 type hyperfleetClusterUpdate struct {
 	clusterKey            string
-	clusterUID            string
+	clusterName           string
 	cmd                   *cobra.Command
 	additionalTrustBundle *string
 }
@@ -117,21 +117,21 @@ func (h *hyperfleetClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtim
 	channelChanged := h.cmd.Flags().Changed("channel-group") || h.cmd.Flags().Changed("channel")
 	schedulerProfileChanged := h.cmd.Flags().Changed("scheduler-profile")
 	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") &&
-		!h.cmd.Flags().Changed("display-name") && !h.cmd.Flags().Changed("delete-protection") &&
+		!h.cmd.Flags().Changed("delete-protection") &&
 		!channelChanged && !schedulerProfileChanged && !h.cmd.Flags().Changed("no-proxy") &&
 		!h.cmd.Flags().Changed("http-proxy") && !h.cmd.Flags().Changed("https-proxy") &&
 		!h.cmd.Flags().Changed("additional-trust-bundle-file") {
 		return fmt.Errorf(
 			"specify at least one supported flag: --expiration, --expiration-time, " +
-				"--display-name, --delete-protection, --channel-group, --channel, --scheduler-profile, " +
+				"--delete-protection, --channel-group, --channel, --scheduler-profile, " +
 				"--http-proxy, --https-proxy, --no-proxy, --additional-trust-bundle-file",
 		)
 	}
 
 	// --expiration-time and --expiration are OCM-registered (hidden) flags that
 	// registerIfNew skips. Bridge via validateExpiration() which reads args.*.
-	// --display-name and --delete-protection are new HF-only flags registered by
-	// RegisterClusterUpdateFlags and arrive directly from cobra — no bridge needed.
+	// --delete-protection is an HF-only flag registered by RegisterClusterUpdateFlags
+	// and arrives directly from cobra — no bridge needed.
 	// --channel-group / --channel are OCM-registered; bridged in buildSpecPatch via args.*.
 	if h.cmd.Flags().Changed("expiration") || h.cmd.Flags().Changed("expiration-time") {
 		expiry, err := validateExpiration()
@@ -217,7 +217,7 @@ func (h *hyperfleetClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtim
 	}
 	if input.NoProxy != "" && h.cmd.Flags().Changed("no-proxy") &&
 		!h.cmd.Flags().Changed("http-proxy") && !h.cmd.Flags().Changed("https-proxy") {
-		description, err := hyperfleet.GetClusterDescription(ctx, r.HyperFleetClient, h.clusterUID)
+		description, err := hyperfleet.GetClusterDescription(ctx, r.HyperFleetClient, h.clusterName)
 		if err != nil {
 			return fmt.Errorf("failed to retrieve cluster proxy settings: %w", hyperfleet.WithAPIErrorDetails(err))
 		}
@@ -256,9 +256,6 @@ func (h *hyperfleetClusterUpdate) buildSpecPatch(input *hfpathbind.ClusterUpdate
 		if input.ExpirationTimestamp != "" {
 			spec["expirationTimestamp"] = input.ExpirationTimestamp
 		}
-	}
-	if h.cmd.Flags().Changed("display-name") {
-		spec["displayName"] = input.DisplayName
 	}
 	if h.cmd.Flags().Changed("delete-protection") {
 		if input.DeleteProtection == nil {

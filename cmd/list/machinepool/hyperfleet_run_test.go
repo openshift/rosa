@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
@@ -34,7 +35,7 @@ func newListMPMocks(ctrl *gomock.Controller) (
 	nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
 	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
-	v1.EXPECT().NodePools(gomock.Any()).Return(nodePools).AnyTimes()
+	v1.EXPECT().NodePools().Return(nodePools).AnyTimes()
 	return hf, clusters, nodePools
 }
 
@@ -63,20 +64,21 @@ var _ = Describe("runHyperfleetList", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
-				ObjectMeta: metav1.ObjectMeta{Name: "np1", UID: types.UID("np-uid-1")},
+				ObjectMeta: metav1.ObjectMeta{Name: "cluster1.np1", UID: types.UID("np-uid-1")},
 				Spec: v1alpha1.NodePoolSpec{
 					Labels:     map[string]string{"team": "test", "empty": ""},
 					AutoRepair: ptr.To(false),
 					NodePool: v1alpha1.NodePoolSpecPassthrough{
-						Replicas:   ptr.To(int32(3)),
-						Release:    hypershiftv1beta1.Release{Image: "quay.io/example/release:5.0.0-ec.6"},
-						Management: hypershiftv1beta1.NodePoolManagement{AutoRepair: true},
-						Taints:     []hypershiftv1beta1.Taint{{Key: "dedicated", Effect: "NoSchedule"}},
+						ClusterName: "cluster1",
+						Replicas:    ptr.To(int32(3)),
+						Release:     hypershiftv1beta1.Release{Image: "quay.io/example/release:5.0.0-ec.6"},
+						Management:  hypershiftv1beta1.NodePoolManagement{AutoRepair: true},
+						Taints:      []hypershiftv1beta1.Taint{{Key: "dedicated", Effect: "NoSchedule"}},
 						Platform: v1alpha1.NodePoolPlatform{
-							AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
-								RootVolume: &hypershiftv1beta1.Volume{Size: 75},
+							AWS: &v1alpha1.AWSNodePoolPlatform{
+								RootVolume: &v1alpha1.Volume{Size: 75},
 							},
 						},
 					},
@@ -116,7 +118,7 @@ var _ = Describe("runHyperfleetList", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.NodePoolList{}, nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).Return(&v1alpha1.NodePoolList{}, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetList(t.RosaRuntime)
@@ -158,7 +160,7 @@ var _ = Describe("runHyperfleetList", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("list failed"))
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).Return(nil, fmt.Errorf("list failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() { runHyperfleetList(t.RosaRuntime) }).To(Panic())

@@ -6,7 +6,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/openshift/rosa/tests/utils/helper"
-	. "github.com/openshift/rosa/tests/utils/log"
+	"github.com/openshift/rosa/tests/utils/log"
 )
 
 type IngressService interface {
@@ -41,7 +41,7 @@ func (i *ingressService) CleanResources(clusterID string) (errors []error) {
 	var igsToDel []string
 	igsToDel = append(igsToDel, i.ingress[clusterID]...)
 	for _, igID := range igsToDel {
-		Logger.Infof("Remove remaining ingress '%s'", igID)
+		log.Logger.Infof("Remove remaining ingress '%s'", igID)
 		_, err := i.DeleteIngress(clusterID, igID)
 		if err != nil {
 			errors = append(errors, err)

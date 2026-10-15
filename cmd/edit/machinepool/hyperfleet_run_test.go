@@ -34,7 +34,8 @@ func newEditMPMocks(ctrl *gomock.Controller) (
 	nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
 	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
-	v1.EXPECT().NodePools(gomock.Any()).Return(nodePools).AnyTimes()
+	v1.EXPECT().NodePools().Return(nodePools).AnyTimes()
+	v1.EXPECT().RESTClient().Return(nil).AnyTimes()
 	return hf, clusters, nodePools
 }
 
@@ -64,7 +65,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 
 		replicas := int32(3)
 		np := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{Replicas: &replicas},
 			},
@@ -74,7 +75,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil)
 		nodePools.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(np, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
@@ -86,7 +87,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, pools := newEditMPMocks(ctrl)
 		current := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: "pool-uid"},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.workers", UID: "pool-uid"},
 			Spec: v1alpha1.NodePoolSpec{
 				AutoRepair: ptr.To(!enabled), Labels: map[string]string{"team": "test"},
 				NodePool: v1alpha1.NodePoolSpecPassthrough{
@@ -102,12 +103,12 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		pools.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.NodePoolList{
 			Items: []v1alpha1.NodePool{*current},
 		}, nil)
-		pools.EXPECT().Get(gomock.Any(), "pool-uid", gomock.Any()).Return(current, nil)
+		pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil)
 		pools.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 			func(_ context.Context, updated *v1alpha1.NodePool, _ platform.UpdateOptions) (*v1alpha1.NodePool, error) {
 				Expect(updated.Spec.AutoRepair).To(Equal(ptr.To(enabled)))
 				Expect(updated.Spec.Labels).To(Equal(original.Spec.Labels))
-				Expect(updated.Spec.NodePool.Management).To(Equal(hypershiftv1beta1.NodePoolManagement{}))
+				Expect(updated.Spec.NodePool.Management).To(Equal(original.Spec.NodePool.Management))
 				if autoscaling {
 					Expect(updated.Spec.NodePool.Replicas).To(BeNil())
 					Expect(updated.Spec.NodePool.AutoScaling).To(Equal(&hypershiftv1beta1.NodePoolAutoScaling{
@@ -142,7 +143,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 
 		replicas := int32(3)
 		np := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{Replicas: &replicas},
 			},
@@ -152,7 +153,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil)
 		nodePools.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(np, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
@@ -180,12 +181,12 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, nodePools := newEditMPMocks(ctrl)
-		// ResolveClusterUID and ResolveNodePoolUID are called before PreRequest validates flags.
+		// Cluster and node pool names are resolved before PreRequest validates flags.
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
 		}}}, nil)
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
@@ -233,7 +234,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 	// Use for tests that fail in PreRequest (before PostExpand calls Get).
 	setupListOnlyMocks := func(ctrl *gomock.Controller) {
 		hf, clusters, nodePools := newEditMPMocks(ctrl)
-		np := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")}}
+		np := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")}}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
@@ -280,7 +281,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 			hf, clusters, nps := newEditMPMocks(ctrl)
 			replicas := int32(3)
 			np := &v1alpha1.NodePool{
-				ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
+				ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
 				Spec: v1alpha1.NodePoolSpec{
 					NodePool: v1alpha1.NodePoolSpecPassthrough{Replicas: &replicas},
 				},
@@ -290,7 +291,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 			}}}, nil)
 			nps.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 				&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-			nps.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
+			nps.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil)
 			nps.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(np, nil)
 			t.RosaRuntime.HyperFleetClient = hf
 			return hf, nps, np
@@ -313,7 +314,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 
 		replicas := int32(3)
 		np := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: types.UID("np-uid-1")},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{Replicas: &replicas},
 			},
@@ -323,7 +324,7 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "np-uid-1", gomock.Any()).Return(np, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil)
 		nodePools.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("update failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf

@@ -266,7 +266,7 @@ func initFlags(cmd *cobra.Command) {
 	cmd.MarkFlagsMutuallyExclusive("channel", "channel-group")
 
 	// ── HyperFleet-specific flags ────────────────────────────────────────────
-	// Registers new HF-only flags (e.g. --display-name, --delete-protection).
+	// Registers available Platform API update flags that do not conflict with OCM flags.
 	// Flags already registered by OCM (e.g. --expiration-time) are silently skipped.
 	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
 		func() { hfpathbind.RegisterClusterUpdateFlags(cmd, &hfClusterUpdateInput) },

@@ -39,7 +39,7 @@ var _ = Describe("HyperFleet autoscaling edits", func() {
 		runtime.HyperFleetClient = hf
 
 		current := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: types.UID("pool-uid")},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.workers", UID: types.UID("pool-uid")},
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{
 					AutoScaling: &hypershiftv1beta1.NodePoolAutoScaling{
@@ -49,14 +49,14 @@ var _ = Describe("HyperFleet autoscaling edits", func() {
 				},
 			},
 		}
-		pools.EXPECT().Get(gomock.Any(), "pool-uid", gomock.Any()).Return(current, nil)
+		pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil)
 		options := &EditMachinepoolUserOptions{}
 		handler := &hyperfleetNodePoolUpdate{
-			clusterUID:  "cluster-uid",
-			nodePoolUID: "pool-uid",
-			nodePoolKey: "workers",
-			userOptions: options,
-			cmd:         autoscalingEditCmd(options, flags),
+			clusterKey:   "cluster1",
+			nodePoolKey:  "workers",
+			nodePoolName: "cluster1.workers",
+			userOptions:  options,
+			cmd:          autoscalingEditCmd(options, flags),
 		}
 		input := &hfpathbind.NodePoolUpdateInput{}
 		Expect(handler.PreRequest(context.Background(), runtime, input)).To(Succeed())
@@ -80,21 +80,21 @@ var _ = Describe("HyperFleet autoscaling edits", func() {
 		runtime.HyperFleetClient = hf
 
 		current := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: types.UID("pool-uid")},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.workers", UID: types.UID("pool-uid")},
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{
 					Replicas: ptr.To(int32(3)),
 				},
 			},
 		}
-		pools.EXPECT().Get(gomock.Any(), "pool-uid", gomock.Any()).Return(current, nil)
+		pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil)
 
 		options := &EditMachinepoolUserOptions{}
 		handler := &hyperfleetNodePoolUpdate{
-			clusterUID:  "cluster-uid",
-			nodePoolUID: "pool-uid",
-			nodePoolKey: "workers",
-			userOptions: options,
+			clusterKey:   "cluster1",
+			nodePoolKey:  "workers",
+			nodePoolName: "cluster1.workers",
+			userOptions:  options,
 			cmd: autoscalingEditCmd(options, map[string]string{
 				"enable-autoscaling": "true",
 				"max-replicas":       "5",
@@ -118,22 +118,22 @@ var _ = Describe("HyperFleet autoscaling edits", func() {
 		runtime.HyperFleetClient = hf
 
 		current := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: types.UID("pool-uid")},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.workers", UID: types.UID("pool-uid")},
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{
 					Replicas: ptr.To(int32(3)),
 				},
 			},
 		}
-		pools.EXPECT().Get(gomock.Any(), "pool-uid", gomock.Any()).Return(current, nil)
+		pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil)
 
 		options := &EditMachinepoolUserOptions{}
 		handler := &hyperfleetNodePoolUpdate{
-			clusterUID:  "cluster-uid",
-			nodePoolUID: "pool-uid",
-			nodePoolKey: "workers",
-			userOptions: options,
-			cmd:         autoscalingEditCmd(options, map[string]string{"max-replicas": "5"}),
+			clusterKey:   "cluster1",
+			nodePoolKey:  "workers",
+			nodePoolName: "cluster1.workers",
+			userOptions:  options,
+			cmd:          autoscalingEditCmd(options, map[string]string{"max-replicas": "5"}),
 		}
 		input := &hfpathbind.NodePoolUpdateInput{}
 		Expect(handler.PreRequest(context.Background(), runtime, input)).To(Succeed())
@@ -149,7 +149,7 @@ var _ = Describe("HyperFleet autoscaling edits", func() {
 		runtime.HyperFleetClient = hf
 
 		current := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: types.UID("pool-uid")},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.workers", UID: types.UID("pool-uid")},
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{
 					AutoScaling: &hypershiftv1beta1.NodePoolAutoScaling{
@@ -159,15 +159,15 @@ var _ = Describe("HyperFleet autoscaling edits", func() {
 				},
 			},
 		}
-		pools.EXPECT().Get(gomock.Any(), "pool-uid", gomock.Any()).Return(current, nil)
+		pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil)
 
 		options := &EditMachinepoolUserOptions{}
 		handler := &hyperfleetNodePoolUpdate{
-			clusterUID:  "cluster-uid",
-			nodePoolUID: "pool-uid",
-			nodePoolKey: "workers",
-			userOptions: options,
-			cmd:         autoscalingEditCmd(options, map[string]string{"max-replicas": "4"}),
+			clusterKey:   "cluster1",
+			nodePoolKey:  "workers",
+			nodePoolName: "cluster1.workers",
+			userOptions:  options,
+			cmd:          autoscalingEditCmd(options, map[string]string{"max-replicas": "4"}),
 		}
 		input := &hfpathbind.NodePoolUpdateInput{}
 		Expect(handler.PreRequest(context.Background(), runtime, input)).To(Succeed())
@@ -183,7 +183,7 @@ var _ = Describe("HyperFleet autoscaling edits", func() {
 		runtime.HyperFleetClient = hf
 
 		current := &v1alpha1.NodePool{
-			ObjectMeta: metav1.ObjectMeta{Name: "workers", UID: types.UID("pool-uid")},
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.workers", UID: types.UID("pool-uid")},
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{
 					AutoScaling: &hypershiftv1beta1.NodePoolAutoScaling{
@@ -193,14 +193,14 @@ var _ = Describe("HyperFleet autoscaling edits", func() {
 				},
 			},
 		}
-		pools.EXPECT().Get(gomock.Any(), "pool-uid", gomock.Any()).Return(current, nil)
+		pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil)
 
 		options := &EditMachinepoolUserOptions{}
 		handler := &hyperfleetNodePoolUpdate{
-			clusterUID:  "cluster-uid",
-			nodePoolUID: "pool-uid",
-			nodePoolKey: "workers",
-			userOptions: options,
+			clusterKey:   "cluster1",
+			nodePoolKey:  "workers",
+			nodePoolName: "cluster1.workers",
+			userOptions:  options,
 			cmd: autoscalingEditCmd(options, map[string]string{
 				"enable-autoscaling": "false",
 				"max-replicas":       "5",

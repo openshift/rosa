@@ -53,7 +53,7 @@ func runHyperfleetDelete(
 		exitFn(1)
 	}
 
-	nodePoolID, err := hyperfleet.ResolveNodePoolUID(ctx, r.HyperFleetClient, clusterUID, nodePoolName)
+	resourceName, err := hyperfleet.ResolveNodePoolName(ctx, r.HyperFleetClient, clusterUID, nodePoolName)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
@@ -63,8 +63,8 @@ func runHyperfleetDelete(
 		return
 	}
 
-	if err = r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterUID).
-		Delete(ctx, nodePoolID, platform.DeleteOptions{}); err != nil {
+	if err = r.HyperFleetClient.HyperfleetV1alpha1().NodePools().
+		Delete(ctx, resourceName, platform.DeleteOptions{}); err != nil {
 		r.Reporter.Errorf("Failed to delete node pool '%s': %v", nodePoolName, err)
 		exitFn(1)
 	}

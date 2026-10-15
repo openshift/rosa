@@ -9,20 +9,39 @@ import (
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 )
 
-// ResolveClusterUID looks up a cluster by name or UID and returns its UID.
-func ResolveClusterUID(
+// ResolveCluster looks up a cluster by metadata.name or UID.
+func ResolveCluster(
 	ctx context.Context, client hyperfleetclientset.Interface, clusterKey string,
-) (string, error) {
+) (*v1alpha1.Cluster, error) {
 	list, err := client.HyperfleetV1alpha1().Clusters().List(ctx, platform.ListOptions{})
 	if err != nil {
-		return "", fmt.Errorf("failed to list clusters: %w", err)
+		return nil, fmt.Errorf("failed to list clusters: %w", err)
 	}
 	for _, c := range list.Items {
 		if c.Name == clusterKey || string(c.UID) == clusterKey {
-			return string(c.UID), nil
+			return &c, nil
 		}
 	}
-	return "", fmt.Errorf("cluster '%s' not found", clusterKey)
+	return nil, fmt.Errorf("cluster '%s' not found", clusterKey)
+}
+
+// ResolveClusterUID looks up a cluster by name or UID and returns its UID.
+func ResolveClusterUID(ctx context.Context, client hyperfleetclientset.Interface, clusterKey string) (string, error) {
+	cluster, err := ResolveCluster(ctx, client, clusterKey)
+	if err != nil {
+		return "", err
+	}
+	return string(cluster.UID), nil
+}
+
+// ResolveClusterName looks up a cluster by name or UID and returns its metadata.name
+// for account-scoped Platform API routes.
+func ResolveClusterName(ctx context.Context, client hyperfleetclientset.Interface, clusterKey string) (string, error) {
+	cluster, err := ResolveCluster(ctx, client, clusterKey)
+	if err != nil {
+		return "", err
+	}
+	return cluster.Name, nil
 }
 
 // GetCluster looks up a cluster by name or UID and returns the cluster object.

@@ -7,35 +7,52 @@ import (
 
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 )
 
-// ClusterDescription preserves response fields not yet present in the pinned SDK.
+// ClusterDescription provides the typed cluster with normalized proxy settings
+// and a redacted view of the additional trust bundle for CLI output.
 type ClusterDescription struct {
 	Cluster               *v1alpha1.Cluster
 	Proxy                 *ClusterProxy
 	AdditionalTrustBundle string
 }
 
-// ClusterProxy models proxy fields absent from the pinned SDK.
+// ClusterProxy is the CLI-facing proxy projection from the Platform API.
 type ClusterProxy struct {
 	HTTPProxy  string `json:"httpProxy,omitempty"`
 	HTTPSProxy string `json:"httpsProxy,omitempty"`
 	NoProxy    string `json:"noProxy,omitempty"`
 }
 
-// GetClusterDescription reads the typed cluster and its trust-bundle projection
-// from the same response. The pinned SDK predates spec.additionalTrustBundle.
+// GetClusterDescription reads the typed cluster and its read-only projections
+// from the account-scoped metadata.name route.
 func GetClusterDescription(ctx context.Context, client hyperfleetclientset.Interface,
-	clusterUID string) (*ClusterDescription, error) {
-	result := client.HyperfleetV1alpha1().RESTClient().Get().Resource("clusters").Name(clusterUID).Do(ctx)
-	if err := result.Error(); err != nil {
-		return nil, err
-	}
-	data, err := result.Raw()
+	clusterName string) (*ClusterDescription, error) {
+	cluster, err := client.HyperfleetV1alpha1().Clusters().Get(ctx, clusterName, platform.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return DecodeClusterDescription(data)
+	description := &ClusterDescription{Cluster: cluster}
+	if cluster.Proxy != nil {
+		description.Proxy = &ClusterProxy{
+			HTTPProxy: cluster.Proxy.HTTPProxy, HTTPSProxy: cluster.Proxy.HTTPSProxy, NoProxy: cluster.Proxy.NoProxy,
+		}
+	} else {
+		configuration := cluster.Spec.HostedCluster.Configuration
+		if configuration != nil && configuration.Proxy != nil {
+			description.Proxy = &ClusterProxy{
+				HTTPProxy:  configuration.Proxy.HTTPProxy,
+				HTTPSProxy: configuration.Proxy.HTTPSProxy,
+				NoProxy:    configuration.Proxy.NoProxy,
+			}
+		}
+	}
+	if bundle := cluster.Spec.AdditionalTrustBundle; bundle != nil && *bundle != "" {
+		// Never display PEM contents, even if an API response is not redacted.
+		description.AdditionalTrustBundle = "REDACTED"
+	}
+	return description, nil
 }
 
 // DecodeClusterDescription preserves proxy settings and redacts trust bundles.

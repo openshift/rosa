@@ -20,13 +20,22 @@ import (
 
 func editHyperfleetAutoscalerRunner(args *clusterautoscaler.AutoscalerArgs) rosa.CommandRunner {
 	return func(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, _ []string) error {
-		config, err := clusterautoscaler.BuildHyperfleetAutoscalingConfig(cmd, argsPrefix, args, true)
+		if _, err := clusterautoscaler.ValidateAutoscalerFlagsForHostedCp(argsPrefix, cmd); err != nil {
+			return err
+		}
+		changes := clusterautoscaler.HyperfleetAutoscalingChanges{
+			MaxNodeProvisionTime: cmd.Flags().Changed(argsPrefix + "max-node-provision-time"),
+			MaxNodesTotal:        cmd.Flags().Changed(argsPrefix + "max-nodes-total"),
+			MaxPodGracePeriod:    cmd.Flags().Changed(argsPrefix + "max-pod-grace-period"),
+			PodPriorityThreshold: cmd.Flags().Changed(argsPrefix + "pod-priority-threshold"),
+		}
+		config, err := clusterautoscaler.BuildHyperfleetAutoscalingConfig(args, argsPrefix, changes)
 		if err != nil {
 			return err
 		}
 
 		clusterKey := r.GetClusterKey()
-		clusterUID, err := hyperfleet.ResolveClusterUID(ctx, r.HyperFleetClient, clusterKey)
+		clusterName, err := hyperfleet.ResolveClusterName(ctx, r.HyperFleetClient, clusterKey)
 		if err != nil {
 			return err
 		}
@@ -40,7 +49,7 @@ func editHyperfleetAutoscalerRunner(args *clusterautoscaler.AutoscalerArgs) rosa
 			return fmt.Errorf("failed to build autoscaler update: %w", err)
 		}
 		if _, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().Patch(
-			ctx, clusterUID, types.MergePatchType, patch, platform.PatchOptions{}); err != nil {
+			ctx, clusterName, types.MergePatchType, patch, platform.PatchOptions{}); err != nil {
 			return fmt.Errorf("failed updating autoscaler configuration for cluster %q: %w", clusterKey, err)
 		}
 

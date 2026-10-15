@@ -29,6 +29,7 @@ import (
 type V1alpha1PublicInterface interface {
 	RESTClient() rest.Interface
 	ClustersGetter
+	DNSReservationsGetter
 	NodePoolsGetter
 	OidcConfigsGetter
 }
@@ -42,8 +43,12 @@ func (c *V1alpha1PublicClient) Clusters() ClusterInterface {
 	return newClusters(c)
 }
 
-func (c *V1alpha1PublicClient) NodePools(namespace string) NodePoolInterface {
-	return newNodePools(c, namespace)
+func (c *V1alpha1PublicClient) DNSReservations() DNSReservationInterface {
+	return newDNSReservations(c)
+}
+
+func (c *V1alpha1PublicClient) NodePools() NodePoolInterface {
+	return newNodePools(c)
 }
 
 func (c *V1alpha1PublicClient) OidcConfigs() OidcConfigInterface {

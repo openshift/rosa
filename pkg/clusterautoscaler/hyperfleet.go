@@ -3,8 +3,6 @@ package clusterautoscaler
 import (
 	"fmt"
 	"math"
-
-	"github.com/spf13/cobra"
 )
 
 // HyperfleetAutoscalingConfig contains the cluster-autoscaler options supported
@@ -17,33 +15,28 @@ type HyperfleetAutoscalingConfig struct {
 	PodPriorityThreshold *int32  `json:"podPriorityThreshold,omitempty"`
 }
 
+// HyperfleetAutoscalingChanges identifies the supported autoscaler flags the
+// user explicitly changed. Cobra flag inspection remains in command packages.
+type HyperfleetAutoscalingChanges struct {
+	MaxNodeProvisionTime bool
+	MaxNodesTotal        bool
+	MaxPodGracePeriod    bool
+	PodPriorityThreshold bool
+}
+
 // BuildHyperfleetAutoscalingConfig validates and converts the existing ROSA
-// autoscaler flags to the subset supported by HyperFleet. It returns nil when
-// no autoscaler flag was supplied and requireChanges is false.
+// autoscaler arguments to the subset supported by HyperFleet. It returns nil
+// when no supported flag changed.
 func BuildHyperfleetAutoscalingConfig(
-	cmd *cobra.Command,
-	prefix string,
 	args *AutoscalerArgs,
-	requireChanges bool,
+	prefix string,
+	changes HyperfleetAutoscalingChanges,
 ) (*HyperfleetAutoscalingConfig, error) {
-	if cmd == nil || args == nil {
+	if args == nil || !changes.any() {
 		return nil, nil
-	}
-	if !IsAutoscalerSetViaCLI(cmd.Flags(), prefix) {
-		if requireChanges {
-			_, err := ValidateAutoscalerFlagsForHostedCp(prefix, cmd)
-			return nil, err
-		}
-		return nil, nil
-	}
-	if ok, err := ValidateAutoscalerFlagsForHostedCp(prefix, cmd); !ok || err != nil {
-		return nil, err
 	}
 
 	result := &HyperfleetAutoscalingConfig{}
-	changed := func(name string) bool {
-		return cmd.Flags().Changed(prefix + name)
-	}
 	int32Value := func(name string, value int) (*int32, error) {
 		if value < math.MinInt32 || value > math.MaxInt32 {
 			return nil, fmt.Errorf("--%s%s must be between %d and %d", prefix, name, math.MinInt32, math.MaxInt32)
@@ -52,24 +45,24 @@ func BuildHyperfleetAutoscalingConfig(
 		return &converted, nil
 	}
 
-	if changed(maxNodeProvisionTimeFlag) {
+	if changes.MaxNodeProvisionTime {
 		value := args.MaxNodeProvisionTime
 		result.MaxNodeProvisionTime = &value
 	}
 	var err error
-	if changed(maxNodesTotalFlag) {
+	if changes.MaxNodesTotal {
 		result.MaxNodesTotal, err = int32Value(maxNodesTotalFlag, args.ResourceLimits.MaxNodesTotal)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if changed(maxPodGracePeriodFlag) {
+	if changes.MaxPodGracePeriod {
 		result.MaxPodGracePeriod, err = int32Value(maxPodGracePeriodFlag, args.MaxPodGracePeriod)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if changed(podPriorityThresholdFlag) {
+	if changes.PodPriorityThreshold {
 		result.PodPriorityThreshold, err = int32Value(podPriorityThresholdFlag, args.PodPriorityThreshold)
 		if err != nil {
 			return nil, err
@@ -77,4 +70,8 @@ func BuildHyperfleetAutoscalingConfig(
 	}
 
 	return result, nil
+}
+
+func (c HyperfleetAutoscalingChanges) any() bool {
+	return c.MaxNodeProvisionTime || c.MaxNodesTotal || c.MaxPodGracePeriod || c.PodPriorityThreshold
 }
