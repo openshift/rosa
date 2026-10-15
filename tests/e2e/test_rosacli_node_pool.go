@@ -1056,29 +1056,34 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("create/describe machinepool with user tags for HCP - [id:73492]",
-			labels.High, labels.Runtime.Day2, labels.FedRAMP,
+			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
-				By("Get the Organization Id")
-				rosaClient.Runner.JsonFormat()
-				userInfo, err := rosaClient.OCMResource.UserInfo()
-				Expect(err).To(BeNil())
-				rosaClient.Runner.UnsetFormat()
-				organizationID := userInfo.OCMOrganizationID
-				ocmApi := userInfo.OCMApi
 
+				hyperfleetMode := isHyperfleetMode()
+				var organizationID string = "0000"
 				var OCMEnv string
 
-				By("Get OCM Env")
-				if strings.Contains(ocmApi, "stage") {
-					if profile.ClusterConfig.FedRAMP {
-						OCMEnv = "stage"
+				if !hyperfleetMode {
+					By("Get the Organization Id")
+					rosaClient.Runner.JsonFormat()
+					userInfo, err := rosaClient.OCMResource.UserInfo()
+					Expect(err).To(BeNil())
+					rosaClient.Runner.UnsetFormat()
+					organizationID = userInfo.OCMOrganizationID
+					ocmApi := userInfo.OCMApi
+
+					By("Get OCM Env")
+					if strings.Contains(ocmApi, "stage") {
+						if profile.ClusterConfig.FedRAMP {
+							OCMEnv = "stage"
+						} else {
+							OCMEnv = "staging"
+						}
+					} else if strings.Contains(ocmApi, "integration") || strings.Contains(ocmApi, "int") {
+						OCMEnv = "integration"
 					} else {
-						OCMEnv = "staging"
+						OCMEnv = "production"
 					}
-				} else if strings.Contains(ocmApi, "integration") || strings.Contains(ocmApi, "int") {
-					OCMEnv = "integration"
-				} else {
-					OCMEnv = "production"
 				}
 
 				By("Get the cluster informations")
@@ -1131,16 +1136,21 @@ var _ = Describe("Edit nodepool",
 						machinePoolName_1,
 						clusterID))
 
-				By("Describe the machinepool in json format")
-				rosaClient.Runner.JsonFormat()
-				jsonOutput, err = machinePoolService.DescribeMachinePool(clusterID, machinePoolName_1)
-				Expect(err).To(BeNil())
-				rosaClient.Runner.UnsetFormat()
-				jsonData = rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
-				tagsString := jsonData.DigString("aws_node_pool", "tags")
-				tags := helper.ParseTagsFronJsonOutput(tagsString)
-				for k, v := range requiredTags {
-					Expect(tags[k]).To(Equal(v))
+				By("Describe the machinepool")
+				if hyperfleetMode {
+					output, err = machinePoolService.DescribeMachinePool(clusterID, machinePoolName_1)
+					Expect(err).ToNot(HaveOccurred())
+				} else {
+					rosaClient.Runner.JsonFormat()
+					jsonOutput, err = machinePoolService.DescribeMachinePool(clusterID, machinePoolName_1)
+					Expect(err).To(BeNil())
+					rosaClient.Runner.UnsetFormat()
+					jsonData = rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+					tagsString := jsonData.DigString("aws_node_pool", "tags")
+					tags := helper.ParseTagsFronJsonOutput(tagsString)
+					for k, v := range requiredTags {
+						Expect(tags[k]).To(Equal(v))
+					}
 				}
 
 				By("Create a machinepool with tags to the cluster")
@@ -1169,19 +1179,27 @@ var _ = Describe("Edit nodepool",
 						machinePoolName_2,
 						clusterID))
 
-				By("Describe the machinepool in json format")
-				rosaClient.Runner.JsonFormat()
-				jsonOutput, err = machinePoolService.DescribeMachinePool(clusterID, machinePoolName_2)
-				Expect(err).To(BeNil())
-				rosaClient.Runner.UnsetFormat()
-				jsonData = rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
-				tagsString = jsonData.DigString("aws_node_pool", "tags")
-				tags = helper.ParseTagsFronJsonOutput(tagsString)
-				for k, v := range requiredTags {
-					Expect(tags[k]).To(Equal(v))
-				}
-				for k, v := range tagsRequestMap {
-					Expect(tags[k]).To(Equal(v))
+				By("Describe the machinepool")
+				if hyperfleetMode {
+					output, err = machinePoolService.DescribeMachinePool(clusterID, machinePoolName_2)
+					Expect(err).ToNot(HaveOccurred())
+					for k, v := range tagsRequestMap {
+						Expect(output.String()).To(ContainSubstring(fmt.Sprintf("%s=%v", k, v)))
+					}
+				} else {
+					rosaClient.Runner.JsonFormat()
+					jsonOutput, err = machinePoolService.DescribeMachinePool(clusterID, machinePoolName_2)
+					Expect(err).To(BeNil())
+					rosaClient.Runner.UnsetFormat()
+					jsonData = rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+					tagsString := jsonData.DigString("aws_node_pool", "tags")
+					tags := helper.ParseTagsFronJsonOutput(tagsString)
+					for k, v := range requiredTags {
+						Expect(tags[k]).To(Equal(v))
+					}
+					for k, v := range tagsRequestMap {
+						Expect(tags[k]).To(Equal(v))
+					}
 				}
 
 				By("Create machinepool with invalid tags")
