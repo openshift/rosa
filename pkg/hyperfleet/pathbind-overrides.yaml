@@ -29,6 +29,11 @@ resources:
         type: string
       - path: spec.hostedCluster.configuration.ingress.componentRoutes
         type: string
+      # The API draft marks this nested array as array(object). Keep it on the
+      # internal pathbind model without introducing a new CLI flag here.
+      - path: spec.hostedCluster.configuration.authentication.oidcProviders
+        type: string
+        flag: ""
       - path: spec.hostedCluster.imageContentSources
         type: string
       - path: spec.hostedCluster.networking.apiServer.allowedCIDRBlocks
@@ -60,12 +65,6 @@ resources:
         required: true
         operations: [create]
 
-      - path: spec.displayName
-        alias: displayName
-        flag: display-name
-        description: "Human-readable display name for the cluster."
-        operations: [create, update]
-
       - path: spec.hostedCluster.release.image
         alias: version
         flag: version
@@ -79,6 +78,12 @@ resources:
         flag: subnet-id
         description: "Subnet ID for the cluster (use instead of --subnet-ids for Platform API clusters)."
         required: true
+        operations: [create]
+
+      # The ROSA Platform API cluster path is AWS-only; PostExpand sets this
+      # service-derived field and it must not be exposed as a CLI flag.
+      - path: spec.hostedCluster.platform.type
+        flag: ""
         operations: [create]
 
       - path: spec.deleteProtection
@@ -241,6 +246,11 @@ resources:
         required: true
         operations: [create]
 
+      # ROSA HyperFleet node pools are AWS-only; PostExpand sets this field.
+      - path: spec.nodePool.platform.type
+        flag: ""
+        operations: [create]
+
       - path: spec.nodePool.platform.aws.securityGroups
         alias: securityGroupIds
         type: string
@@ -251,6 +261,7 @@ resources:
       # ── Derived: no flag
       - path: spec.nodePool.clusterName
         alias: clusterName
+        flag: ""
         operations: [create]
 
       # ── Status

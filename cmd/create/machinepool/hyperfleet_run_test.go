@@ -38,7 +38,7 @@ func newCreateMPMocks(ctrl *gomock.Controller) (
 	nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
 	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
-	v1.EXPECT().NodePools(gomock.Any()).Return(nodePools).AnyTimes()
+	v1.EXPECT().NodePools().Return(nodePools).AnyTimes()
 	return hf, clusters, nodePools
 }
 
@@ -75,13 +75,13 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		cluster := makeCluster("cluster1", "cluster-uid")
 		cluster.Status.Version = "4.20.3"
 		cluster.Spec.HostedCluster.Release.Image = "quay.io/release@sha256:abc"
-		created := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: "np-uid-new"}}
+		created := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: "np-uid-new"}}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
 		nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ platform.CreateOptions) (*v1alpha1.NodePool, error) {
-				Expect(np.Name).To(Equal("my-np"))
+				Expect(np.Name).To(Equal("cluster1.my-np"))
 				Expect(np.Spec.NodePool.Release.Image).To(Equal("quay.io/release@sha256:abc"))
 				Expect(np.Spec.NodePool.ClusterName).To(Equal("cluster1"))
 				Expect(*np.Spec.NodePool.Replicas).To(Equal(int32(2)))
@@ -112,13 +112,13 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		hf, clusters, nodePools := newCreateMPMocks(ctrl)
 
 		cluster := makeCluster("cluster1", "cluster-uid")
-		created := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "my-np", UID: "np-uid-new"}}
+		created := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: "np-uid-new"}}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
 		nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ platform.CreateOptions) (*v1alpha1.NodePool, error) {
-				Expect(np.Name).To(Equal("my-np"))
+				Expect(np.Name).To(Equal("cluster1.my-np"))
 				Expect(np.Spec.NodePool.ClusterName).To(Equal("cluster1"))
 				Expect(*np.Spec.NodePool.Replicas).To(Equal(int32(2)))
 				Expect(np.Spec.NodePool.Platform.AWS.InstanceProfile).To(Equal("cluster1-ROSA-Worker-Role"))
@@ -181,7 +181,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		hf, clusters, _ := newCreateMPMocks(ctrl)
 		cluster := makeCluster("cluster1", "cluster-uid")
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
 		t.RosaRuntime.HyperFleetClient = hf
 		client := awsmocks.NewMockEc2ApiClient(ctrl)
 		client.EXPECT().DescribeSubnets(gomock.Any(), gomock.Any()).Return(&ec2.DescribeSubnetsOutput{
@@ -210,7 +210,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		cluster.Status.Version = "5.0.0-ec.6"
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
 		t.RosaRuntime.HyperFleetClient = hf
 		newNodePoolEC2Client = func(_ awssdk.Config) awsapi.Ec2ApiClient {
 			Fail("version validation must precede AWS lookup")
@@ -250,7 +250,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
 		// Get is called in PostExpand (after subnet validation passes).
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(nil, fmt.Errorf("get failed"))
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(nil, fmt.Errorf("get failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
@@ -273,7 +273,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
@@ -315,7 +315,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		cluster := makeCluster("cluster1", "cluster-uid")
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
@@ -332,15 +332,16 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			userOptions: &mpOpts.CreateMachinepoolUserOptions{
 				RootDiskSize: "75GiB",
 			},
-			clusterKey: "cluster1",
-			clusterUID: "cluster-uid",
+			clusterKey:  "cluster1",
+			clusterName: "cluster1",
+			clusterUID:  "cluster-uid",
 		}
 		obj := &v1alpha1.NodePool{
 			Spec: v1alpha1.NodePoolSpec{
 				NodePool: v1alpha1.NodePoolSpecPassthrough{
 					Platform: v1alpha1.NodePoolPlatform{
-						AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
-							RootVolume: &hypershiftv1beta1.Volume{Size: 50},
+						AWS: &v1alpha1.AWSNodePoolPlatform{
+							RootVolume: &v1alpha1.Volume{Size: 50},
 						},
 					},
 				},
@@ -349,7 +350,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, _ := newCreateMPMocks(ctrl)
 		cluster := makeCluster("cluster1", "cluster-uid")
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
 		t.RosaRuntime.HyperFleetClient = hf
 
 		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
@@ -361,11 +362,12 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			userOptions: &mpOpts.CreateMachinepoolUserOptions{
 				SecurityGroupIds: []string{"sg-1", "sg-2"},
 			},
-			clusterKey: "cluster1",
-			clusterUID: "cluster-uid",
+			clusterKey:  "cluster1",
+			clusterName: "cluster1",
+			clusterUID:  "cluster-uid",
 		}
 		obj := &v1alpha1.NodePool{Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
-			Platform: v1alpha1.NodePoolPlatform{AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
+			Platform: v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{
 				InstanceType: "m5.xlarge", Subnet: hypershiftv1beta1.AWSResourceReference{ID: awssdk.String("subnet-abc123")},
 			}},
 		}}}
@@ -373,7 +375,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, _ := newCreateMPMocks(ctrl)
 		cluster := makeCluster("cluster1", "cluster-uid")
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
 		t.RosaRuntime.HyperFleetClient = hf
 
 		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
@@ -389,10 +391,11 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		h := &hyperfleetNodePoolCreate{
 			userOptions: &mpOpts.CreateMachinepoolUserOptions{},
 			clusterKey:  "cluster1",
+			clusterName: "cluster1",
 			clusterUID:  "cluster-uid",
 		}
 		obj := &v1alpha1.NodePool{Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
-			Platform: v1alpha1.NodePoolPlatform{AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
+			Platform: v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{
 				InstanceType: "m5.xlarge", Subnet: hypershiftv1beta1.AWSResourceReference{ID: awssdk.String("subnet-abc123")},
 			}},
 		}}}
@@ -400,7 +403,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, _ := newCreateMPMocks(ctrl)
 		cluster := makeCluster("cluster1", "cluster-uid")
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(cluster, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
 		t.RosaRuntime.HyperFleetClient = hf
 
 		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
@@ -429,12 +432,12 @@ var _ = Describe("HyperFleet nodepool metadata creation", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, _ := newCreateMPMocks(ctrl)
 		t.RosaRuntime.HyperFleetClient = hf
-		clusters.EXPECT().Get(gomock.Any(), "cluster-uid", gomock.Any()).Return(makeCluster("cluster1", "cluster-uid"), nil)
-		h := &hyperfleetNodePoolCreate{clusterUID: "cluster-uid", userOptions: &mpOpts.CreateMachinepoolUserOptions{
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(makeCluster("cluster1", "cluster-uid"), nil)
+		h := &hyperfleetNodePoolCreate{clusterName: "cluster1", clusterUID: "cluster-uid", userOptions: &mpOpts.CreateMachinepoolUserOptions{
 			Labels: "team=test,empty=", Taints: "team=test:NoSchedule,empty=:NoExecute",
 		}}
 		pool := &v1alpha1.NodePool{Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
-			Platform: v1alpha1.NodePoolPlatform{AWS: &hypershiftv1beta1.AWSNodePoolPlatform{
+			Platform: v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{
 				InstanceType: "m5.xlarge", Subnet: hypershiftv1beta1.AWSResourceReference{ID: awssdk.String("subnet-abc123")},
 			}},
 		}}}

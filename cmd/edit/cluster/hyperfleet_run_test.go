@@ -4,25 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 
 	"go.uber.org/mock/gomock"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/rest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
@@ -40,30 +37,17 @@ func newEditClusterMocks(ctrl *gomock.Controller) (*hfmocks.MockInterface, *hfmo
 	return hf, clusters
 }
 
-func expectEditProxyGet(hf *hfmocks.MockInterface, response string, statusCode int) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		defer GinkgoRecover()
-		Expect(req.Method).To(Equal(http.MethodGet))
-		Expect(req.URL.Path).To(Equal("/clusters/cluster-uid"))
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		_, err := w.Write([]byte(response))
-		Expect(err).NotTo(HaveOccurred())
-	}))
-	DeferCleanup(server.Close)
-	baseURL, err := url.Parse(server.URL)
-	Expect(err).NotTo(HaveOccurred())
-	fixtureScheme := runtime.NewScheme()
-	groupVersion := schema.GroupVersion{Version: "v1"}
-	metav1.AddToGroupVersion(fixtureScheme, groupVersion)
-	contentConfig := rest.ClientContentConfig{
-		ContentType: "application/json", GroupVersion: groupVersion,
-		Negotiator: runtime.NewClientNegotiator(serializer.NewCodecFactory(fixtureScheme).WithoutConversion(), groupVersion),
+func expectEditProxyGet(clusters *hfmocks.MockClusterInterface, response string, statusCode int) {
+	if statusCode != http.StatusOK {
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", platform.GetOptions{}).
+			Return(nil, errors.New("get failed"))
+		return
 	}
-	client, err := rest.NewRESTClient(baseURL, "", contentConfig, nil, server.Client())
-	Expect(err).NotTo(HaveOccurred())
-	v1 := hf.HyperfleetV1alpha1().(*hfmocks.MockV1alpha1PublicInterface)
-	v1.EXPECT().RESTClient().Return(client).AnyTimes()
+	cluster := &v1alpha1.Cluster{}
+	Expect(json.Unmarshal([]byte(response), cluster)).To(Succeed())
+	cluster.Name = "cluster1"
+	cluster.UID = types.UID("cluster-uid")
+	clusters.EXPECT().Get(gomock.Any(), "cluster1", platform.GetOptions{}).Return(cluster, nil)
 }
 
 // makeExpirationCmd builds a minimal cobra command with the expiration flag wired
@@ -109,7 +93,7 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Patch(gomock.Any(), "cluster-uid", types.MergePatchType, gomock.Any(), gomock.Any()).
+		clusters.EXPECT().Patch(gomock.Any(), "cluster1", types.MergePatchType, gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ interface{}) (*v1alpha1.Cluster, error) {
 				var body map[string]any
 				Expect(json.Unmarshal(data, &body)).To(Succeed())
@@ -147,9 +131,9 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 			clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 				&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
 			if expected != "" {
-				expectEditProxyGet(hf, `{"spec":{"hostedCluster":{"configuration":{"proxy":{"httpProxy":"http://proxy.example.com:8080"}}}}}`, http.StatusOK)
+				expectEditProxyGet(clusters, `{"spec":{"hostedCluster":{"configuration":{"proxy":{"httpProxy":"http://proxy.example.com:8080"}}}}}`, http.StatusOK)
 			}
-			clusters.EXPECT().Patch(gomock.Any(), "cluster-uid", types.MergePatchType, gomock.Any(), gomock.Any()).
+			clusters.EXPECT().Patch(gomock.Any(), "cluster1", types.MergePatchType, gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ interface{}) (*v1alpha1.Cluster, error) {
 					expectedBody, err := json.Marshal(map[string]any{
 						"spec": map[string]any{
@@ -191,7 +175,7 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 			}
 			clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 				&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-			clusters.EXPECT().Patch(gomock.Any(), "cluster-uid", types.MergePatchType, gomock.Any(), gomock.Any()).
+			clusters.EXPECT().Patch(gomock.Any(), "cluster1", types.MergePatchType, gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ interface{}) (*v1alpha1.Cluster, error) {
 					Expect(data).To(MatchJSON(`{"spec":{"hostedCluster":{"configuration":{"proxy":` + expected + `}}}}`))
 					return cluster, nil
@@ -228,10 +212,10 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 
 	It("rejects no-proxy on a cluster with no proxy URLs", func() {
 		ctrl := gomock.NewController(GinkgoT())
-		hf, _ := newEditClusterMocks(ctrl)
-		expectEditProxyGet(hf, `{}`, http.StatusOK)
+		hf, clusters := newEditClusterMocks(ctrl)
+		expectEditProxyGet(clusters, `{}`, http.StatusOK)
 		t.RosaRuntime.HyperFleetClient = hf
-		h := &hyperfleetClusterUpdate{clusterUID: "cluster-uid", cmd: makeNoProxyCmd("example.com")}
+		h := &hyperfleetClusterUpdate{clusterName: "cluster1", cmd: makeNoProxyCmd("example.com")}
 		Expect(h.PreRequest(context.Background(), t.RosaRuntime, &hfClusterUpdateInput)).To(
 			MatchError("Expected at least one of the following: http-proxy, https-proxy"))
 	})
@@ -246,20 +230,20 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 
 	It("reports API failures when retrieving existing proxy settings", func() {
 		ctrl := gomock.NewController(GinkgoT())
-		hf, _ := newEditClusterMocks(ctrl)
-		expectEditProxyGet(hf, `{"kind":"Status","apiVersion":"v1","status":"Failure","message":"get failed","code":400}`, http.StatusBadRequest)
+		hf, clusters := newEditClusterMocks(ctrl)
+		expectEditProxyGet(clusters, `{"kind":"Status","apiVersion":"v1","status":"Failure","message":"get failed","code":400}`, http.StatusBadRequest)
 		t.RosaRuntime.HyperFleetClient = hf
-		h := &hyperfleetClusterUpdate{clusterUID: "cluster-uid", cmd: makeNoProxyCmd("example.com")}
+		h := &hyperfleetClusterUpdate{clusterName: "cluster1", cmd: makeNoProxyCmd("example.com")}
 		Expect(h.PreRequest(context.Background(), t.RosaRuntime, &hfClusterUpdateInput)).To(
 			MatchError(ContainSubstring("failed to retrieve cluster proxy settings: get failed")))
 	})
 
 	It("uses the response proxy projection when checking existing URLs", func() {
 		ctrl := gomock.NewController(GinkgoT())
-		hf, _ := newEditClusterMocks(ctrl)
-		expectEditProxyGet(hf, `{"proxy":{"https_proxy":"https://proxy.example.com:8080"}}`, http.StatusOK)
+		hf, clusters := newEditClusterMocks(ctrl)
+		expectEditProxyGet(clusters, `{"proxy":{"https_proxy":"https://proxy.example.com:8080"}}`, http.StatusOK)
 		t.RosaRuntime.HyperFleetClient = hf
-		h := &hyperfleetClusterUpdate{clusterUID: "cluster-uid", cmd: makeNoProxyCmd("example.com")}
+		h := &hyperfleetClusterUpdate{clusterName: "cluster1", cmd: makeNoProxyCmd("example.com")}
 		Expect(h.PreRequest(context.Background(), t.RosaRuntime, &hfClusterUpdateInput)).To(Succeed())
 	})
 
@@ -316,7 +300,7 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters := newEditClusterMocks(ctrl)
-		// ResolveClusterUID is called before PreRequest validates flags.
+		// ResolveClusterName is called before PreRequest validates flags.
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
@@ -332,7 +316,7 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters := newEditClusterMocks(ctrl)
-		// ResolveClusterUID is called before PreRequest validates flags.
+		// ResolveClusterName is called before PreRequest validates flags.
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
 		}}}, nil)
@@ -372,7 +356,7 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Patch(gomock.Any(), "cluster-uid", types.MergePatchType, gomock.Any(), gomock.Any()).
+		clusters.EXPECT().Patch(gomock.Any(), "cluster1", types.MergePatchType, gomock.Any(), gomock.Any()).
 			Return(nil, fmt.Errorf("update failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf
@@ -389,7 +373,7 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Patch(gomock.Any(), "cluster-uid", types.MergePatchType, gomock.Any(), gomock.Any()).
+		clusters.EXPECT().Patch(gomock.Any(), "cluster1", types.MergePatchType, gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ interface{}) (*v1alpha1.Cluster, error) {
 				var body map[string]any
 				Expect(json.Unmarshal(data, &body)).To(Succeed())
@@ -415,7 +399,7 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Patch(gomock.Any(), "cluster-uid", types.MergePatchType, gomock.Any(), gomock.Any()).
+		clusters.EXPECT().Patch(gomock.Any(), "cluster1", types.MergePatchType, gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ interface{}) (*v1alpha1.Cluster, error) {
 				var body map[string]any
 				Expect(json.Unmarshal(data, &body)).To(Succeed())
@@ -439,7 +423,7 @@ var _ = Describe("runHyperfleetEdit (cluster)", func() {
 		}
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Patch(gomock.Any(), "cluster-uid", types.MergePatchType, gomock.Any(), gomock.Any()).
+		clusters.EXPECT().Patch(gomock.Any(), "cluster1", types.MergePatchType, gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ interface{}) (*v1alpha1.Cluster, error) {
 				var body map[string]any
 				Expect(json.Unmarshal(data, &body)).To(Succeed())

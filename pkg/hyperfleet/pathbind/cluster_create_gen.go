@@ -20,7 +20,7 @@ type ClusterCreateInput struct {
 	Name                           string `hfsdk:"metadata.name"`
 	AdditionalTrustBundle          string `hfsdk:"spec.additionalTrustBundle"`
 	DeleteProtection               *bool  `hfsdk:"spec.deleteProtection"`
-	DisplayName                    string `hfsdk:"spec.displayName"`
+	DnsReservationId               string `hfsdk:"spec.dnsReservationId"`
 	ExpirationTimestamp            string `hfsdk:"spec.expirationTimestamp"`
 	RoleARN                        string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.aws.roleARN"`
 	Platform                       string `hfsdk:"spec.hostedCluster.autoNode.provisionerConfig.karpenter.platform"`
@@ -39,6 +39,8 @@ type ClusterCreateInput struct {
 	UtilizationThresholdPercent    *int32 `hfsdk:"spec.hostedCluster.autoscaling.scaleDown.utilizationThresholdPercent"`
 	Scaling                        string `hfsdk:"spec.hostedCluster.autoscaling.scaling"`
 	Channel                        string `hfsdk:"spec.hostedCluster.channel"`
+	OidcProviders                  string `hfsdk:"spec.hostedCluster.configuration.authentication.oidcProviders"`
+	AuthenticationType             string `hfsdk:"spec.hostedCluster.configuration.authentication.type"`
 	ComponentRoutes                string `hfsdk:"spec.hostedCluster.configuration.ingress.componentRoutes"`
 	ContainerLogMaxFiles           *int32 `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxFiles"`
 	ContainerLogMaxSize            string `hfsdk:"spec.hostedCluster.configuration.kubelet.containerLogMaxSize"`
@@ -88,7 +90,7 @@ type ClusterCreateInput struct {
 	ControlPlaneARN                string `hfsdk:"spec.hostedCluster.platform.aws.sharedVPC.rolesRef.controlPlaneARN"`
 	SharedVPCRolesRefIngressARN    string `hfsdk:"spec.hostedCluster.platform.aws.sharedVPC.rolesRef.ingressARN"`
 	TerminationHandlerQueueURL     string `hfsdk:"spec.hostedCluster.platform.aws.terminationHandlerQueueURL"`
-	Type                           string `hfsdk:"spec.hostedCluster.platform.type"`
+	PlatformType                   string `hfsdk:"spec.hostedCluster.platform.type"`
 	Version                        string `hfsdk:"spec.hostedCluster.release.image"`
 	OidcConfigId                   string `hfsdk:"spec.oidcConfigId"`
 	Properties                     string `hfsdk:"spec.properties"`
@@ -103,7 +105,7 @@ var ClusterCreatePlatformAPIFlags = []string{
 	"cluster-name",
 	"additional-trust-bundle",
 	"delete-protection",
-	"display-name",
+	"dns-reservation-id",
 	"expiration-time",
 	"role-arn",
 	"platform",
@@ -113,6 +115,7 @@ var ClusterCreatePlatformAPIFlags = []string{
 	"autoscaler-max-pod-grace-period",
 	"autoscaler-pod-priority-threshold",
 	"channel",
+	"authentication-type",
 	"component-routes",
 	"container-log-max-files",
 	"container-log-max-size",
@@ -162,7 +165,6 @@ var ClusterCreatePlatformAPIFlags = []string{
 	"control-plane-arn",
 	"shared-vpc-roles-ref-ingress-arn",
 	"termination-handler-queue-url",
-	"type",
 	"version",
 	"oidc-config-id",
 	"properties",
@@ -180,9 +182,7 @@ func RegisterClusterCreateFlags(cmd *cobra.Command, input *ClusterCreateInput) {
 		input.DeleteProtection = new(bool)
 		f.BoolVar(input.DeleteProtection, "delete-protection", false, "Enable delete protection on the cluster.")
 	})
-	registerIfNew(f, "display-name", func() {
-		f.StringVar(&input.DisplayName, "display-name", "", "Human-readable display name for the cluster.")
-	})
+	registerIfNew(f, "dns-reservation-id", func() { f.StringVar(&input.DnsReservationId, "dns-reservation-id", "", "") })
 	registerIfNew(f, "expiration-time", func() {
 		f.StringVar(&input.ExpirationTimestamp, "expiration-time", "", "Cluster expiration time (RFC3339).")
 	})
@@ -203,6 +203,7 @@ func RegisterClusterCreateFlags(cmd *cobra.Command, input *ClusterCreateInput) {
 		f.Int32Var(input.PodPriorityThreshold, "autoscaler-pod-priority-threshold", 0, "")
 	})
 	registerIfNew(f, "channel", func() { f.StringVar(&input.Channel, "channel", "", "") })
+	registerIfNew(f, "authentication-type", func() { f.StringVar(&input.AuthenticationType, "authentication-type", "", "") })
 	registerIfNew(f, "component-routes", func() { f.StringVar(&input.ComponentRoutes, "component-routes", "", "") })
 	registerIfNew(f, "container-log-max-files", func() {
 		input.ContainerLogMaxFiles = new(int32)
@@ -273,7 +274,6 @@ func RegisterClusterCreateFlags(cmd *cobra.Command, input *ClusterCreateInput) {
 	registerIfNew(f, "control-plane-arn", func() { f.StringVar(&input.ControlPlaneARN, "control-plane-arn", "", "") })
 	registerIfNew(f, "shared-vpc-roles-ref-ingress-arn", func() { f.StringVar(&input.SharedVPCRolesRefIngressARN, "shared-vpc-roles-ref-ingress-arn", "", "") })
 	registerIfNew(f, "termination-handler-queue-url", func() { f.StringVar(&input.TerminationHandlerQueueURL, "termination-handler-queue-url", "", "") })
-	registerIfNew(f, "type", func() { f.StringVar(&input.Type, "type", "", "") })
 	registerIfNew(f, "version", func() { f.StringVar(&input.Version, "version", "", "OpenShift release image for the cluster.") })
 	registerIfNew(f, "oidc-config-id", func() { f.StringVar(&input.OidcConfigId, "oidc-config-id", "", "") })
 	registerIfNew(f, "properties", func() { f.StringVar(&input.Properties, "properties", "", "") })

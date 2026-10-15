@@ -24,12 +24,6 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
-// clusterNamespacePrefix is the prefix the Platform API requires on the
-// metadata.namespace field of NodePool resources ("cluster-<uuid>").
-// TODO: this derivation ideally belongs in the SDK (clientset/pathbind or
-// the bridge wrapper) so consumers don't need to know the namespace format.
-const clusterNamespacePrefix = "cluster-"
-
 const maxAWSResourceTags = 25
 
 // hfNodePoolInput is the backing store for hyperfleet-specific create machinepool flags.
@@ -61,7 +55,7 @@ var (
 			exitFn(1)
 			return
 		}
-		clusterUID, err := hyperfleet.ResolveClusterUID(context.Background(), r.HyperFleetClient, clusterKey)
+		cluster, err := hyperfleet.ResolveCluster(context.Background(), r.HyperFleetClient, clusterKey)
 		if err != nil {
 			r.Reporter.Errorf("%v", err)
 			exitFn(1)
@@ -69,14 +63,14 @@ var (
 		}
 
 		handler.clusterKey = clusterKey
-		handler.clusterUID = clusterUID
+		handler.clusterName = cluster.Name
+		handler.clusterUID = string(cluster.UID)
 		if err := hfpathbind.RunCreateNodePool(
 			context.Background(),
 			r,
 			cmd,
 			&hfNodePoolInput,
 			handler,
-			clusterNamespacePrefix+clusterUID,
 		); err != nil {
 			r.Reporter.Errorf("%v", err)
 			exitFn(1)
@@ -112,21 +106,21 @@ func runHyperfleetCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolU
 		exitFn(1)
 		return
 	}
-	clusterUID, err := hyperfleet.ResolveClusterUID(context.Background(), r.HyperFleetClient, clusterKey)
+	cluster, err := hyperfleet.ResolveCluster(context.Background(), r.HyperFleetClient, clusterKey)
 	if err != nil {
 		r.Reporter.Errorf("%v", err)
 		exitFn(1)
 		return
 	}
 	handler.clusterKey = clusterKey
-	handler.clusterUID = clusterUID
+	handler.clusterName = cluster.Name
+	handler.clusterUID = string(cluster.UID)
 	if err := hfpathbind.RunCreateNodePool(
 		context.Background(),
 		r,
 		nil,
 		&hfNodePoolInput,
 		handler,
-		clusterUID,
 	); err != nil {
 		exitFn(1)
 	}
@@ -139,6 +133,7 @@ type hyperfleetNodePoolCreate struct {
 	argv                 []string
 	cmd                  *cobra.Command
 	clusterKey           string
+	clusterName          string
 	clusterUID           string
 	userOptionsValidated bool
 	labels               map[string]string
@@ -255,8 +250,11 @@ func (h *hyperfleetNodePoolCreate) PreRequest(
 	if name == "" && len(h.argv) > 0 {
 		name = h.argv[0]
 	}
-	input.Name = name
-	input.ClusterName = h.clusterKey
+	if name == "" {
+		return fmt.Errorf("--name is required")
+	}
+	input.Name = h.clusterName + "." + name
+	input.ClusterName = h.clusterName
 
 	instanceType := h.userOptions.InstanceType
 	if instanceType == "" {
@@ -276,15 +274,11 @@ func (h *hyperfleetNodePoolCreate) PreRequest(
 		input.Replicas = nil
 	}
 
-	if input.Name == "" {
-		return fmt.Errorf("--name is required")
-	}
-
 	// Auto-select subnet from existing node pools if not provided (matches V1 behavior)
 	if input.SubnetID == "" {
 		ctx := context.Background()
-		npList, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools(clusterNamespacePrefix+h.clusterUID).
-			List(ctx, platform.ListOptions{})
+		npList, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools().
+			List(ctx, platform.NodePoolListOptions{ClusterUID: h.clusterUID})
 		if err == nil && len(npList.Items) > 0 {
 			// Use the first node pool's subnet as default
 			if npList.Items[0].Spec.NodePool.Platform.AWS != nil && npList.Items[0].Spec.NodePool.Platform.AWS.Subnet.ID != nil {
@@ -312,7 +306,7 @@ func (h *hyperfleetNodePoolCreate) PostExpand(
 	}
 
 	cluster, err := r.HyperFleetClient.HyperfleetV1alpha1().Clusters().
-		Get(ctx, h.clusterUID, platform.GetOptions{})
+		Get(ctx, h.clusterName, platform.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get cluster %q: %w", h.clusterKey, err)
 	}
@@ -338,7 +332,7 @@ func (h *hyperfleetNodePoolCreate) PostExpand(
 
 	// Ensure AWS platform is initialized
 	if obj.Spec.NodePool.Platform.AWS == nil {
-		obj.Spec.NodePool.Platform.AWS = &hypershiftv1beta1.AWSNodePoolPlatform{}
+		obj.Spec.NodePool.Platform.AWS = &v1alpha1.AWSNodePoolPlatform{}
 	}
 
 	obj.Spec.NodePool.Platform.AWS.InstanceProfile = instanceProfile
@@ -353,7 +347,7 @@ func (h *hyperfleetNodePoolCreate) PostExpand(
 			return fmt.Errorf("invalid --disk-size: %w", err)
 		}
 		if obj.Spec.NodePool.Platform.AWS.RootVolume == nil {
-			obj.Spec.NodePool.Platform.AWS.RootVolume = &hypershiftv1beta1.Volume{}
+			obj.Spec.NodePool.Platform.AWS.RootVolume = &v1alpha1.Volume{}
 		}
 		obj.Spec.NodePool.Platform.AWS.RootVolume.Size = int64(size)
 	}
@@ -414,6 +408,7 @@ func (h *hyperfleetNodePoolCreate) PostExpand(
 }
 
 func (h *hyperfleetNodePoolCreate) PostResponse(_ context.Context, r *rosa.Runtime, created *v1alpha1.NodePool) error {
-	r.Reporter.Infof("Machine pool '%s' created successfully on hosted cluster '%s'", created.Name, h.clusterKey)
+	r.Reporter.Infof("Machine pool '%s' created successfully on hosted cluster '%s'",
+		hyperfleet.NodePoolDisplayName(h.clusterName, created.Name), h.clusterKey)
 	return nil
 }

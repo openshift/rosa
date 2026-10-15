@@ -7,6 +7,10 @@ package public
 // us to add granular markers to nested fields like kubelet config.
 // +hyperfleet:upstream-reduced-object=hypershiftv1beta1.ClusterConfiguration
 type ClusterConfiguration struct {
+	// authentication contains configuration for the cluster authentication.
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
+	Authentication *ClusterAuthentication `json:"authentication,omitempty"`
 	// ingress contains the configuration for ingress.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable

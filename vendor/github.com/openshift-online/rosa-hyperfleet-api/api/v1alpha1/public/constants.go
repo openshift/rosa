@@ -22,6 +22,18 @@ const (
 	ServiceInitiated ControlPlaneUpgradeType = "ServiceInitiated"
 )
 
+// DNSReservationPhase represents the allocation lifecycle of a DNS reservation.
+// Pending means allocation or recovery is in progress; Ready means the Index is
+// reserved by this resource UID and BaseDomain is assigned. Retryable failures
+// are reported with a Ready=False condition while the phase remains Pending.
+// +kubebuilder:validation:Enum=Pending;Ready
+type DNSReservationPhase string
+
+const (
+	DNSReservationPhasePending DNSReservationPhase = "Pending"
+	DNSReservationPhaseReady   DNSReservationPhase = "Ready"
+)
+
 // ManifestPhase represents the lifecycle phase of a Manifest.
 // +kubebuilder:validation:Enum=Syncing;Applied;Deleting
 type ManifestPhase string

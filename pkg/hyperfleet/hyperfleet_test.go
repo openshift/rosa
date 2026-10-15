@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 )
 
@@ -173,8 +174,8 @@ var _ = Describe("InstanceProfileFromRolesRef", func() {
 
 var _ = Describe("FormatNodePoolDiskSize", func() {
 	It("prints stored size and omits a missing volume", func() {
-		Expect(FormatNodePoolDiskSize(&hypershiftv1beta1.AWSNodePoolPlatform{
-			RootVolume: &hypershiftv1beta1.Volume{Size: 75},
+		Expect(FormatNodePoolDiskSize(&v1alpha1.AWSNodePoolPlatform{
+			RootVolume: &v1alpha1.Volume{Size: 75},
 		})).To(Equal("75 GiB"))
 		Expect(FormatNodePoolDiskSize(nil)).To(BeEmpty())
 	})

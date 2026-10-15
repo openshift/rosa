@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hfscheme "github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/scheme"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	pkgaws "github.com/openshift/rosa/pkg/aws"
@@ -215,6 +216,45 @@ var _ = Describe("runHyperfleet", func() {
 			"role ARNs must use the GovCloud partition")
 		Expect(rolesRef.NodePoolManagementARN).To(HavePrefix("arn:aws-us-gov:iam::"),
 			"role ARNs must use the GovCloud partition")
+	})
+
+	It("resolves an OIDC config name to its UID for the cluster spec", func() {
+		originalArgs := args
+		originalInput := hfClusterInput
+		DeferCleanup(func() {
+			args = originalArgs
+			hfClusterInput = originalInput
+		})
+		args.oidcConfigId = "managed-config"
+		hfClusterInput.OidcConfigId = ""
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf := hfmocks.NewMockInterface(ctrl)
+		v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
+		clusters := hfmocks.NewMockClusterInterface(ctrl)
+		oidcConfigs := hfmocks.NewMockOidcConfigInterface(ctrl)
+		hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
+		v1.EXPECT().Clusters().Return(clusters).AnyTimes()
+		v1.EXPECT().OidcConfigs().Return(oidcConfigs).AnyTimes()
+		oidcConfigs.EXPECT().List(gomock.Any(), platform.ListOptions{}).Return(
+			&v1alpha1.OidcConfigList{Items: []v1alpha1.OidcConfig{{
+				ObjectMeta: metav1.ObjectMeta{Name: "managed-config", UID: types.UID("oidc-config-uid")},
+			}}}, nil)
+
+		var capturedCluster *v1alpha1.Cluster
+		clusters.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, c *v1alpha1.Cluster, _ interface{}) (*v1alpha1.Cluster, error) {
+				capturedCluster = c
+				return &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{UID: types.UID("cluster-uid")}}, nil
+			})
+
+		stubSubnets("vpc-123", "us-gov-east-1a")
+		t.RosaRuntime.HyperFleetClient = hf
+		runHyperfleet(t.RosaRuntime)
+
+		Expect(exited).To(BeFalse())
+		Expect(capturedCluster).NotTo(BeNil())
+		Expect(capturedCluster.Spec.OidcConfigID).To(Equal("oidc-config-uid"))
 	})
 
 	It("sends user defined AWS tags as spec.tags", func() {

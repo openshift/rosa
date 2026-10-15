@@ -20,6 +20,8 @@ package public
 
 type ClusterExpansion interface{}
 
+type DNSReservationExpansion interface{}
+
 type NodePoolExpansion interface{}
 
 type OidcConfigExpansion interface{}

@@ -20,5 +20,5 @@ type NodePoolPlatform struct {
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=mutable
 	// +optional
-	AWS *hypershiftv1beta1.AWSNodePoolPlatform `json:"aws,omitempty"`
+	AWS *AWSNodePoolPlatform `json:"aws,omitempty"`
 }

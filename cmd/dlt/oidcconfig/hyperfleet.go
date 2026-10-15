@@ -61,20 +61,17 @@ func runHyperfleetDeleteOidcConfig(r *rosa.Runtime) {
 		return
 	}
 
-	// Get OIDC config from Platform API
+	// Resolve the OIDC config ID to metadata.name for the account-scoped item route.
 	r.Reporter.Debugf("Retrieving OIDC config '%s' from Platform API", args.oidcConfigId)
-	oidcConfig, err := r.HyperFleetClient.HyperfleetV1alpha1().OidcConfigs().Get(
-		ctx,
-		args.oidcConfigId,
-		platform.GetOptions{},
-	)
+	oidcConfig, err := hyperfleet.ResolveOidcConfig(ctx, r.HyperFleetClient, args.oidcConfigId)
 	if err != nil {
 		r.Reporter.Errorf("Failed to retrieve OIDC config '%s': %v", args.oidcConfigId, err)
 		hfExitFn(1)
 		return
 	}
 
-	inUse, err := hyperfleet.HasClusterUsingOidcConfigID(ctx, r.HyperFleetClient, args.oidcConfigId)
+	configUID := string(oidcConfig.UID)
+	inUse, err := hyperfleet.HasClusterUsingOidcConfigID(ctx, r.HyperFleetClient, configUID)
 	if err != nil {
 		r.Reporter.Errorf("There was a problem checking if any clusters are using OIDC config '%s': %v",
 			args.oidcConfigId, err)
@@ -114,7 +111,7 @@ func runHyperfleetDeleteOidcConfig(r *rosa.Runtime) {
 	r.Reporter.Debugf("Deleting OIDC config '%s' from Platform API", args.oidcConfigId)
 	err = r.HyperFleetClient.HyperfleetV1alpha1().OidcConfigs().Delete(
 		ctx,
-		args.oidcConfigId,
+		oidcConfig.Name,
 		platform.DeleteOptions{},
 	)
 	if err != nil {

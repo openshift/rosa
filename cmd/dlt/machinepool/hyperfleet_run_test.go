@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	"github.com/spf13/cobra"
 
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
@@ -36,7 +37,7 @@ func newDltMPMocks(ctrl *gomock.Controller) (
 	nodePools := hfmocks.NewMockNodePoolInterface(ctrl)
 	hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
 	v1.EXPECT().Clusters().Return(clusters).AnyTimes()
-	v1.EXPECT().NodePools(gomock.Any()).Return(nodePools).AnyTimes()
+	v1.EXPECT().NodePools().Return(nodePools).AnyTimes()
 	return hf, clusters, nodePools
 }
 
@@ -66,8 +67,9 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, nodePools := newDltMPMocks(ctrl)
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(clusterList("cluster1", "cluster-uid"), nil)
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(npList("my-np", "np-uid"), nil)
-		nodePools.EXPECT().Delete(gomock.Any(), "np-uid", gomock.Any()).Return(nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).
+			Return(npList("cluster1.my-np", "np-uid"), nil)
+		nodePools.EXPECT().Delete(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{machinepool: "my-np"}, nil)
@@ -77,8 +79,9 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, nodePools := newDltMPMocks(ctrl)
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(clusterList("cluster1", "cluster-uid"), nil)
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(npList("my-np", "np-uid"), nil)
-		nodePools.EXPECT().Delete(gomock.Any(), "np-uid", gomock.Any()).Return(nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).
+			Return(npList("cluster1.my-np", "np-uid"), nil)
+		nodePools.EXPECT().Delete(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(nil)
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetDelete(t.RosaRuntime, testCmd(), &DeleteMachinepoolUserOptions{}, []string{"my-np"})
@@ -88,7 +91,8 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, nodePools := newDltMPMocks(ctrl)
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(clusterList("cluster1", "cluster-uid"), nil)
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(npList("my-np", "np-uid"), nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).
+			Return(npList("cluster1.my-np", "np-uid"), nil)
 		// Delete must NOT be called — omitting the expectation enforces this via gomock.
 
 		confirmFn = func(string, ...interface{}) bool { return false }
@@ -181,8 +185,9 @@ var _ = Describe("runHyperfleetDelete (machinepool)", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		hf, clusters, nodePools := newDltMPMocks(ctrl)
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(clusterList("cluster1", "cluster-uid"), nil)
-		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(npList("my-np", "np-uid"), nil)
-		nodePools.EXPECT().Delete(gomock.Any(), "np-uid", gomock.Any()).Return(fmt.Errorf("delete failed"))
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).
+			Return(npList("cluster1.my-np", "np-uid"), nil)
+		nodePools.EXPECT().Delete(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(fmt.Errorf("delete failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
