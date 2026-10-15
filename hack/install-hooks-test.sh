@@ -5,8 +5,13 @@
 
 set -euo pipefail
 
+while IFS= read -r variable; do
+	unset "$variable"
+done < <(git rev-parse --local-env-vars)
+
 repo_root=$(cd "$(dirname "$0")/.." && pwd)
 test_root=$(mktemp -d)
+test_root=$(cd "$test_root" && pwd -P)
 trap 'rm -rf "$test_root"' EXIT
 export GIT_CONFIG_NOSYSTEM=1
 export GIT_CONFIG_GLOBAL="$test_root/global-config"
@@ -29,6 +34,7 @@ new_fixture() {
 	mkdir -p "$fixture/.bingo"
 	cp "$repo_root/.bingo/Variables.mk" "$fixture/.bingo/Variables.mk"
 	git init -q "$fixture"
+	test "$(git -C "$fixture" rev-parse --show-toplevel)" = "$fixture"
 	export HOOK_TEST_LOG="$fixture/installer.log"
 	output="$fixture/output.log"
 	: > "$GIT_CONFIG_GLOBAL"
@@ -124,3 +130,29 @@ test ! -e "$HOOK_TEST_LOG"
 test "$(git -C "$fixture" config --local --get core.hooksPath)" = .githooks
 grep -q 'preserving legacy hooks' "$output"
 echo 'PASS: missing installer preserves local legacy hooks'
+
+if [ "${1:-}" != --inherited-repository-env ]; then
+	caller="$test_root/caller"
+	git init -q "$caller"
+	git -C "$caller" config --local core.hooksPath caller-hooks
+	printf '%s\n' 'caller content' > "$caller/tracked"
+	git -C "$caller" add tracked
+	cp "$caller/.git/config" "$test_root/caller-config"
+	cp "$caller/.git/index" "$test_root/caller-index"
+	cp "$caller/tracked" "$test_root/caller-tracked"
+	git -C "$caller" status --porcelain=v1 > "$test_root/caller-status"
+	GIT_DIR="$caller/.git" \
+		GIT_COMMON_DIR="$caller/.git" \
+		GIT_WORK_TREE="$caller" \
+		GIT_INDEX_FILE="$caller/.git/index" \
+		GIT_CONFIG_COUNT=1 \
+		GIT_CONFIG_KEY_0=core.hooksPath \
+		GIT_CONFIG_VALUE_0=caller-hooks \
+		bash "$repo_root/hack/install-hooks-test.sh" --inherited-repository-env
+	cmp "$caller/.git/config" "$test_root/caller-config"
+	cmp "$caller/.git/index" "$test_root/caller-index"
+	cmp "$caller/tracked" "$test_root/caller-tracked"
+	git -C "$caller" status --porcelain=v1 > "$test_root/caller-status-after"
+	cmp "$test_root/caller-status" "$test_root/caller-status-after"
+	echo 'PASS: inherited repository environment leaves caller config, index and worktree unchanged'
+fi
