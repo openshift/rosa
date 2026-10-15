@@ -6,6 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 )
 
@@ -66,4 +67,21 @@ func ParseHyperfleetTaints(input string) ([]hypershiftv1beta1.Taint, error) {
 		})
 	}
 	return taints, nil
+}
+
+// ParseHyperfleetImageType maps a CLI image type onto the value the Platform
+// API accepts. The OCM path spells the Linux default "Default" while
+// HyperShift spells it "Linux", so both are accepted here and normalised.
+// An empty value stays empty and leaves the API default in place.
+func ParseHyperfleetImageType(imageType string) (string, error) {
+	switch imageType {
+	case "":
+		return "", nil
+	case string(cmv1.ImageTypeDefault), string(hypershiftv1beta1.ImageTypeLinux):
+		return string(hypershiftv1beta1.ImageTypeLinux), nil
+	case string(cmv1.ImageTypeWindows):
+		return string(hypershiftv1beta1.ImageTypeWindows), nil
+	}
+	// Same wording as the OCM path, so both reject an unknown type alike.
+	return "", fmt.Errorf("expected a valid image type for the machine pool: '%s'", imageType)
 }

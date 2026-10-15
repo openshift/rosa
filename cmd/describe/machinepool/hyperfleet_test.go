@@ -132,6 +132,25 @@ var _ = Describe("hfNodePoolToMap", func() {
 		Expect(m["security_group_ids"]).To(Equal([]string{}))
 	})
 
+	It("reports the image type a Windows node pool runs", func() {
+		np := buildTestNodePool()
+		np.Spec.NodePool.Platform.AWS.ImageType = hypershiftv1beta1.ImageTypeWindows
+		m := hfNodePoolToMap(np, "my-cluster")
+		Expect(m["image_type"]).To(Equal("Windows"))
+	})
+
+	It("reports the Linux default when the node pool stores no image type", func() {
+		m := hfNodePoolToMap(buildTestNodePool(), "my-cluster")
+		Expect(m["image_type"]).To(Equal("Linux"))
+	})
+
+	It("reports no image type for a node pool without an AWS platform", func() {
+		np := buildTestNodePool()
+		np.Spec.NodePool.Platform.AWS = nil
+		m := hfNodePoolToMap(np, "my-cluster")
+		Expect(m["image_type"]).To(Equal(""))
+	})
+
 	It("returns empty conditions slice when no conditions", func() {
 		np := buildTestNodePool()
 		np.Status.Conditions = nil
@@ -178,6 +197,13 @@ var _ = Describe("hfNodePoolToString", func() {
 		Expect(s).To(ContainSubstring("Disk Size:                             75 GiB"))
 		Expect(s).To(ContainSubstring("v4.17.0-ec.2"))
 		Expect(s).To(ContainSubstring("2026-06-15"))
+	})
+
+	It("includes the image type in output", func() {
+		np := buildTestNodePool()
+		np.Spec.NodePool.Platform.AWS.ImageType = hypershiftv1beta1.ImageTypeWindows
+		s := hfNodePoolToString(np, "my-cluster")
+		Expect(s).To(ContainSubstring("Image type:                            Windows\n"))
 	})
 
 	It("includes conditions in output", func() {

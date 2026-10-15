@@ -133,6 +133,73 @@ var _ = Describe("Edit nodepool",
 				verify("", "")
 			})
 
+		It("can set and edit the HyperFleet nodepool image type",
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			func() {
+				if !isHyperfleetMode() {
+					// On the OCM path --type is gated behind the windows-li
+					// technology preview, which the Platform API does not share.
+					Skip("This case exercises the HyperFleet image type")
+				}
+				By("Select an existing worker subnet and instance type")
+				existing, err := machinePoolService.ListAndReflectNodePools(clusterID)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(existing.NodePools).NotTo(BeEmpty())
+				subnet := existing.NodePools[0].Subnet
+				workerType := existing.NodePools[0].InstanceType
+				Expect(subnet).NotTo(BeEmpty())
+				Expect(workerType).NotTo(BeEmpty())
+
+				verifyImageType := func(poolName, expected string) {
+					description, err := machinePoolService.DescribeAndReflectNodePool(clusterID, poolName)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(description.ImageType).To(Equal(expected))
+				}
+
+				By("Create a nodepool with the OCM spelling of the default image type")
+				poolName := helper.GenerateRandomName("np-imagetype", 2)
+				_, err = machinePoolService.CreateMachinePool(clusterID, poolName,
+					"--replicas", "0", "--subnet", subnet, "--instance-type", workerType,
+					"--type", "Default")
+				Expect(err).NotTo(HaveOccurred())
+				// Deleted in the body rather than through DeferCleanup: the
+				// AfterEach removes leftover pools first, so a cleanup node
+				// would find this one already gone.
+				defer func() {
+					_, err := machinePoolService.DeleteMachinePool(clusterID, poolName)
+					Expect(err).NotTo(HaveOccurred())
+				}()
+				// The OCM path spells the default "Default"; the Platform API
+				// spells it "Linux", so describe reports the API value.
+				verifyImageType(poolName, "Linux")
+
+				By("Edit the image type through the Platform API flag")
+				_, err = machinePoolService.EditMachinePool(clusterID, poolName, "--image-type", "Linux")
+				Expect(err).NotTo(HaveOccurred())
+				verifyImageType(poolName, "Linux")
+
+				By("Reject an unknown image type on create")
+				output, err := machinePoolService.CreateMachinePool(clusterID,
+					helper.GenerateRandomName("np-imagetype-bad", 2),
+					"--replicas", "0", "--subnet", subnet, "--instance-type", workerType,
+					"--type", "Solaris")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring("expected a valid image type for the machine pool: 'Solaris'"))
+
+				By("Reject an unknown image type on edit")
+				output, err = machinePoolService.EditMachinePool(clusterID, poolName, "--image-type", "Solaris")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring("expected a valid image type for the machine pool: 'Solaris'"))
+
+				By("Reject clearing the image type on edit")
+				output, err = machinePoolService.EditMachinePool(clusterID, poolName, "--image-type", "")
+				Expect(err).To(HaveOccurred())
+				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
+					To(ContainSubstring("--image-type requires a value"))
+			})
+
 		It("can create/edit/list/delete nodepool - [id:56782]",
 			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {

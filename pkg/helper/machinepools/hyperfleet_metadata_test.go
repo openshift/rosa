@@ -56,4 +56,22 @@ var _ = Describe("HyperFleet nodepool metadata validation", func() {
 		Entry("invalid key", "bad*=test:NoSchedule", "invalid taint key"),
 	)
 
+	DescribeTable("maps the image type onto the Platform API spelling",
+		func(input, expected, expectedError string) {
+			imageType, err := ParseHyperfleetImageType(input)
+			if expectedError != "" {
+				Expect(err).To(MatchError(ContainSubstring(expectedError)))
+				return
+			}
+			Expect(err).NotTo(HaveOccurred())
+			Expect(imageType).To(Equal(expected))
+		},
+		Entry("unset", "", "", ""),
+		Entry("the OCM spelling of the default", "Default", "Linux", ""),
+		Entry("the API spelling of the default", "Linux", "Linux", ""),
+		Entry("windows", "Windows", "Windows", ""),
+		Entry("wrong case", "windows", "", "expected a valid image type for the machine pool: 'windows'"),
+		Entry("unknown type", "Solaris", "", "expected a valid image type for the machine pool: 'Solaris'"),
+	)
+
 })

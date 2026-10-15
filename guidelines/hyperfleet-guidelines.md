@@ -405,6 +405,7 @@ Use this to plan future additions to the Hyperfleet path.
 | `--ec2-metadata-http-tokens` | Not used | Optional (HCP only) |
 | `--capacity-reservation-id` / `--capacity-reservation-preference` | Not used | Optional |
 | `--tags` | Not used | Optional |
+| `--type` / `--image-type` | Optional¹ | `--type` only |
 
 ### Cluster Edit
 
@@ -441,6 +442,15 @@ Use this to plan future additions to the Hyperfleet path.
 | `--kubelet-configs` | Not used | Optional (HCP only) |
 | `--node-drain-grace-period` | Not used | Optional (HCP only) |
 | `--max-surge` / `--max-unavailable` | Not used | Optional |
+| `--image-type` | Optional¹ | Not used |
+
+¹ The image type selects a Linux or Windows AMI. `--type` is the OCM-registered
+spelling and is bridged into `spec.nodePool.platform.aws.imageType` on create;
+`--image-type` is the generated flag and works on create and edit, since the
+Platform API marks the field mutable. The OCM value `Default` maps to the API
+value `Linux`. The OCM path gates Windows behind the `windows-li` technology
+preview through an OCM API call; the HyperFleet path has no OCM client, so the
+Platform API's own validation governs instead.
 
 ---
 
