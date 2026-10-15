@@ -12,7 +12,7 @@ When editing CLI code, tests, docs, examples, or logs:
 
 ## Gitleaks (secret scanning)
 
-- MUST: Run the blocking pre-commit gitleaks hook (`.pre-commit-config.yaml` via `.githooks/pre-commit`).
+- MUST: Run the blocking gitleaks checks configured in `.pre-commit-config.yaml`, either through installed hooks or the explicit pre-commit stage in `CONTRIBUTING.md`.
 - MUST NOT: Bypass with `SKIP=gitleaks` or `git commit --no-verify`.
 - MUST: Prefer fixing findings. MAY allowlist only justified mocks/fixtures in `.gitleaks.toml` with a short comment — never disable the scan.
 - Config: `.gitleaks.toml`. Pre-commit pin: commit SHA with `# frozen: <tag>` in `.pre-commit-config.yaml`.

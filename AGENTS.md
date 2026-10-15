@@ -141,7 +141,7 @@ When adding hyperfleet support to a command:
 
 ## Tests And Verification
 
-- Run `make install-hooks` once per clone before committing.
+- Installing repository hooks with `make install-hooks` is optional. All configured checks remain mandatory; when hooks are not installed, run the explicit pre-commit, commit-msg, and pre-push stage commands in `CONTRIBUTING.md`.
 - Do not bypass local hooks or verification gates (`git commit --no-verify`, `SKIP=gitleaks`).
 - Do not bypass gitleaks; it runs in the pre-commit hook via `.pre-commit-config.yaml`. Prefer fixing findings; allowlist only justified mocks in `.gitleaks.toml` (see `guidelines/security.md` and `CONTRIBUTING.md`).
 - Common checks:

@@ -51,8 +51,12 @@ rosa:
 	go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD) $(if $(VERSION),-X github.com/openshift/rosa/pkg/info.DefaultVersion=$(VERSION),)" ./cmd/rosa
 
 .PHONY: test
-test:
+test: test-install-hooks
 	go test $(GO_TEST_FLAGS) $(shell go list ./... | grep -v /tests/)
+
+.PHONY: test-install-hooks
+test-install-hooks:
+	bash ./hack/install-hooks-test.sh
 
 .PHONY: coverage
 coverage:
@@ -109,19 +113,38 @@ commits/check:
 
 .PHONY: install-hooks
 install-hooks:
-	@if ! command -v pre-commit &> /dev/null; then \
+	@hooks_path=$$(git config --local core.hooksPath 2>/dev/null || true); \
+	legacy_hooks_path=; \
+	if [ "$$hooks_path" = ".githooks" ]; then \
+		if ! command -v pre-commit >/dev/null 2>&1; then \
+			echo "Error: pre-commit is not installed; preserving legacy hooks."; \
+			exit 1; \
+		fi; \
+		legacy_hooks_path=$$hooks_path; \
+		echo "Detected legacy core.hooksPath=.githooks (from the old hook system)."; \
+		echo "Unsetting it so pre-commit hooks are picked up correctly..."; \
+		git config --local --unset core.hooksPath || exit $$?; \
+	fi; \
+	hooks_path=$$(git config --get core.hooksPath 2>/dev/null || true); \
+	if [ -n "$$hooks_path" ]; then \
+		echo "Hook installation skipped: core.hooksPath is configured; preserving existing hooks."; \
+		echo "All checks remain mandatory. Follow the explicit stage commands in CONTRIBUTING.md."; \
+		exit 0; \
+	fi; \
+	if ! command -v pre-commit >/dev/null 2>&1; then \
 		echo "Error: pre-commit is not installed."; \
 		echo "See https://pre-commit.com/#install for installation instructions"; \
 		exit 1; \
+	fi; \
+	if pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push; then \
+		echo "Installed pre-commit hooks (pre-commit, commit-msg, pre-push). All checks remain mandatory."; \
+	else \
+		status=$$?; \
+		if [ "$$legacy_hooks_path" = ".githooks" ]; then \
+			git config --local core.hooksPath .githooks || exit $$?; \
+		fi; \
+		exit $$status; \
 	fi
-	@hooks_path=$$(git config --local core.hooksPath 2>/dev/null || true); \
-	if [ "$$hooks_path" = ".githooks" ]; then \
-		echo "Detected legacy core.hooksPath=.githooks (from the old hook system)."; \
-		echo "Unsetting it so pre-commit hooks are picked up correctly..."; \
-		git config --unset core.hooksPath; \
-	fi
-	@pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
-	@echo "Installed pre-commit hooks (pre-commit, commit-msg, pre-push). YOU MUST RUN THESE HOOKS ON EVERY COMMIT AND PUSH."
 
 .PHONY: license-check
 license-check: $(ADDLICENSE)
