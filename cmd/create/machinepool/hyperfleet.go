@@ -139,6 +139,7 @@ type hyperfleetNodePoolCreate struct {
 	labels               map[string]string
 	taints               []hypershiftv1beta1.Taint
 	resourceTags         []hypershiftv1beta1.AWSResourceTag
+	imageType            string
 }
 
 func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
@@ -182,9 +183,15 @@ func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
 		return err
 	}
 
+	imageType, err := mpHelpers.ParseHyperfleetImageType(h.userOptions.Type)
+	if err != nil {
+		return err
+	}
+
 	h.labels = labels
 	h.taints = taints
 	h.resourceTags = resourceTags
+	h.imageType = imageType
 	h.userOptionsValidated = true
 	return nil
 }
@@ -263,6 +270,13 @@ func (h *hyperfleetNodePoolCreate) PreRequest(
 	input.InstanceType = instanceType
 
 	input.SubnetID = h.userOptions.Subnet
+
+	// Bridge: --type is the OCM-registered spelling of the image type, so
+	// registerIfNew skips the generated flag and only --image-type arrives
+	// here directly. Remove when OCM flag registration is dropped.
+	if input.ImageType == "" {
+		input.ImageType = h.imageType
+	}
 
 	replicas := int32(h.userOptions.Replicas)
 	input.Replicas = &replicas

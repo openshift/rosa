@@ -106,13 +106,33 @@ func (h *hyperfleetNodePoolUpdate) PreRequest(
 	autoscalingChanged := h.cmd.Flags().Changed("enable-autoscaling") ||
 		minReplicasChanged || maxReplicasChanged
 
-	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged &&
+	imageTypeChanged := h.cmd.Flags().Changed("image-type")
+
+	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged && !imageTypeChanged &&
 		!h.cmd.Flags().Changed("labels") && !h.cmd.Flags().Changed("taints") &&
 		!h.cmd.Flags().Changed("autorepair") {
 		return fmt.Errorf(
 			"specify at least one supported flag: --replicas, --enable-autoscaling, " +
-				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair",
+				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair, " +
+				"--image-type",
 		)
+	}
+
+	if imageTypeChanged {
+		// --image-type is a generated flag, so it arrives on the input already.
+		// Normalise it here so the OCM spelling of the Linux default is
+		// accepted and an unknown type fails before the request. The API enum
+		// has no empty member, so clearing the flag is rejected rather than
+		// silently leaving the node pool as it is.
+		if input.ImageType == "" {
+			return fmt.Errorf("--image-type requires a value: %s or %s",
+				hypershiftv1beta1.ImageTypeLinux, hypershiftv1beta1.ImageTypeWindows)
+		}
+		imageType, err := mpHelpers.ParseHyperfleetImageType(input.ImageType)
+		if err != nil {
+			return err
+		}
+		input.ImageType = imageType
 	}
 
 	if h.cmd.Flags().Changed("labels") {
@@ -257,6 +277,15 @@ func (h *hyperfleetNodePoolUpdate) PostExpand(
 		// Management is service-set; the operator renders it from spec.autoRepair.
 		autorepair := h.userOptions.autorepair
 		merged.Spec.AutoRepair = &autorepair
+	}
+
+	// The merge starts from the current node pool, so an expanded field only
+	// reaches the request when it is carried over explicitly.
+	if h.cmd.Flags().Changed("image-type") && obj.Spec.NodePool.Platform.AWS != nil {
+		if merged.Spec.NodePool.Platform.AWS == nil {
+			return fmt.Errorf("cannot update the image type on a non-AWS node pool")
+		}
+		merged.Spec.NodePool.Platform.AWS.ImageType = obj.Spec.NodePool.Platform.AWS.ImageType
 	}
 
 	if h.cmd.Flags().Changed("labels") {

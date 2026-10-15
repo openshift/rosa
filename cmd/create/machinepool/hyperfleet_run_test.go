@@ -22,6 +22,7 @@ import (
 	awsapi "github.com/openshift/rosa/pkg/aws/api_interface"
 	awsmocks "github.com/openshift/rosa/pkg/aws/mocks"
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/ocm"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/test"
@@ -66,6 +67,9 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 	BeforeEach(func() {
 		t = test.NewTestRuntime()
 		mockMachinePoolAWSValidation()
+		// The create flags share one package-level input, so values set by an
+		// earlier spec would otherwise leak into the next request.
+		hfNodePoolInput = hfpathbind.NodePoolCreateInput{}
 	})
 
 	It("creates a node pool on the success path", func() {
@@ -105,6 +109,48 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			RootDiskSize: "75GiB",
 			Tags:         []string{"test:testvalue", "test2:testValue/openshift"},
 		}, nil)
+	})
+
+	// --type is the OCM spelling; the Platform API spells the default Linux.
+	DescribeTable("sends the image type the user asked for",
+		func(flagValue, expected string) {
+			ctrl := gomock.NewController(GinkgoT())
+			hf, clusters, nodePools := newCreateMPMocks(ctrl)
+
+			cluster := makeCluster("cluster1", "cluster-uid")
+			created := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: "np-uid-new"}}
+			clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+				&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
+			clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
+			nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ platform.CreateOptions) (*v1alpha1.NodePool, error) {
+					Expect(string(np.Spec.NodePool.Platform.AWS.ImageType)).To(Equal(expected))
+					return created, nil
+				})
+
+			t.RosaRuntime.HyperFleetClient = hf
+			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
+				Name: "my-np", Replicas: 2, Subnet: "subnet-abc123", Type: flagValue,
+			}, nil)
+		},
+		Entry("windows", "Windows", "Windows"),
+		Entry("the OCM default", "Default", "Linux"),
+		Entry("unset", "", ""),
+	)
+
+	It("rejects an unknown image type before calling the API", func() {
+		orig := exitFn
+		exitFn = func(_ int) { panic("exit") }
+		DeferCleanup(func() { exitFn = orig })
+
+		ctrl := gomock.NewController(GinkgoT())
+		// No calls are expected: validation precedes the cluster lookup.
+		t.RosaRuntime.HyperFleetClient = hfmocks.NewMockInterface(ctrl)
+		Expect(func() {
+			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
+				Name: "my-np", Replicas: 2, Subnet: "subnet-abc123", Type: "Solaris",
+			}, nil)
+		}).To(PanicWith("exit"))
 	})
 
 	It("resolves name from argv when Name option is empty", func() {

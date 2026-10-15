@@ -106,6 +106,7 @@ func hfNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string]inter
 	instanceType := ""
 	subnetID := ""
 	diskSize := ""
+	imageType := hyperfleet.FormatNodePoolImageType(np.Spec.NodePool.Platform.AWS)
 	if np.Spec.NodePool.Platform.AWS != nil {
 		instanceType = np.Spec.NodePool.Platform.AWS.InstanceType
 		if np.Spec.NodePool.Platform.AWS.Subnet.ID != nil {
@@ -133,6 +134,7 @@ func hfNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string]inter
 		"instanceType":       instanceType,
 		"subnet":             subnetID,
 		"disk_size":          diskSize,
+		"image_type":         imageType,
 		"security_group_ids": securityGroupIDs,
 		"version":            np.Spec.NodePool.Release.Image,
 		"created_at":         np.CreationTimestamp.UTC().Format(time.RFC3339),
@@ -149,6 +151,7 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 	spotInstances := "No"
 	securityGroupIDs := ""
 	tags := ""
+	imageType := hyperfleet.FormatNodePoolImageType(np.Spec.NodePool.Platform.AWS)
 
 	if np.Spec.NodePool.Platform.AWS != nil {
 		aws := np.Spec.NodePool.Platform.AWS
@@ -253,6 +256,7 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		"Subnet:                                %s\n"+
 		"Spot instances:                        %s\n"+
 		"Disk Size:                             %s\n"+
+		"Image type:                            %s\n"+
 		"Version:                               %s\n"+
 		"EC2 Metadata Http Tokens:              %s\n"+
 		"Autorepair:                            %s\n"+
@@ -276,6 +280,7 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		subnetID,
 		spotInstances,
 		diskSize,
+		imageType,
 		np.Spec.NodePool.Release.Image,
 		"", // EC2 Metadata Http Tokens - TODO: add support
 		autorepair,

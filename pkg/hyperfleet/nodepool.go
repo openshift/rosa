@@ -8,6 +8,7 @@ import (
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
 	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
+	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 )
 
 // ListNodePoolsForCluster lists NodePools with the parent cluster UID selector.
@@ -72,4 +73,18 @@ func FormatNodePoolDiskSize(aws *v1alpha1.AWSNodePoolPlatform) string {
 		return ""
 	}
 	return fmt.Sprintf("%d GiB", aws.RootVolume.Size)
+}
+
+// FormatNodePoolImageType reports the image type a node pool's instances run.
+// HyperShift reads an unset imageType as Linux, and the API stores nothing for
+// it, so the default is reported rather than an empty column. A node pool with
+// no AWS platform reports nothing, since the image type is AWS-specific.
+func FormatNodePoolImageType(aws *v1alpha1.AWSNodePoolPlatform) string {
+	if aws == nil {
+		return ""
+	}
+	if aws.ImageType == "" {
+		return string(hypershiftv1beta1.ImageTypeLinux)
+	}
+	return string(aws.ImageType)
 }

@@ -152,6 +152,7 @@ type NodePoolDescription struct {
 	AdditionalSecurityGroupIDs string              `yaml:"Additional security group IDs,omitempty"`
 	NodeDrainGracePeriod       string              `yaml:"Node drain grace period,omitempty"`
 	DiskSize                   string              `yaml:"Disk Size,omitempty"`
+	ImageType                  string              `yaml:"Image type,omitempty"`
 }
 
 // Create MachinePool
