@@ -193,3 +193,26 @@ The following commands are available to trigger optional jobs:
     /test e2e-presubmits-pr-rosa-sts-security-group
     /test e2e-presubmits-pr-rosa-sts-shared-vpc-auto
 ```
+
+### Custom DNS domains on V1 and V2
+
+Case `65793` covers DNS domain creation, list filters, and deletion on both APIs.
+On V1, the default reservation is Classic and `--hosted-cp` reserves an HCP domain.
+On V2, both commands reserve HCP domains. V2 lists reservations owned by the
+current AWS account; `--all` and `--hosted-cp` return the same account-scoped
+collection. JSON and YAML output use the existing DNS domain fields.
+
+V2 requires the Platform API custom DNS endpoints (`/api/v0/dns_domains`) from
+[ROSA-62](https://redhat.atlassian.net/browse/ROSA-62). Case `65793` is marked
+`Hyperfleet.Validated`.
+With the CLI configured for the desired API, run:
+
+```bash
+rosa create dns-domain --hosted-cp
+rosa list dns-domains
+# Use the returned domain ID with the other cluster creation arguments:
+rosa create cluster --base-domain <domain-id> ...
+# Delete the reservation after deleting any cluster that uses it:
+rosa delete dns-domain <domain-id>
+go run github.com/onsi/ginkgo/v2/ginkgo run -v --focus 'id:65793' tests/e2e/
+```
