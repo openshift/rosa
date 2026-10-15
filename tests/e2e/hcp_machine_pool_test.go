@@ -752,8 +752,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				clusterConfig.Version.RawID,
 				"",
 				"")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Machine pool 'anything' does not exist for hosted cluster"))
+			helper.ExpectErrorWithMessage(err, "machine pool 'anything' does not exist for hosted cluster")
 
 			By("for not-ready cluster")
 			var notReadyClusterID string
