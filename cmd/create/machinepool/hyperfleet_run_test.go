@@ -9,6 +9,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -22,6 +23,7 @@ import (
 	awsapi "github.com/openshift/rosa/pkg/aws/api_interface"
 	awsmocks "github.com/openshift/rosa/pkg/aws/mocks"
 	hfmocks "github.com/openshift/rosa/pkg/hyperfleet/mocks"
+	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/ocm"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/test"
@@ -66,6 +68,9 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 	BeforeEach(func() {
 		t = test.NewTestRuntime()
 		mockMachinePoolAWSValidation()
+		// The create flags share one package-level input, so values set by an
+		// earlier spec would otherwise leak into the next request.
+		hfNodePoolInput = hfpathbind.NodePoolCreateInput{}
 	})
 
 	It("creates a node pool on the success path", func() {
@@ -104,6 +109,59 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 			Subnet:       "subnet-abc123",
 			RootDiskSize: "75GiB",
 			Tags:         []string{"test:testvalue", "test2:testValue/openshift"},
+		}, nil)
+	})
+
+	// The rolling-update values reach the API through pathbind, which decodes
+	// them as JSON into an int-or-string field: absolute counts travel as bare
+	// numbers and percentages have to be quoted.
+	DescribeTable("sends the rolling update settings the user asked for",
+		func(maxSurge, maxUnavailable string, expectedSurge, expectedUnavailable intstr.IntOrString) {
+			ctrl := gomock.NewController(GinkgoT())
+			hf, clusters, nodePools := newCreateMPMocks(ctrl)
+
+			cluster := makeCluster("cluster1", "cluster-uid")
+			created := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: "np-uid-new"}}
+			clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+				&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
+			clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
+			nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ platform.CreateOptions) (*v1alpha1.NodePool, error) {
+					Expect(np.Spec.MaxSurge).To(Equal(&expectedSurge))
+					Expect(np.Spec.MaxUnavailable).To(Equal(&expectedUnavailable))
+					return created, nil
+				})
+
+			t.RosaRuntime.HyperFleetClient = hf
+			runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
+				Name: "my-np", Replicas: 2, Subnet: "subnet-abc123",
+				MaxSurge: maxSurge, MaxUnavailable: maxUnavailable,
+			}, nil)
+		},
+		Entry("absolute counts", "2", "1", intstr.FromInt32(2), intstr.FromInt32(1)),
+		Entry("percentages", "20%", "10%", intstr.FromString("20%"), intstr.FromString("10%")),
+		Entry("mixed units", "20%", "1", intstr.FromString("20%"), intstr.FromInt32(1)),
+	)
+
+	It("leaves the rolling update unset when the user asks for neither", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		hf, clusters, nodePools := newCreateMPMocks(ctrl)
+
+		cluster := makeCluster("cluster1", "cluster-uid")
+		created := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: "np-uid-new"}}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
+		nodePools.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, np *v1alpha1.NodePool, _ platform.CreateOptions) (*v1alpha1.NodePool, error) {
+				Expect(np.Spec.MaxSurge).To(BeNil())
+				Expect(np.Spec.MaxUnavailable).To(BeNil())
+				return created, nil
+			})
+
+		t.RosaRuntime.HyperFleetClient = hf
+		runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
+			Name: "my-np", Replicas: 2, Subnet: "subnet-abc123",
 		}, nil)
 	})
 

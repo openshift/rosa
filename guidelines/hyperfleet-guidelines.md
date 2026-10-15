@@ -405,6 +405,7 @@ Use this to plan future additions to the Hyperfleet path.
 | `--ec2-metadata-http-tokens` | Not used | Optional (HCP only) |
 | `--capacity-reservation-id` / `--capacity-reservation-preference` | Not used | Optional |
 | `--tags` | Not used | Optional |
+| `--max-surge` / `--max-unavailable` | Optional¹ | Optional |
 
 ### Cluster Edit
 
@@ -440,7 +441,14 @@ Use this to plan future additions to the Hyperfleet path.
 | `--tuning-configs` | Not used | Optional (HCP only) |
 | `--kubelet-configs` | Not used | Optional (HCP only) |
 | `--node-drain-grace-period` | Not used | Optional (HCP only) |
-| `--max-surge` / `--max-unavailable` | Not used | Optional |
+| `--max-surge` / `--max-unavailable` | Optional¹ | Optional |
+
+¹ These map to the mutable top-level `spec.maxSurge` / `spec.maxUnavailable`,
+which the operator renders into the service-set
+`spec.nodePool.management.replace.rollingUpdate`, the way `spec.autoRepair`
+feeds `management.autoRepair`. Both flags are registered by OCM v1, so
+`registerIfNew` skips them and the commands bridge the values into
+`NodePoolCreateInput` / `NodePoolUpdateInput` by hand.
 
 ---
 

@@ -56,4 +56,25 @@ var _ = Describe("HyperFleet nodepool metadata validation", func() {
 		Entry("invalid key", "bad*=test:NoSchedule", "invalid taint key"),
 	)
 
+	DescribeTable("validates rolling update input", func(maxSurge, maxUnavailable, expectedError string) {
+		err := ValidateHyperfleetUpgrade(maxSurge, maxUnavailable)
+		if expectedError == "" {
+			Expect(err).NotTo(HaveOccurred())
+			return
+		}
+		Expect(err).To(MatchError(ContainSubstring(expectedError)))
+	},
+		Entry("absolute values", "2", "1", ""),
+		Entry("percentages", "20%", "10%", ""),
+		Entry("mixed units", "20%", "1", ""),
+		Entry("zero max surge", "0", "1", ""),
+		Entry("zero max unavailable", "1", "0", ""),
+		Entry("unset values", "", "", ""),
+		Entry("both zero", "0", "0", "only one of --max-surge and --max-unavailable can be zero"),
+		Entry("both zero across units", "0%", "0", "only one of --max-surge and --max-unavailable can be zero"),
+		Entry("negative max surge", "-1", "1", "invalid --max-surge"),
+		Entry("negative max unavailable", "1", "-1", "invalid --max-unavailable"),
+		Entry("percentage above 100", "101%", "1", "invalid --max-surge"),
+		Entry("not a number", "two", "1", "invalid --max-surge"),
+	)
 })

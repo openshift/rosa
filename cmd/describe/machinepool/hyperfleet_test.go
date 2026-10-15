@@ -6,6 +6,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -44,6 +46,18 @@ func buildTestNodePool() *v1alpha1.NodePool {
 				},
 			},
 		},
+	}
+}
+
+// withRollingUpdate sets the customer rolling-update values on spec, as the
+// Platform API reports them for a node pool created with the flags.
+func withRollingUpdate(np *v1alpha1.NodePool, maxSurge, maxUnavailable string) {
+	surge := intstr.Parse(maxSurge)
+	unavailable := intstr.Parse(maxUnavailable)
+	np.Spec.MaxSurge = &surge
+	np.Spec.MaxUnavailable = &unavailable
+	np.Spec.NodePool.Management = hypershiftv1beta1.NodePoolManagement{
+		UpgradeType: hypershiftv1beta1.UpgradeTypeReplace,
 	}
 }
 
@@ -141,6 +155,26 @@ var _ = Describe("hfNodePoolToMap", func() {
 		Expect(ok).To(BeTrue())
 		Expect(conds).To(BeEmpty())
 	})
+
+	It("reports the rolling update settings under management_upgrade", func() {
+		np := buildTestNodePool()
+		withRollingUpdate(np, "2", "20%")
+		m := hfNodePoolToMap(np, "my-cluster")
+
+		Expect(m["management_upgrade"]).To(Equal(map[string]interface{}{
+			"type":            "Replace",
+			"max_surge":       "2",
+			"max_unavailable": "20%",
+		}))
+	})
+
+	It("reports the API defaults when the customer set no rolling update", func() {
+		m := hfNodePoolToMap(buildTestNodePool(), "my-cluster")
+		Expect(m["management_upgrade"]).To(Equal(map[string]interface{}{
+			"max_surge":       "1",
+			"max_unavailable": "0",
+		}))
+	})
 })
 
 var _ = Describe("hfSecurityGroupIDs", func() {
@@ -219,6 +253,40 @@ var _ = Describe("hfNodePoolToString", func() {
 		s := hfNodePoolToString(np, "my-cluster")
 
 		Expect(strings.Contains(s, "0")).To(BeTrue())
+	})
+
+	It("reports the rolling update settings like the OCM output", func() {
+		np := buildTestNodePool()
+		withRollingUpdate(np, "1", "0")
+		s := hfNodePoolToString(np, "my-cluster")
+
+		Expect(s).To(ContainSubstring(
+			"Management upgrade:                    \n" +
+				" - Type:                               Replace\n" +
+				" - Max surge:                          1\n" +
+				" - Max unavailable:                    0\n"))
+	})
+
+	It("reports the customer values before the API renders the upgrade type", func() {
+		np := buildTestNodePool()
+		surge := intstr.FromString("20%")
+		np.Spec.MaxSurge = &surge
+		np.Spec.MaxUnavailable = ptr.To(intstr.FromInt32(1))
+		s := hfNodePoolToString(np, "my-cluster")
+
+		Expect(s).To(ContainSubstring(
+			"Management upgrade:                    \n" +
+				" - Max surge:                          20%\n" +
+				" - Max unavailable:                    1\n"))
+		Expect(s).NotTo(ContainSubstring(" - Type:"))
+	})
+
+	It("reports the API defaults when the customer set no rolling update", func() {
+		s := hfNodePoolToString(buildTestNodePool(), "my-cluster")
+		Expect(s).To(ContainSubstring(
+			"Management upgrade:                    \n" +
+				" - Max surge:                          1\n" +
+				" - Max unavailable:                    0\n"))
 	})
 })
 
