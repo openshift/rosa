@@ -94,8 +94,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					"-y",
 					"--mode", "auto",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("There are clusters using Operator Roles Prefix"))
+				helper.ExpectErrorWithMessage(err, "there are clusters using Operator Roles Prefix")
 
 				By("Create a temp dir to execute the create commands")
 				dirToClean, err = os.MkdirTemp("", "*")
@@ -108,8 +107,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					"-y",
 					"--mode", "manual",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("There are clusters using Operator Roles Prefix"))
+				helper.ExpectErrorWithMessage(err, "there are clusters using Operator Roles Prefix")
 
 				By("Delete in-used oidc config in auto mode")
 				output, err = ocmResourceService.DeleteOIDCConfig(
@@ -210,11 +208,8 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 
 					By("Delete the operator-roles to the cluster")
 					output, err = ocmResourceService.DeleteOperatorRoles("-c", clusterID, "-y", "--mode", "auto")
-					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-						To(ContainSubstring(
-							"ERR: Cluster '%s' is in 'ready' state. Operator roles can be deleted only for the uninstalled clusters",
-							clusterID))
+					helper.ExpectErrorWithMessage(err, fmt.Sprintf("cluster '%s' is in 'ready' state", clusterID))
+					helper.ExpectErrorWithMessage(err, "operator roles can be deleted only for the uninstalled clusters")
 
 					By("Get the --oidc-config-id from the cluster and it's issuer url")
 					rosaClient.Runner.JsonFormat()
