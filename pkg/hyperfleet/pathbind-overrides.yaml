@@ -256,7 +256,7 @@ resources:
         type: string
         flag: additional-security-group-ids
         description: "Additional AWS Security Group IDs to attach to node pool instances. Format should be a comma-separated list."
-        operations: [create]
+        operations: [create, update]
 
       # ── Derived: no flag
       - path: spec.nodePool.clusterName
