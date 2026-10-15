@@ -274,6 +274,15 @@ func (h *hyperfleetNodePoolCreate) PreRequest(
 		input.Replicas = nil
 	}
 
+	if h.userOptions.RootDiskSize != "" {
+		size, err := ocm.ParseDiskSizeToGigibyte(h.userOptions.RootDiskSize)
+		if err != nil {
+			return fmt.Errorf("invalid --disk-size: %w", err)
+		}
+		sizeInt64 := int64(size)
+		input.Size = &sizeInt64
+	}
+
 	// Auto-select subnet from existing node pools if not provided (matches V1 behavior)
 	if input.SubnetID == "" {
 		ctx := context.Background()
@@ -336,21 +345,6 @@ func (h *hyperfleetNodePoolCreate) PostExpand(
 	}
 
 	obj.Spec.NodePool.Platform.AWS.InstanceProfile = instanceProfile
-
-	// Root disk size
-	if h.userOptions.RootDiskSize != "" {
-		if obj.Spec.NodePool.Platform.AWS.RootVolume != nil && obj.Spec.NodePool.Platform.AWS.RootVolume.Size != 0 {
-			return fmt.Errorf("--disk-size and --size cannot be used together")
-		}
-		size, err := ocm.ParseDiskSizeToGigibyte(h.userOptions.RootDiskSize)
-		if err != nil {
-			return fmt.Errorf("invalid --disk-size: %w", err)
-		}
-		if obj.Spec.NodePool.Platform.AWS.RootVolume == nil {
-			obj.Spec.NodePool.Platform.AWS.RootVolume = &v1alpha1.Volume{}
-		}
-		obj.Spec.NodePool.Platform.AWS.RootVolume.Size = int64(size)
-	}
 
 	// Spot instances
 	if h.userOptions.UseSpotInstances {
