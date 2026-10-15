@@ -31,10 +31,9 @@ See `CONTRIBUTING.md` for the full contribution workflow and commit requirements
 
 ## Repository guidance
 
-- `AGENTS.md` is the central repo-local guidance for AI agents working in this repository.
+- [AGENTS.md](AGENTS.md) routes agents to the topic-specific guidance for this repository.
 - `CONTRIBUTING.md` is the canonical contributor workflow for humans and agents.
-- `guidelines/ARCHITECTURE.md` captures stable architecture context for the CLI.
-- `guidelines/*-guidelines.md` contains deeper domain-specific guidance that `AGENTS.md` indexes.
+- [guidelines/](guidelines/) contains tool-agnostic architecture and domain guidance.
 
 ## Build from source
 

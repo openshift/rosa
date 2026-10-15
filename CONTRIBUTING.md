@@ -11,9 +11,11 @@ The ROSA CLI is the design source of truth for all downstream projects (terrafor
 
 ## AI-Assisted Contributions
 
-Repo-local agent guidance lives in [AGENTS.md](AGENTS.md).
+Start with [AGENTS.md](AGENTS.md), which routes agents to the relevant
+tool-agnostic guides in [`guidelines/`](guidelines/).
 
-Tool-specific entrypoints such as [CLAUDE.md](CLAUDE.md) and [GEMINI.md](GEMINI.md) point back there so the repository only maintains one central guidance file for agents.
+Tool-specific entrypoints such as [CLAUDE.md](CLAUDE.md) and
+[GEMINI.md](GEMINI.md) point back to that router.
 
 `CONTRIBUTING.md` is the authoritative source for contributor workflow, hooks, verification commands, commit format, and PR expectations.
 
@@ -58,6 +60,10 @@ The hooks are configured in `.pre-commit-config.yaml` and perform:
 - check runs are fail-fast: execution stops at the first failing step
 - if you hit any bumps when committing, please let us know
 
+For the exact pre-push and commit-message behavior, see
+[`hack/pre-push-hook.sh`](hack/pre-push-hook.sh) and
+[`hack/commit-msg-verify.sh`](hack/commit-msg-verify.sh).
+
 To manually run all hooks on all files:
 ```shell
 pre-commit run --all-files
@@ -87,6 +93,13 @@ make coverage-changed-files
 make test
 make govulncheck
 ```
+
+For Go changes, run `make fmt`, relevant package tests or `make test`,
+`make lint`, and `make rosa`. For command or flag changes, also check the
+command tree and matching flag contracts described below; run
+`make generate-docs` when help text changes. For generated mocks or assets,
+run `make generate` and relevant tests. Use `make basic-checks` and
+`make pre-push-checks` for broader pre-push confidence.
 
 `make govulncheck` scans the module for known Go vulnerabilities using the pinned
 [govulncheck](https://go.dev/doc/security/vuln/) tool. It runs two passes:
@@ -164,6 +177,7 @@ Types other than `fix:` and `feat:` are allowed:
 - `refactor`: A code change that neither fixes a bug nor adds a feature
 - `style`: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
 - `test`: Adding missing tests or correcting existing tests
+- `chore`: Maintenance changes that do not fit another type
 
 [!IMPORTANT]
 DCO Sign-off Required: Every commit must include a Developer Certificate of Origin (DCO) sign-off line (Signed-off-by: Name <email>). Use git commit -s when committing.
@@ -268,12 +282,15 @@ For example, a command with flag `foo`, `bar`, `bob` would have the following `c
 
 ## Error Handling in Commands
 
-If you are contributing code, please ensure that you are handling errors properly. You should
-not call `os.Exit()` in your Command (there is a significant amount of this in our code which we
-are working to remove)
+If you are contributing code, handle errors properly. Do not add direct
+`os.Exit()` calls to new command code; existing commands still contain them.
+When modifying an existing command, preserve its entrypoint and exit behavior
+unless changing that behavior is the scoped task. See
+[command guidelines](guidelines/command-guidelines.md) and
+[error conventions](guidelines/error-conventions.md).
 
-Please use `Run: run` instead of `RunE: runE` when writing commands,
-   in order to stop the **usage info** being printed when an error is returned.
+For new commands, use `Run: run` instead of `RunE: runE` so an error does not
+cause **usage info** to be printed.
 
 ## Version-gating a feature
 
