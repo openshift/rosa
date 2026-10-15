@@ -73,7 +73,7 @@ var NodePoolCreatePlatformAPIFlags = []string{
 	"max-price",
 	"tenancy",
 	"resource-tags",
-	"size",
+	"disk-size",
 	"additional-security-group-ids",
 	"filters",
 	"subnet",
@@ -103,7 +103,7 @@ func RegisterNodePoolCreateFlags(cmd *cobra.Command, input *NodePoolCreateInput)
 	registerIfNew(f, "max-price", func() { f.StringVar(&input.MaxPrice, "max-price", "", "") })
 	registerIfNew(f, "tenancy", func() { f.StringVar(&input.Tenancy, "tenancy", "", "") })
 	registerIfNew(f, "resource-tags", func() { f.StringVar(&input.ResourceTags, "resource-tags", "", "") })
-	registerIfNew(f, "size", func() { input.Size = new(int64); f.Int64Var(input.Size, "size", 0, "") })
+	registerIfNew(f, "disk-size", func() { input.Size = new(int64); f.Int64Var(input.Size, "disk-size", 0, "") })
 	registerIfNew(f, "additional-security-group-ids", func() {
 		f.StringVar(&input.SecurityGroupIds, "additional-security-group-ids", "", "Additional AWS Security Group IDs to attach to node pool instances. Format should be a comma-separated list.")
 	})
@@ -162,7 +162,7 @@ func normalizeNodePoolCreateInput(cmd *cobra.Command, input *NodePoolCreateInput
 		input.AutoRepair != nil {
 		input.AutoRepair = nil
 	}
-	if cmd.Flags().Lookup("size") != nil && !cmd.Flag("size").Changed &&
+	if cmd.Flags().Lookup("disk-size") != nil && !cmd.Flag("disk-size").Changed &&
 		input.Size != nil {
 		input.Size = nil
 	}
