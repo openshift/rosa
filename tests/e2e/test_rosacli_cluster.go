@@ -894,7 +894,7 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			By("Edit cluster with invalid http_proxy values")
 			invalidHTTPProxy := map[string]string{
 				"invalidvalue":                "ERR: invalid http-proxy value: URL is missing scheme",
-				"https://test-proxy.com":      "ERR: invalid http-proxy value: URL scheme must be 'http://'",
+				"ftp://test-proxy.com":        "ERR: invalid http-proxy value: URL scheme must be 'http://' or 'https://'",
 				"http://test-proxy.com/extra": "ERR: invalid http-proxy value: proxy URL should not contain a path '/extra'",
 			}
 			for illegalHttpProxy, errMessage := range invalidHTTPProxy {
