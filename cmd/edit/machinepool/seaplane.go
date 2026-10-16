@@ -19,6 +19,7 @@ import (
 	rosaaws "github.com/openshift/rosa/pkg/aws"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/ocm"
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/seaplane"
 	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
@@ -72,8 +73,10 @@ func runSeaplaneEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions, c
 	}
 
 	runtime := *r
-	runtime.SeaplaneClient = seaplane.WithNodePoolMetadataUpdates(r.SeaplaneClient,
-		cmd.Flags().Changed("labels"), cmd.Flags().Changed("taints"))
+	spotMaxPriceReset := cmd.Flags().Changed("spot-max-price") &&
+		userOptions.spotMaxPrice == mpOpts.SpotPriceOnDemand
+	runtime.SeaplaneClient = seaplane.WithNodePoolPatchUpdates(r.SeaplaneClient,
+		cmd.Flags().Changed("labels"), cmd.Flags().Changed("taints"), spotMaxPriceReset)
 	if err := seaplanepathbind.RunUpdateNodePool(ctx, &runtime, cmd, resourceName, &seaplaneNodePoolUpdateInput,
 		&seaplaneNodePoolUpdate{
 			clusterKey:   clusterKey,
@@ -137,6 +140,9 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 			return fmt.Errorf("failed to encode --tags: %w", err)
 		}
 		input.Tags = string(encodedTags)
+	}
+	if spotMaxPriceChanged && h.userOptions.spotMaxPrice == mpOpts.SpotPriceOnDemand {
+		input.MaxPrice = h.userOptions.spotMaxPrice
 	}
 
 	if h.cmd.Flags().Changed("labels") {
@@ -293,7 +299,11 @@ func (h *seaplaneNodePoolUpdate) PostExpand(
 		if merged.Spec.NodePool.Platform.AWS.Placement == nil {
 			return fmt.Errorf("cannot update spot-max-price on a node pool that is not using spot instances")
 		}
-		merged.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice = h.userOptions.spotMaxPrice
+		if h.userOptions.spotMaxPrice != mpOpts.SpotPriceOnDemand {
+			merged.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice = h.userOptions.spotMaxPrice
+		} else {
+			merged.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice = ""
+		}
 	}
 
 	if h.cmd.Flags().Changed("autorepair") {

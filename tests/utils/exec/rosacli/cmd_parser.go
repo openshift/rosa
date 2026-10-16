@@ -17,12 +17,12 @@ import (
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
-// reMessageField matches the start of a node pool's "Message:" field in
-// 'rosa describe machinepool'/nodepool output (see pkg/machinepool/output.go).
-// It's free-form text passed through verbatim from the service, so it gets
-// special handling in both textData.Parse (to avoid being misclassified as
-// CLI tip output) and blockScalarizeMessageField (to survive YAML parsing).
-var reMessageField = regexp.MustCompile(`(?m)^Message:[ \t]*`)
+// reNodePoolStatusField matches the start of a node pool's "Message:" or
+// "Conditions:" field in 'rosa describe machinepool'/nodepool output. Their
+// values are free-form text passed through verbatim from the service, so they
+// get special handling in both textData.Parse (to avoid being misclassified as
+// CLI tip output) and blockScalarizeNodePoolStatusField (to survive YAML parsing).
+var reNodePoolStatusField = regexp.MustCompile(`(?m)^(?:Message|Conditions):[ \t]*`)
 
 type Parser struct {
 	JsonData  *jsonData
@@ -113,14 +113,14 @@ func (td *textData) Parse() *textData {
 		if reg2.FindString(strline) != "" {
 			continue
 		}
-		if !inMessage && reMessageField.MatchString(strline) {
+		if !inMessage && reNodePoolStatusField.MatchString(strline) {
 			inMessage = true
 		}
 		if inMessage {
-			// "Message:" (a node pool's free-form status message, see
-			// pkg/machinepool/output.go) is passed through verbatim from the
+			// "Message:" and "Conditions:" (a node pool's free-form status, see
+			// pkg/machinepool/output.go) are passed through verbatim from the
 			// service and can legitimately contain text like "Error: ..." or
-			// "Warning: ..."; once it begins, keep it and everything after it
+			// "* Machine ..."; once they begin, keep them and everything after them
 			// rather than risking the log-noise heuristic below misclassifying
 			// it as CLI tip output.
 			results.WriteString(strline)
