@@ -199,7 +199,8 @@ func (rh *resourcesHandler) DeleteHostedCPSharedVPCRoles(managedPolicy bool) err
 }
 
 func (rh *resourcesHandler) DeleteAdditionalPrincipalsRole(managedPolicy bool) error {
-	awsClient, err := rh.GetAWSClient(true)
+	useSharedAccount := !usesHyperfleet()
+	awsClient, err := rh.GetAWSClient(useSharedAccount)
 	if err != nil {
 		return err
 	}

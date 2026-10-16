@@ -9,6 +9,7 @@ import (
 
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 
+	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/tests/ci/config"
 	ClusterConfigure "github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
@@ -82,6 +83,27 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 		}
 	}
 
+	if ch.profile.ClusterConfig.AdditionalPrincipals {
+		awsClient, err := ch.resourcesHandler.GetAWSClient(false)
+		if err != nil {
+			return flags, err
+		}
+		partition := platformAPIPartitionFromARN(awsClient.Arn)
+		controlPlaneOperatorRoleArn := fmt.Sprintf(
+			"arn:%s:iam::%s:role/%s-%s",
+			partition, awsClient.AccountID, prefix, hyperfleet.SuffixControlPlaneOperator,
+		)
+		additionalPrincipalRoleName := fmt.Sprintf("%s-%s", prefix, "additional-principal-role")
+		additionalPrincipalRoleArn, err := ch.resourcesHandler.PrepareAdditionalPrincipalsRole(
+			additionalPrincipalRoleName, controlPlaneOperatorRoleArn,
+		)
+		if err != nil {
+			return flags, err
+		}
+		flags = append(flags, "--additional-allowed-principals", additionalPrincipalRoleArn)
+		ch.clusterConfig.AdditionalPrincipals = additionalPrincipalRoleArn
+	}
+
 	if ch.profile.ClusterConfig.BYOVPC {
 		subnetIDs, err := prepareBYOVPCSubnets(ch.resourcesHandler, clusterName, ch.profile, ch.clusterConfig)
 		if err != nil {
@@ -105,6 +127,13 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 	if pc.MultiAZ {
 		flags = append(flags, "--multi-az")
 		ch.clusterConfig.MultiAZ = pc.MultiAZ
+	}
+	if pc.Private {
+		flags = append(flags, "--endpoint-access", "Private")
+		ch.clusterConfig.Private = pc.Private
+	}
+	if pc.DefaultIngressPrivate {
+		ch.clusterConfig.DefaultIngressPrivate = pc.DefaultIngressPrivate
 	}
 	ch.clusterConfig.Nodes = &ClusterConfigure.Nodes{}
 	if t := pc.InstanceType; t != "" {

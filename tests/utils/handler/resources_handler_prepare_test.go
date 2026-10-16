@@ -3,11 +3,16 @@ package handler
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 
 	"github.com/aws/smithy-go"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/tests/ci/config"
 )
 
 var _ = Describe("waitForSubnetsVisible", func() {
@@ -78,4 +83,47 @@ var _ = Describe("oidcConfigIDFromCreateOutput", func() {
 		Entry("Platform API UID", `{"metadata":{"name":"managed-name","uid":"platform-uid"}}`, "platform-uid"),
 		Entry("name-only compatibility response", `{"metadata":{"name":"legacy-name"}}`, "legacy-name"),
 	)
+})
+
+var _ = Describe("PrepareAdditionalPrincipalsRole", func() {
+	AfterEach(func() {
+		hyperfleet.Reset()
+	})
+
+	It("requires an installer role ARN before creating AWS resources", func() {
+		hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		rh := &resourcesHandler{resources: &Resources{}}
+		roleArn, err := rh.PrepareAdditionalPrincipalsRole("additional-role", "")
+		Expect(err).To(MatchError("installer role ARN is required to create an additional principal role"))
+		Expect(roleArn).To(BeEmpty())
+	})
+})
+
+var _ = Describe("NewClusterHandlerForKonflux", func() {
+	AfterEach(func() {
+		hyperfleet.Reset()
+	})
+
+	It("does not require shared account credentials for HyperFleet profiles", func() {
+		hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		tempDir := GinkgoT().TempDir()
+		konfluxResources := filepath.Join(tempDir, "konflux-resources.json")
+		Expect(os.WriteFile(
+			konfluxResources,
+			[]byte(`{"additional_principals":"arn:aws:iam::123456789012:role/test-role"}`),
+			0o600,
+		)).To(Succeed())
+
+		originalFile := config.Test.KonfluxUserDataFile
+		config.Test.KonfluxUserDataFile = konfluxResources
+		DeferCleanup(func() {
+			config.Test.KonfluxUserDataFile = originalFile
+		})
+
+		_, err := NewClusterHandlerForKonflux(nil, &Profile{
+			Region:        "us-east-1",
+			ClusterConfig: &ClusterConfig{AdditionalPrincipals: true},
+		})
+		Expect(err).NotTo(HaveOccurred())
+	})
 })
