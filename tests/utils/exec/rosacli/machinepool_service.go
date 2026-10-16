@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -20,6 +21,9 @@ import (
 
 type MachinePoolService interface {
 	ResourcesCleaner
+
+	// SetPlatformAPIEndpoint forces subsequent machinepool commands through Hyperfleet.
+	SetPlatformAPIEndpoint(endpoint string)
 
 	ListMachinePool(clusterID string, flags ...string) (bytes.Buffer, error)
 	DescribeMachinePool(clusterID string, mpID string) (bytes.Buffer, error)
@@ -54,7 +58,8 @@ type MachinePoolService interface {
 type machinepoolService struct {
 	ResourcesService
 
-	machinePools map[string][]string
+	machinePools        map[string][]string
+	platformAPIEndpoint string
 }
 
 func NewMachinePoolService(client *Client) MachinePoolService {
@@ -64,6 +69,20 @@ func NewMachinePoolService(client *Client) MachinePoolService {
 		},
 		machinePools: make(map[string][]string),
 	}
+}
+
+// SetPlatformAPIEndpoint forces subsequent machinepool commands through the
+// Hyperfleet Platform API, independent of the saved ROSA CLI configuration.
+func (m *machinepoolService) SetPlatformAPIEndpoint(endpoint string) {
+	m.platformAPIEndpoint = endpoint
+}
+
+func (m *machinepoolService) withPlatformAPIEndpoint(flags ...string) []string {
+	commandFlags := append([]string(nil), flags...)
+	if m.platformAPIEndpoint != "" {
+		commandFlags = append(commandFlags, "--hyperfleet-url", m.platformAPIEndpoint)
+	}
+	return commandFlags
 }
 
 // Struct for the 'rosa list machinepool' output for non-hosted-cp clusters
@@ -165,7 +184,7 @@ func (m *machinepoolService) CreateMachinePool(
 	}
 	output, err = m.client.Runner.
 		Cmd("create", "machinepool").
-		CmdFlags(flags...).
+		CmdFlags(m.withPlatformAPIEndpoint(flags...)...).
 		Run()
 	if err == nil {
 		m.machinePools[clusterID] = append(m.machinePools[clusterID], name)
@@ -175,21 +194,20 @@ func (m *machinepoolService) CreateMachinePool(
 
 // List MachinePool
 func (m *machinepoolService) ListMachinePool(clusterID string, flags ...string) (bytes.Buffer, error) {
-	listMachinePool := m.client.Runner.
+	commandFlags := append([]string{"-c", clusterID}, flags...)
+	return m.client.Runner.
 		Cmd("list", "machinepool").
-		CmdFlags("-c", clusterID)
-	if len(flags) > 0 {
-		listMachinePool.AddCmdFlags(flags...)
-	}
-	return listMachinePool.Run()
+		CmdFlags(m.withPlatformAPIEndpoint(commandFlags...)...).
+		Run()
 }
 
 // Describe MachinePool
 func (m *machinepoolService) DescribeMachinePool(clusterID string, mpID string) (bytes.Buffer, error) {
-	describeMp := m.client.Runner.
+	commandFlags := []string{mpID, "-c", clusterID}
+	return m.client.Runner.
 		Cmd("describe", "machinepool").
-		CmdFlags(mpID, "-c", clusterID)
-	return describeMp.Run()
+		CmdFlags(m.withPlatformAPIEndpoint(commandFlags...)...).
+		Run()
 }
 
 // DescribeAndReflectMachinePool
@@ -211,10 +229,11 @@ func (m *machinepoolService) DeleteMachinePool(
 	if len(machinePoolName) > 0 {
 		flags = append(flags, machinePoolName)
 	}
+	flags = append(flags, "-y")
 
 	output, err = m.client.Runner.
 		Cmd("delete", "machinepool").
-		CmdFlags(append(flags, "-y")...).
+		CmdFlags(m.withPlatformAPIEndpoint(flags...)...).
 		Run()
 	if err == nil {
 		m.machinePools[clusterID] = helper.RemoveFromStringSlice(m.machinePools[clusterID], machinePoolName)
@@ -225,9 +244,11 @@ func (m *machinepoolService) DeleteMachinePool(
 // Edit MachinePool
 func (m *machinepoolService) EditMachinePool(
 	clusterID string, machinePoolName string, flags ...string) (bytes.Buffer, error) {
+	commandFlags := append([]string(nil), flags...)
+	commandFlags = append(commandFlags, "-c", clusterID)
 	editMachinePool := m.client.Runner.
 		Cmd("edit", "machinepool", machinePoolName).
-		CmdFlags(append(flags, "-c", clusterID)...)
+		CmdFlags(m.withPlatformAPIEndpoint(commandFlags...)...)
 
 	return editMachinePool.Run()
 }
@@ -422,6 +443,10 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 			if isAutoscale {
 				replicas, err := m.GetNodePoolAutoScaledReplicas(clusterID, mpName)
 				if err != nil {
+					if isTransientNodePoolPollError(err) {
+						Logger.Warnf("Transient error while checking node pool %q replicas: %v", mpName, err)
+						return false, nil
+					}
 					return false, err
 				}
 
@@ -433,6 +458,10 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 			} else {
 				mpDesc, err := m.DescribeAndReflectNodePool(clusterID, mpName)
 				if err != nil {
+					if isTransientNodePoolPollError(err) {
+						Logger.Warnf("Transient error while checking node pool %q replicas: %v", mpName, err)
+						return false, nil
+					}
 					return false, err
 				}
 
@@ -443,6 +472,10 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 			return false, nil
 		})
 	return err
+}
+
+func isTransientNodePoolPollError(err error) bool {
+	return strings.Contains(err.Error(), "the server is currently unable to handle the request")
 }
 
 // ScaleNodePool Scale node pool and return its check result

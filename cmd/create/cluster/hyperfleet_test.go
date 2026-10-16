@@ -129,6 +129,7 @@ var _ = Describe("runHyperfleet", func() {
 			noCni               bool
 			version             string
 			tags                []string
+			spotTerminationURL  string
 		}
 		exited bool
 		t      *test.TestingRuntime
@@ -144,6 +145,7 @@ var _ = Describe("runHyperfleet", func() {
 		origArgs.noCni = args.noCni
 		origArgs.version = args.version
 		origArgs.tags = args.tags
+		origArgs.spotTerminationURL = args.spotTerminationQueueUrl
 
 		exited = false
 		hfExitFn = func(int) { exited = true }
@@ -156,6 +158,7 @@ var _ = Describe("runHyperfleet", func() {
 		args.version = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
 		args.tags = nil
 		hfClusterInput.Tags = ""
+		args.spotTerminationQueueUrl = ""
 
 		t = test.NewTestRuntime()
 		t.RosaRuntime.Creator = &pkgaws.Creator{
@@ -176,6 +179,30 @@ var _ = Describe("runHyperfleet", func() {
 		args.version = origArgs.version
 		args.tags = origArgs.tags
 		hfClusterInput.Tags = ""
+		args.spotTerminationQueueUrl = origArgs.spotTerminationURL
+	})
+
+	It("maps the spot termination queue URL to the platform field", func() {
+		args.clusterName = ""
+		args.spotTerminationQueueUrl = "https://sqs.us-gov-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+
+		handler := &hyperfleetClusterCreate{}
+		input := &hfpathbind.ClusterCreateInput{}
+
+		err := handler.PreRequest(context.Background(), t.RosaRuntime, input)
+
+		Expect(err).To(MatchError(ContainSubstring("--cluster-name is required")))
+		Expect(input.TerminationHandlerQueueURL).To(Equal(args.spotTerminationQueueUrl))
+	})
+
+	It("rejects an invalid spot termination queue URL before creating a cluster", func() {
+		args.spotTerminationQueueUrl = "http://sqs.us-gov-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+
+		handler := &hyperfleetClusterCreate{}
+
+		err := handler.PreRequest(context.Background(), t.RosaRuntime, &hfpathbind.ClusterCreateInput{})
+
+		Expect(err).To(MatchError(ContainSubstring("invalid value for '--spot-termination-queue-url'")))
 	})
 
 	stubSubnets := func(vpcID, az string) {
