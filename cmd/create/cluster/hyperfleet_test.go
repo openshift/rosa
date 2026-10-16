@@ -122,13 +122,14 @@ var _ = Describe("runHyperfleet", func() {
 		origExitFn          func(int)
 		origDescribeSubnets func(context.Context, awssdk.Config, string) (*ec2svc.DescribeSubnetsOutput, error)
 		origArgs            struct {
-			clusterName         string
-			operatorRolesPrefix string
-			subnetIDs           []string
-			networkType         string
-			noCni               bool
-			version             string
-			tags                []string
+			clusterName                 string
+			operatorRolesPrefix         string
+			subnetIDs                   []string
+			networkType                 string
+			noCni                       bool
+			version                     string
+			tags                        []string
+			additionalAllowedPrincipals []string
 		}
 		exited bool
 		t      *test.TestingRuntime
@@ -144,6 +145,7 @@ var _ = Describe("runHyperfleet", func() {
 		origArgs.noCni = args.noCni
 		origArgs.version = args.version
 		origArgs.tags = args.tags
+		origArgs.additionalAllowedPrincipals = args.additionalAllowedPrincipals
 
 		exited = false
 		hfExitFn = func(int) { exited = true }
@@ -156,6 +158,7 @@ var _ = Describe("runHyperfleet", func() {
 		args.version = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
 		args.tags = nil
 		hfClusterInput.Tags = ""
+		args.additionalAllowedPrincipals = nil
 
 		t = test.NewTestRuntime()
 		t.RosaRuntime.Creator = &pkgaws.Creator{
@@ -176,6 +179,7 @@ var _ = Describe("runHyperfleet", func() {
 		args.version = origArgs.version
 		args.tags = origArgs.tags
 		hfClusterInput.Tags = ""
+		args.additionalAllowedPrincipals = origArgs.additionalAllowedPrincipals
 	})
 
 	stubSubnets := func(vpcID, az string) {
@@ -216,6 +220,48 @@ var _ = Describe("runHyperfleet", func() {
 			"role ARNs must use the GovCloud partition")
 		Expect(rolesRef.NodePoolManagementARN).To(HavePrefix("arn:aws-us-gov:iam::"),
 			"role ARNs must use the GovCloud partition")
+	})
+
+	It("maps additional allowed principals to the Platform API array", func() {
+		args.additionalAllowedPrincipals = []string{
+			"arn:aws:iam::123456789012:role/one",
+			"arn:aws:iam::123456789012:role/two",
+		}
+
+		ctrl := gomock.NewController(GinkgoT())
+		hf := hfmocks.NewMockInterface(ctrl)
+		v1 := hfmocks.NewMockV1alpha1PublicInterface(ctrl)
+		clusters := hfmocks.NewMockClusterInterface(ctrl)
+		hf.EXPECT().HyperfleetV1alpha1().Return(v1).AnyTimes()
+		v1.EXPECT().Clusters().Return(clusters).AnyTimes()
+
+		var capturedCluster *v1alpha1.Cluster
+		clusters.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, c *v1alpha1.Cluster, _ interface{}) (*v1alpha1.Cluster, error) {
+				capturedCluster = c
+				return &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{UID: types.UID("cluster-uid")}}, nil
+			})
+
+		stubSubnets("vpc-123", "us-gov-east-1a")
+		t.RosaRuntime.HyperFleetClient = hf
+
+		runHyperfleet(t.RosaRuntime)
+
+		Expect(exited).To(BeFalse())
+		Expect(capturedCluster).NotTo(BeNil())
+		Expect(capturedCluster.Spec.HostedCluster.Platform.AWS.AdditionalAllowedPrincipals).To(Equal([]string{
+			"arn:aws:iam::123456789012:role/one",
+			"arn:aws:iam::123456789012:role/two",
+		}))
+	})
+
+	It("rejects invalid additional allowed principals before creating a cluster", func() {
+		args.additionalAllowedPrincipals = []string{"zzzz"}
+
+		err := setAdditionalAllowedPrincipals(&hfpathbind.ClusterCreateInput{})
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("Expected valid ARNs for additional allowed principals list"))
 	})
 
 	It("resolves an OIDC config name to its UID for the cluster spec", func() {

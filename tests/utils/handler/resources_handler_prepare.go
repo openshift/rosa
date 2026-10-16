@@ -1126,15 +1126,16 @@ func (rh *resourcesHandler) PrepareSharedVPCEndPointRoleForHostedCP(
 }
 
 func (rh *resourcesHandler) PrepareAdditionalPrincipalsRole(roleName string, installerRoleArn string) (string, error) {
-	awsClient, err := rh.GetAWSClient(true)
+	if installerRoleArn == "" {
+		log.Logger.Errorf("Can not create additional principal role due to no installer role.")
+		return "", fmt.Errorf("installer role ARN is required to create an additional principal role")
+	}
+	useSharedAccount := !usesHyperfleet()
+	awsClient, err := rh.GetAWSClient(useSharedAccount)
 	if err != nil {
 		return "", err
 	}
 	policyArn := "arn:aws:iam::aws:policy/service-role/ROSAControlPlaneOperatorPolicy"
-	if installerRoleArn == "" {
-		log.Logger.Errorf("Can not create additional principal role due to no installer role.")
-		return "", err
-	}
 	roleArn, err := awsClient.CreateRoleForAdditionalPrincipals(roleName, installerRoleArn)
 	additionalPrincipalRoleArn := aws.ToString(roleArn.Arn)
 	rh.registerAdditionalPrincipals(additionalPrincipalRoleArn)

@@ -1,13 +1,56 @@
 package handler
 
 import (
+	"os"
+	"path/filepath"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/tests/ci/config"
 	ClusterConfigure "github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 )
+
+var _ = Describe("newClusterHandler", func() {
+	AfterEach(func() {
+		hyperfleet.Reset()
+	})
+
+	It("does not require shared account credentials for HyperFleet resources", func() {
+		hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		tempDir := GinkgoT().TempDir()
+		userData := filepath.Join(tempDir, "resources.json")
+		Expect(os.WriteFile(
+			userData,
+			[]byte(`{"additional_principals":"arn:aws:iam::123456789012:role/test-role"}`),
+			0o600,
+		)).To(Succeed())
+		clusterDetail := filepath.Join(tempDir, "cluster-detail.json")
+		Expect(os.WriteFile(clusterDetail, []byte("{}"), 0o600)).To(Succeed())
+		clusterConfig := filepath.Join(tempDir, "cluster-config.json")
+		Expect(os.WriteFile(clusterConfig, []byte("{}"), 0o600)).To(Succeed())
+
+		originalUserData := config.Test.UserDataFile
+		originalClusterDetail := config.Test.ClusterDetailFile
+		originalClusterConfig := config.Test.ClusterConfigFile
+		config.Test.UserDataFile = userData
+		config.Test.ClusterDetailFile = clusterDetail
+		config.Test.ClusterConfigFile = clusterConfig
+		DeferCleanup(func() {
+			config.Test.UserDataFile = originalUserData
+			config.Test.ClusterDetailFile = originalClusterDetail
+			config.Test.ClusterConfigFile = originalClusterConfig
+		})
+
+		_, err := NewClusterHandlerFromFilesystem(nil, &Profile{
+			Region:        "us-east-1",
+			ClusterConfig: &ClusterConfig{AdditionalPrincipals: true},
+		})
+		Expect(err).NotTo(HaveOccurred())
+	})
+})
 
 var _ = Describe("classifyClusterState", func() {
 	It("recognizes ready state", func() {

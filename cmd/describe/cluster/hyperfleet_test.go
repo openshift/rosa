@@ -262,6 +262,22 @@ var _ = Describe("hfClusterToMap", func() {
 		Expect(aws).NotTo(HaveKey("ec2_metadata_http_tokens"))
 		Expect(hfClusterToString(c, nil, nil)).NotTo(ContainSubstring("EC2 Metadata Http Tokens:"))
 	})
+
+	It("maps additional allowed principals", func() {
+		c := buildCluster()
+		c.Spec.HostedCluster.Platform.AWS.AdditionalAllowedPrincipals = []string{
+			"arn:aws:iam::123456789012:role/one",
+			"arn:aws:iam::123456789012:role/two",
+		}
+		m := hfClusterToMap(c, nil, nil, "")
+		aws := m["aws"].(map[string]interface{})
+		Expect(aws["additional_allowed_principals"]).To(Equal([]string{
+			"arn:aws:iam::123456789012:role/one",
+			"arn:aws:iam::123456789012:role/two",
+		}))
+		Expect(hfClusterToString(c, nil, nil)).To(ContainSubstring(
+			"Additional Principals:      arn:aws:iam::123456789012:role/one,arn:aws:iam::123456789012:role/two"))
+	})
 })
 
 var _ = Describe("hfDefaultNodePoolInstanceTypeFromList", func() {

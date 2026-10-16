@@ -16,6 +16,7 @@ import (
 
 	rosaaws "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
+	"github.com/openshift/rosa/pkg/helper/roles"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -186,6 +187,9 @@ func (h *hyperfleetClusterCreate) PreRequest(
 	if err := validateHyperfleetClusterProxyFlags(); err != nil {
 		return err
 	}
+	if err := setAdditionalAllowedPrincipals(input); err != nil {
+		return err
+	}
 
 	// OIDC config ID is optional but recommended
 	if args.oidcConfigId == "" {
@@ -322,6 +326,22 @@ func validateHyperfleetClusterProxyFlags() error {
 		}
 	}
 	return ocm.ValidateAdditionalTrustBundle(args.additionalTrustBundleFile)
+}
+
+func setAdditionalAllowedPrincipals(input *hfpathbind.ClusterCreateInput) error {
+	if len(args.additionalAllowedPrincipals) == 0 {
+		return nil
+	}
+	if err := roles.ValidateAdditionalAllowedPrincipals(args.additionalAllowedPrincipals); err != nil {
+		return err
+	}
+
+	encodedPrincipals, err := json.Marshal(args.additionalAllowedPrincipals)
+	if err != nil {
+		return fmt.Errorf("failed to encode additional allowed principals: %w", err)
+	}
+	input.AdditionalAllowedPrincipals = string(encodedPrincipals)
+	return nil
 }
 
 func (h *hyperfleetClusterCreate) PostExpand(

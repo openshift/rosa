@@ -2,10 +2,13 @@ package handler
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/aws/smithy-go"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/pkg/hyperfleet"
 )
 
 var _ = Describe("isAWSAuthorizationError", func() {
@@ -55,5 +58,17 @@ var _ = Describe("hostedZoneIsHCPInternal", func() {
 
 	It("returns false when hypershift.local appears mid-string", func() {
 		Expect(hostedZoneIsHCPInternal("hypershift.local.example.com")).To(BeFalse())
+	})
+})
+
+var _ = Describe("DeleteAdditionalPrincipalsRole", func() {
+	It("uses the primary account for HyperFleet", func() {
+		hyperfleet.Reset()
+		GinkgoT().Setenv("OCM_CONFIG", filepath.Join(GinkgoT().TempDir(), "missing-ocm-config.json"))
+		rh := &resourcesHandler{
+			resources: &Resources{AdditionalPrincipals: "arn:aws:iam::123456789012:role/test-role"},
+		}
+		err := rh.DeleteAdditionalPrincipalsRole(false)
+		Expect(err).To(MatchError("the shared aws account credential file is empty. Please set it by export "))
 	})
 })
