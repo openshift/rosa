@@ -16,6 +16,7 @@ import (
 
 	rosaaws "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
+	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	"github.com/openshift/rosa/pkg/hyperfleet"
 	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/ocm"
@@ -146,6 +147,12 @@ func (h *hyperfleetClusterCreate) PreRequest(
 		input.Version = args.version
 	}
 	input.OperatorRolesPrefix = args.operatorRolesPrefix
+	if args.spotTerminationQueueUrl != "" {
+		if err := urlHelper.ValidateHTTPSQueueURL(args.spotTerminationQueueUrl); err != nil {
+			return fmt.Errorf("invalid value for '--spot-termination-queue-url': %w", err)
+		}
+		input.TerminationHandlerQueueURL = args.spotTerminationQueueUrl
+	}
 
 	// --subnet-id is a new HF-only flag (no OCM equivalent) so it IS registered on
 	// hfClusterInput and arrives directly from cobra. Fall back to --subnet-ids[0]

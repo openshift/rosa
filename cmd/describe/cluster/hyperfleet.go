@@ -314,6 +314,9 @@ func hfClusterToMap(
 			}
 		}
 		awsMap := map[string]interface{}{"sts": stsMap}
+		if aws.TerminationHandlerQueueURL != "" {
+			awsMap["termination_handler_queue_url"] = aws.TerminationHandlerQueueURL
+		}
 		if c.Spec.Properties != nil {
 			if tokens := c.Spec.Properties["ec2_metadata_http_tokens"]; tokens != "" {
 				awsMap["ec2_metadata_http_tokens"] = tokens
@@ -558,6 +561,9 @@ func hfClusterToString(c *v1alpha1.Cluster, dataPlaneAZs map[string]struct{}, np
 			for _, arn := range roles {
 				s += fmt.Sprintf(" - %s\n", arn)
 			}
+		}
+		if aws.TerminationHandlerQueueURL != "" {
+			s += fmt.Sprintf("Spot Termination Queue URL: %s\n", aws.TerminationHandlerQueueURL)
 		}
 	}
 
