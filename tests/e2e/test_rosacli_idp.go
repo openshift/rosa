@@ -76,11 +76,9 @@ var _ = Describe("Edit IDP",
 				By("Create admin")
 				output, err := rosaClient.User.CreateAdmin(clusterID)
 				if profile.ClusterConfig.ExternalAuthConfig {
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).
-						To(
-							ContainSubstring(`ERR: Creating the 'cluster-admin' user is not supported` +
-								` for clusters with external authentication configured`))
+					helper.ExpectErrorWithMessage(err,
+						"creating the 'cluster-admin' user is not supported "+
+							"for clusters with external authentication configured")
 					return
 				}
 				Expect(err).To(BeNil())
@@ -233,9 +231,9 @@ var _ = Describe("Edit IDP",
 					"--organizations", idp["Github"].org,
 					"--type", "github")
 				if profile.ClusterConfig.ExternalAuthConfig {
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(
-						ContainSubstring(`ERR: Adding IDP is not supported for clusters with external authentication configured.`))
+					helper.ExpectErrorWithMessage(err,
+						"adding idp is not supported for clusters "+
+							"with external authentication configured.")
 					return
 				}
 				Expect(err).To(BeNil())
@@ -318,12 +316,9 @@ var _ = Describe("Edit IDP",
 				By("Create admin")
 				output, err := rosaClient.User.CreateAdmin(clusterID)
 				if profile.ClusterConfig.ExternalAuthConfig {
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).
-						To(
-							ContainSubstring(
-								`ERR: Creating the 'cluster-admin' user is not supported for clusters ` +
-									`with external authentication configured.`))
+					helper.ExpectErrorWithMessage(err,
+						"creating the 'cluster-admin' user is not supported "+
+							"for clusters with external authentication configured.")
 					return
 				}
 				Expect(err).To(BeNil())
@@ -438,11 +433,9 @@ var _ = Describe("Edit IDP",
 					"--username", invalidUserName,
 					"--password", validUserPasswd,
 					"-y")
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"invalid username '%s': username must not contain /, :, or %", invalidUserName))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("invalid username '%s': username must not contain /, :, or %%",
+						invalidUserName))
 			})
 
 		It("Check the help message and the validation for the IDP creation commands by the rosa cli - [id:38788]",
@@ -795,13 +788,11 @@ var _ = Describe("Edit IDP",
 						Expect(textData).Should(ContainSubstring("Identity Provider '%s' has been created", idpNames[1]))
 
 						By("Create an htpasswd idp with duplicate name")
-						output, err = idpService.CreateIDP(clusterID, idpNames[1],
+						_, err = idpService.CreateIDP(clusterID, idpNames[1],
 							"--type", idpType,
 							"--users", usersValue,
 							"-y")
-						Expect(err).NotTo(BeNil())
-						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-						Expect(textData).Should(ContainSubstring("Failed to add IDP to cluster '%s'", clusterID))
+						helper.ExpectErrorWithMessage(err, fmt.Sprintf("failed to add idp to cluster '%s'", clusterID))
 
 						By("Create admin")
 						output, err = rosaClient.User.CreateAdmin(clusterID)
@@ -810,13 +801,11 @@ var _ = Describe("Edit IDP",
 						Expect(textData).Should(ContainSubstring("Admin account has been added"))
 
 						By("Create an htpasswd idp with duplicate name 'cluster-admin'")
-						output, err = idpService.CreateIDP(clusterID, "cluster-admin",
+						_, err = idpService.CreateIDP(clusterID, "cluster-admin",
 							"--type", idpType,
 							"--users", usersValue,
 							"-y")
-						Expect(err).NotTo(BeNil())
-						textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-						Expect(textData).Should(ContainSubstring("the name \"cluster-admin\" is reserved for admin user IDP"))
+						helper.ExpectErrorWithMessage(err, `the name "cluster-admin" is reserved for admin user idp`)
 
 						By("List IDPs")
 						idpTab, _, err := idpService.ListIDP(clusterID)

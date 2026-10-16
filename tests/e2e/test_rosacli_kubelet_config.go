@@ -4,6 +4,7 @@
 package e2e
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/Masterminds/semver"
@@ -15,6 +16,7 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Kubeletconfig on Classic cluster",
@@ -84,10 +86,9 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 					"--pod-pids-limit", "12345",
 					"--name", "shouldnotwork",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(ContainSubstring(
-						"A KubeletConfig for cluster '%s' already exists. You should edit it via 'rosa edit kubeletconfig'",
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("a kubeletconfig for cluster '%s' already exists. "+
+						"you should edit it via 'rosa edit kubeletconfig'",
 						clusterID))
 
 			})
@@ -141,11 +142,9 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 					"--pod-pids-limit", "12344",
 					"--name", "notexisting",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					Should(ContainSubstring(
-						"ERR: The specified KubeletConfig does not exist for cluster '%s'",
-						clusterID))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("the specified kubeletconfig does not exist "+
+						"for cluster '%s'", clusterID))
 			})
 
 		It("can delete podPidLimit via rosacli will work well - [id:68836]",
@@ -183,12 +182,10 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 						clusterID))
 
 				By("Describe the kubeletconfig")
-				output, err = rosaClient.KubeletConfig.DescribeKubeletConfig(clusterID)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					Should(ContainSubstring(
-						"The KubeletConfig specified does not exist for cluster '%s'",
-						clusterID))
+				_, err = rosaClient.KubeletConfig.DescribeKubeletConfig(clusterID)
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("the kubeletconfig specified does not exist "+
+						"for cluster '%s'", clusterID))
 
 				By("Create the kubeletconfig again")
 				_, err = rosaClient.KubeletConfig.CreateKubeletConfig(clusterID,
@@ -202,11 +199,9 @@ var _ = Describe("Kubeletconfig on Classic cluster",
 				output, err = rosaClient.KubeletConfig.DeleteKubeletConfig(clusterID, "-y",
 					"--name", "notexisting",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					Should(ContainSubstring(
-						"The KubeletConfig with name 'notexisting' does not exist on cluster '%s'",
-						clusterID))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("the kubeletconfig with name 'notexisting' "+
+						"does not exist on cluster '%s'", clusterID))
 
 			})
 	})
@@ -265,9 +260,9 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				By("List the kubeletconfig with not existing cluster")
 				out, err := kubeletService.ListKubeletConfigs(clusterID)
 				if !meetThrottleVersion {
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).Should(
-						ContainSubstring("KubeletConfig management is only supported on clusters with OCP '4.14' onwards"))
+					helper.ExpectErrorWithMessage(err,
+						"kubeletconfig management is only supported "+
+							"on clusters with ocp '4.14' onwards")
 				} else {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(out.String()).
@@ -281,14 +276,13 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 					"--pod-pids-limit", "4096",
 				)
 				if !meetThrottleVersion {
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).Should(
-						ContainSubstring("KubeletConfig management is only supported on clusters with OCP '4.14' onwards"))
+					helper.ExpectErrorWithMessage(err,
+						"kubeletconfig management is only supported "+
+							"on clusters with ocp '4.14' onwards")
 					return
 				}
 
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).Should(ContainSubstring("Name?"))
+				helper.ExpectErrorWithMessage(err, "name?")
 
 				By("Create kubeletconfigs with name specified with flag --name")
 				name := "kubeletconfig-73753"
@@ -337,99 +331,78 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				out, err = kubeletService.DescribeKubeletConfig(clusterID,
 					"--name", name,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"The KubeletConfig specified does not exist for cluster '%s'",
-						clusterID))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("the kubeletconfig specified does not exist "+
+						"for cluster '%s'", clusterID))
 
 			})
 		It("can validate when create/edit/delete/describe - [id:73754]",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("List the kubeletconfig with not existing cluster")
-				out, err := kubeletService.ListKubeletConfigs("notexisting")
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"There is no cluster with identifier or name '%s'",
-						"notexisting"))
+				_, err := kubeletService.ListKubeletConfigs("notexisting")
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("there is no cluster with identifier or name '%s'", "notexisting"))
 
 				By("Create kubeletconfig with invalid name")
-				out, err = kubeletService.CreateKubeletConfig(clusterID,
+				_, err = kubeletService.CreateKubeletConfig(clusterID,
 					"--name", "'%^&*('",
 					"--pod-pids-limit", "4096",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"The name must be a lowercase RFC 1123 subdomain"))
+				helper.ExpectErrorWithMessage(err, "the name must be a lowercase rfc 1123 subdomain")
 
 				By("Create kubeletconfig with invalid pod pids limit value like 123456789")
-				out, err = kubeletService.CreateKubeletConfig(clusterID,
+				_, err = kubeletService.CreateKubeletConfig(clusterID,
 					"--name", "valid",
 					"--pod-pids-limit", "123456789",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"The maximum value for --pod-pids-limit is '16384'. You have supplied '123456789'"))
+				helper.ExpectErrorWithMessage(err,
+					"the maximum value for --pod-pids-limit is '16384'. "+
+						"you have supplied '123456789'")
 
 				By("Create a kubeletconfig")
 				dupName := "dupname-73754"
-				out, err = kubeletService.CreateKubeletConfig(clusterID,
+				_, err = kubeletService.CreateKubeletConfig(clusterID,
 					"--name", dupName,
 					"--pod-pids-limit", "4096",
 				)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create another kubeletconfig with same name")
-				out, err = kubeletService.CreateKubeletConfig(clusterID,
+				_, err = kubeletService.CreateKubeletConfig(clusterID,
 					"--name", dupName,
 					"--pod-pids-limit", "4096",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"KubeletConfig with name '%s' already exists", dupName))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("kubeletconfig with name '%s' already exists", dupName))
 
 				By("Edit with invalid pod pids limit value")
-				out, err = kubeletService.EditKubeletConfig(clusterID,
+				_, err = kubeletService.EditKubeletConfig(clusterID,
 					"--name", dupName,
 					"--pod-pids-limit", "123456789",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"The maximum value for --pod-pids-limit is '16384'. You have supplied '123456789'"))
+				helper.ExpectErrorWithMessage(err,
+					"the maximum value for --pod-pids-limit is '16384'. "+
+						"you have supplied '123456789'")
 
 				By("edit/delete/describe kubeletconfig with not existing")
-				out, err = kubeletService.EditKubeletConfig(clusterID,
+				_, err = kubeletService.EditKubeletConfig(clusterID,
 					"--name", "notexisting",
 					"--pod-pids-limit", "4096",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"The specified KubeletConfig does not exist for cluster '%s'",
-						clusterID))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("the specified kubeletconfig does not exist "+
+						"for cluster '%s'", clusterID))
 
-				out, err = kubeletService.DescribeKubeletConfig(clusterID,
+				_, err = kubeletService.DescribeKubeletConfig(clusterID,
 					"--name", "notexisting",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"The KubeletConfig specified does not exist for cluster '%s'",
-						clusterID))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("the kubeletconfig specified does not exist "+
+						"for cluster '%s'", clusterID))
 
-				out, err = kubeletService.DeleteKubeletConfig(clusterID,
+				_, err = kubeletService.DeleteKubeletConfig(clusterID,
 					"--name", "notexisting",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"The KubeletConfig with name 'notexisting' does not exist on cluster"))
+				helper.ExpectErrorWithMessage(err, "the kubeletconfig with name 'notexisting' does not exist on cluster")
 			})
 
 		It("can be attach to machinepool successfully - [id:73765]",
@@ -532,28 +505,24 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				}
 
 				By("Create machinepool with multiple kubelet config ids")
-				out, err := machinePoolService.CreateMachinePool(clusterID, "multi-kubes-2",
+				_, err := machinePoolService.CreateMachinePool(clusterID, "multi-kubes-2",
 					"--replicas", "0",
 					"--kubelet-configs", strings.Join([]string{kubeName1, kubeName2}, ","),
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"only a single kubelet config is supported for Machine Pools"))
+				helper.ExpectErrorWithMessage(err, "only a single kubelet config is supported for machine pools")
 
 				By("Create machinepool with not existing kubeletconfig name")
-				out, err = machinePoolService.CreateMachinePool(clusterID, "unknown",
+				_, err = machinePoolService.CreateMachinePool(clusterID, "unknown",
 					"--replicas", "0",
 					"--kubelet-configs", "notexisting",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"KubeletConfig with name '%s' does not exist for cluster", "notexisting"))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("kubeletconfig with name '%s' "+
+						"does not exist for cluster", "notexisting"))
 
 				By("Create a machinepool with existing kubeletconfig")
 				mpName := "mp-73766"
-				out, err = machinePoolService.CreateMachinePool(clusterID, mpName,
+				_, err = machinePoolService.CreateMachinePool(clusterID, mpName,
 					"--replicas", "0",
 					"--kubelet-configs", kubeName1,
 				)
@@ -561,39 +530,29 @@ var _ = Describe("Kubeletconfig on HCP cluster",
 				defer machinePoolService.DeleteMachinePool(clusterID, mpName)
 
 				By("Delete the kubeletconfig")
-				out, err = kubeletService.DeleteKubeletConfig(clusterID,
+				_, err = kubeletService.DeleteKubeletConfig(clusterID,
 					"--name", kubeName1)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"cannot be updated or deleted. It is referenced in the following node pools"))
+				helper.ExpectErrorWithMessage(err, "cannot be updated or deleted. it is referenced in the following node pools")
 
 				By("Edit the kubeletconfig")
-				out, err = kubeletService.EditKubeletConfig(clusterID,
+				_, err = kubeletService.EditKubeletConfig(clusterID,
 					"--name", kubeName1,
 					"--pod-pids-limit", "12345")
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"cannot be updated or deleted. It is referenced in the following node pools"))
+				helper.ExpectErrorWithMessage(err, "cannot be updated or deleted. it is referenced in the following node pools")
 
 				By("Edit machinepool with multiple kubelet config ids")
-				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
+				_, err = machinePoolService.EditMachinePool(clusterID, mpName,
 					"--kubelet-configs", strings.Join([]string{kubeName1, kubeName2}, ","),
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"only a single kubelet config is supported for Machine Pools"))
+				helper.ExpectErrorWithMessage(err, "only a single kubelet config is supported for machine pools")
 
 				By("Edit machinepool with not existing kubeletconfig name")
-				out, err = machinePoolService.EditMachinePool(clusterID, mpName,
+				_, err = machinePoolService.EditMachinePool(clusterID, mpName,
 					"--kubelet-configs", "nonexisting",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).
-					Should(ContainSubstring(
-						"KubeletConfig with name '%s' does not exist for cluster", "nonexisting"))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("kubeletconfig with name '%s' "+
+						"does not exist for cluster", "nonexisting"))
 			})
 	})

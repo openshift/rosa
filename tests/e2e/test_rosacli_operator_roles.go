@@ -89,7 +89,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				operatorRolePrefix := jsonData.DigString("aws", "sts", "operator_role_prefix")
 
 				By("Delete in-used operator roles by prefix in auto mode")
-				output, err := ocmResourceService.DeleteOperatorRoles(
+				_, err = ocmResourceService.DeleteOperatorRoles(
 					"--prefix", operatorRolePrefix,
 					"-y",
 					"--mode", "auto",
@@ -102,7 +102,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 
 				By("Delete in-used operator roles by prefix in manual mode")
 				rosaClient.Runner.SetDir(dirToClean)
-				output, err = ocmResourceService.DeleteOperatorRoles(
+				_, err = ocmResourceService.DeleteOperatorRoles(
 					"--prefix", operatorRolePrefix,
 					"-y",
 					"--mode", "manual",
@@ -110,25 +110,23 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				helper.ExpectErrorWithMessage(err, "there are clusters using Operator Roles Prefix")
 
 				By("Delete in-used oidc config in auto mode")
-				output, err = ocmResourceService.DeleteOIDCConfig(
+				_, err = ocmResourceService.DeleteOIDCConfig(
 					"--oidc-config-id", oidcConfigID,
 					"--region", clusterConfig.Region,
 					"--mode", "auto",
 					"--region", clusterConfig.Region,
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("There are clusters using OIDC config"))
+				helper.ExpectErrorWithMessage(err, "there are clusters using oidc config")
 
 				By("Delete in-used oidc config in manual mode")
-				output, err = ocmResourceService.DeleteOIDCConfig(
+				_, err = ocmResourceService.DeleteOIDCConfig(
 					"--oidc-config-id", oidcConfigID,
 					"--mode", "manual",
 					"--region", clusterConfig.Region,
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("There are clusters using OIDC config"))
+				helper.ExpectErrorWithMessage(err, "there are clusters using oidc config")
 			})
 		It("can validate when user create operator-roles to cluster - [id:43051]",
 			labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
@@ -153,22 +151,18 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					Expect(textData).To(ContainSubstring("Operator Roles already exists"))
 				case false:
 					By("Create operator-roles on classic non-sts cluster")
-					output, err := ocmResourceService.CreateOIDCProvider(
+					_, err := ocmResourceService.CreateOIDCProvider(
 						"--mode", "auto",
 						"-c", clusterID,
 						"-y")
-					Expect(err).NotTo(BeNil())
-					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).To(ContainSubstring("is not an STS cluster"))
+					helper.ExpectErrorWithMessage(err, "is not an sts cluster")
 				}
 				By("Create operator-roles on not-existed cluster")
-				output, err := ocmResourceService.CreateOIDCProvider(
+				_, err = ocmResourceService.CreateOIDCProvider(
 					"--mode", "auto",
 					"-c", notExistedClusterID,
 					"-y")
-				Expect(err).NotTo(BeNil())
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("There is no cluster with identifier or name"))
+				helper.ExpectErrorWithMessage(err, "there is no cluster with identifier or name")
 			})
 
 		It("to validate operator roles and oidc provider will work well - [id:70859]",
@@ -199,11 +193,10 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 							"OIDC provider already exists"))
 
 					By("Delete the oidc-provider to the cluster")
-					output, err = ocmResourceService.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
-					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-						To(ContainSubstring(
-							"ERR: Cluster '%s' is in 'ready' state. OIDC provider can be deleted only for the uninstalled clusters",
+					_, err = ocmResourceService.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
+					helper.ExpectErrorWithMessage(err,
+						fmt.Sprintf("cluster '%s' is in 'ready' state. "+
+							"oidc provider can be deleted only for the uninstalled clusters",
 							clusterID))
 
 					By("Delete the operator-roles to the cluster")
@@ -222,11 +215,9 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 
 					By("Try to delete oidc provider with --oidc-config-id")
 					output, err = ocmResourceService.DeleteOIDCProvider("--oidc-config-id", oidcConfigID, "-y", "--mode", "auto")
-					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-						To(ContainSubstring(
-							"ERR: There are clusters using OIDC config '%s', can't delete the provider",
-							issuerURL))
+					helper.ExpectErrorWithMessage(err,
+						fmt.Sprintf("there are clusters using oidc config '%s', "+
+							"can't delete the provider", issuerURL))
 
 					By("Try to create oidc provider with --oidc-config-id")
 					output, err = ocmResourceService.CreateOIDCProvider("--oidc-config-id", oidcConfigID, "-y", "--mode", "auto")
@@ -236,12 +227,9 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 							"OIDC provider already exists"))
 
 					By("Try to create operator-roles with --oic-config-id and cluster id at the same time")
-					output, err = ocmResourceService.CreateOperatorRoles("-c", clusterID, "--oidc-config-id", oidcConfigID)
-					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-						To(ContainSubstring(
-							"ERR: A cluster key for STS cluster and an OIDC configuration ID" +
-								" cannot be specified alongside each other."))
+					_, err = ocmResourceService.CreateOperatorRoles("-c", clusterID, "--oidc-config-id", oidcConfigID)
+					helper.ExpectErrorWithMessage(err, "a cluster key for sts cluster and an oidc configuration id"+
+						" cannot be specified alongside each other.")
 				}
 			})
 	})
@@ -395,71 +383,59 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				"--prefix", classicSTSOperatorRolesPrefix,
 				"-y",
 			)
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("cannot be found"))
+			helper.ExpectErrorWithMessage(err, "cannot be found")
 
 			By("Create operator roles with role arn in incorrect format")
-			output, err = ocmResourceService.CreateOperatorRoles(
+			_, err = ocmResourceService.CreateOperatorRoles(
 				"--oidc-config-id", oidcPrivodeIDFromOutputMessage,
 				"--installer-role-arn", invalidInstallerRole,
 				"--mode", "auto",
 				"--prefix", classicSTSOperatorRolesPrefix,
 				"-y",
 			)
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("to be a valid IAM role ARN"))
+			helper.ExpectErrorWithMessage(err, "to be a valid iam role arn")
 
 			By("Create operator roles with not-existed oidc id")
-			output, err = ocmResourceService.CreateOperatorRoles(
+			_, err = ocmResourceService.CreateOperatorRoles(
 				"--oidc-config-id", notExistedOIDCConfigID,
 				"--installer-role-arn", classicInstallerRoleArn,
 				"--mode", "auto",
 				"--prefix", classicSTSOperatorRolesPrefix,
 				"-y",
 			)
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("not found"))
+			helper.ExpectErrorWithMessage(err, "not found")
 
 			By("Create operator-role without setting oidc-config-id")
-			output, err = ocmResourceService.CreateOperatorRoles(
+			_, err = ocmResourceService.CreateOperatorRoles(
 				"--installer-role-arn", classicInstallerRoleArn,
 				"--mode", "auto",
 				"--prefix", hostedCPOperatorRolesPrefix,
 				"--hosted-cp",
 				"-y",
 			)
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("oidc-config-id is mandatory for prefix param flow"))
+			helper.ExpectErrorWithMessage(err, "oidc-config-id is mandatory for prefix param flow")
 
 			By("Create operator-role without setting installer-role-arn")
-			output, err = ocmResourceService.CreateOperatorRoles(
+			_, err = ocmResourceService.CreateOperatorRoles(
 				"--oidc-config-id", oidcPrivodeIDFromOutputMessage,
 				"--mode", "auto",
 				"--prefix", hostedCPOperatorRolesPrefix,
 				"--hosted-cp",
 				"-y",
 			)
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("role-arn is mandatory for prefix param flow"))
+			helper.ExpectErrorWithMessage(err, "role-arn is mandatory for prefix param flow")
 
 			By("Create operator-role without setting id neither prefix")
-			output, err = ocmResourceService.CreateOperatorRoles(
+			_, err = ocmResourceService.CreateOperatorRoles(
 				"--oidc-config-id", oidcPrivodeIDFromOutputMessage,
 				"--installer-role-arn", classicInstallerRoleArn,
 				"--mode", "auto",
 				"--hosted-cp",
 				"-y",
 			)
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				Should(ContainSubstring(
-					"either a cluster key for STS cluster or an operator roles prefix must be specified"))
+			helper.ExpectErrorWithMessage(err,
+				"either a cluster key for sts cluster or an "+
+					"operator roles prefix must be specified")
 		})
 })
 
@@ -1191,18 +1167,17 @@ var _ = Describe("Upgrade operator roles in auto mode",
 				scheduledAt := time.Now().UTC().Add(10 * time.Minute)
 				scheduledDate := scheduledAt.Format("2006-01-02")
 				scheduledTime := scheduledAt.Format("15:04")
-				output, err := upgradeService.Upgrade(
+				_, err = upgradeService.Upgrade(
 					"-c", clusterID,
 					"--version", upgradingVersion,
 					"--schedule-date", scheduledDate,
 					"--schedule-time", scheduledTime,
 					"-m", "auto",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(output.String()).To(ContainSubstring("Account roles need to be upgraded to proceed"))
+				helper.ExpectErrorWithMessage(err, "account roles need to be upgraded to proceed")
 
 				By("Upgrade account and operator roles in auto mode")
-				output, err = ocmResourceService.UpgradeRoles(
+				output, err := ocmResourceService.UpgradeRoles(
 					"-c", clusterID,
 					"--cluster-version", upgradingVersion,
 					"--mode", "auto",

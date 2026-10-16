@@ -799,8 +799,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 						OpenIDConnectProviderArn: &oidcProviderArn,
 					},
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(ContainSubstring("NoSuchEntity"))
+				helper.ExpectErrorWithMessage(err, "nosuchentity")
 
 			})
 		It("to verify the sts cluster is deleted successfully - [id:75256]",

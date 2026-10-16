@@ -1362,53 +1362,50 @@ var _ = Describe("Create account roles for hosted-cp shared vpc", labels.Feature
 			Expect(output.String()).To(ContainSubstring("Deleting policy '%s'", vpcEndpointPolicyArn))
 
 			By("Validate invalid ars for hosted-cp shared vpc settings")
-			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+			_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", accrolePrefix1,
 				"--path", path,
 				"--route53-role-arn", invalidRoute53RoleArn,
 				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
 				"-y")
-			Expect(err).NotTo(BeNil())
-			Expect(output.String()).To(ContainSubstring("Expected a valid policy ARN for route53-role-arn"))
+			helper.ExpectErrorWithMessage(err, "expected a valid policy arn for route53-role-arn")
 
-			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+			_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", accrolePrefix1,
 				"--path", path,
 				"--route53-role-arn", route53RoleArn,
 				"--vpc-endpoint-role-arn", invalidVpcEndpointRoleArn,
 				"--hosted-cp",
 				"-y")
-			Expect(err).NotTo(BeNil())
-			Expect(output.String()).To(ContainSubstring("Expected a valid policy ARN for vpc-endpoint-role-arn"))
+			helper.ExpectErrorWithMessage(err, "expected a valid policy arn for vpc-endpoint-role-arn")
 
 			By("Valiadte the shared vpc setting not supported for classic account roles")
-			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+			_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", accrolePrefix1,
 				"--path", path,
 				"--route53-role-arn", route53RoleArn,
 				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
 				"--classic",
 				"-y")
-			Expect(err).NotTo(BeNil())
-			Expect(output.String()).To(ContainSubstring(
-				"Setting the `route53-role-arn` flag is only supported for Hosted Control Plane clusters"))
+			helper.ExpectErrorWithMessage(
+				err,
+				"setting the `route53-role-arn` flag is only supported for hosted control plane clusters",
+			)
 
 			By("Validate two share vpc flags are not used together")
-			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+			_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", accrolePrefix1,
 				"--path", path,
 				"--vpc-endpoint-role-arn", vpcEndpointRoleArn,
 				"-y")
-			Expect(err).NotTo(BeNil())
-			Expect(output.String()).To(ContainSubstring("Must supply"))
+			helper.ExpectErrorWithMessage(err, "must supply")
 
-			output, err = ocmResourceService.CreateAccountRole("--mode", "auto",
+			_, err = ocmResourceService.CreateAccountRole("--mode", "auto",
 				"--prefix", accrolePrefix1,
 				"--path", path,
 				"--route53-role-arn", route53RoleArn,
 				"-y")
-			Expect(err).NotTo(BeNil())
-			Expect(output.String()).To(ContainSubstring("Must supply"))
+			helper.ExpectErrorWithMessage(err, "must supply")
 
 		})
 })
