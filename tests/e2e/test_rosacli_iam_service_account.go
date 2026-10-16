@@ -244,8 +244,7 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 					"--path", "/test/path/",
 					"--permissions-boundary", permissionsBoundaryArn,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("at least one service account name is required"))
+				helper.ExpectErrorWithMessage(err, "at least one service account name is required")
 
 				output, err = iamSAaccountService.CreateIAMServiceAccountRole(
 					"-c", clusterID,
@@ -254,8 +253,7 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 					"--path", testRolePath,
 					"--permissions-boundary", permissionsBoundaryArn,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("at least one policy ARN or inline policy must be specified"))
+				helper.ExpectErrorWithMessage(err, "at least one policy arn or inline policy must be specified")
 
 				output, err = iamSAaccountService.CreateIAMServiceAccountRole(
 					"-c", clusterID,
@@ -266,8 +264,7 @@ var _ = Describe("IAM Service Account", labels.Feature.IAMServiceAccount, func()
 					"--path", "/test/path2/",
 					"--permissions-boundary", permissionsBoundaryArn,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Role with same name but different path exists"))
+				helper.ExpectErrorWithMessage(err, "role with same name but different path exists")
 
 				By("Validation of deleting IAM service account roles")
 				output, err = iamSAaccountService.DeleteIAMServiceAccountRole(

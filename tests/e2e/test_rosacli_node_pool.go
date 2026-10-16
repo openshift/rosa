@@ -408,33 +408,25 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create nodepool with the non-existing tuning configs")
-				output, err := machinePoolService.CreateMachinePool(
+				_, err = machinePoolService.CreateMachinePool(
 					clusterID,
 					nodePoolName,
 					"--replicas", "3",
 					"--tuning-configs", nonExistingTuningConfigName,
 				)
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(err).To(HaveOccurred())
-				Expect(textData).
-					To(ContainSubstring(
-						fmt.Sprintf("Tuning config with name '%s' does not exist for cluster '%s'",
-							nonExistingTuningConfigName,
-							clusterID)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("tuning config with name '%s' does not exist for cluster '%s'",
+					nonExistingTuningConfigName,
+					clusterID))
 
 				By("Create nodepool with duplicate tuning configs")
-				output, err = machinePoolService.CreateMachinePool(
+				_, err = machinePoolService.CreateMachinePool(
 					clusterID,
 					nodePoolName,
 					"--replicas", "3",
 					"--tuning-configs", fmt.Sprintf("%s,%s", tuningConfigName, tuningConfigName),
 				)
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(err).To(HaveOccurred())
-				Expect(textData).
-					To(ContainSubstring(
-						fmt.Sprintf("Tuning config with name '%s' is duplicated",
-							tuningConfigName)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("tuning config with name '%s' is duplicated",
+					tuningConfigName))
 
 				By("Create a nodepool")
 				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolName,
@@ -443,16 +435,12 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Update nodepool with non-existing tuning config")
-				output, err = machinePoolService.EditMachinePool(clusterID, nodePoolName,
+				_, err = machinePoolService.EditMachinePool(clusterID, nodePoolName,
 					"--tuning-configs", nonExistingTuningConfigName,
 				)
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(err).To(HaveOccurred())
-				Expect(textData).
-					To(ContainSubstring(
-						fmt.Sprintf("Tuning config with name '%s' does not exist for cluster '%s'",
-							nonExistingTuningConfigName,
-							clusterID)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("tuning config with name '%s' does not exist for cluster '%s'",
+					nonExistingTuningConfigName,
+					clusterID))
 			})
 
 		It("does support 'version' parameter on nodepool - [id:61138]",
@@ -555,12 +543,8 @@ var _ = Describe("Edit nodepool",
 						clusterID,
 						helper.GenerateRandomName("np-61139", 2),
 						flags...)
-					Expect(err).To(HaveOccurred())
+					helper.ExpectErrorWithMessage(err, `xpected a valid openshift version`)
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).
-						Should(ContainSubstring(
-							`xpected a valid OpenShift version`))
-					textData = rosaClient.Parser.TextData.Input(output).Parse().Output()
 					Expect(textData).Should(ContainSubstring(`Valid versions:`))
 				}
 
@@ -1173,21 +1157,15 @@ var _ = Describe("Edit nodepool",
 					helper.GenerateRandomName("mp-73492-empty", 2),
 					"--replicas", "3",
 					"--tags", "owner:")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(ContainSubstring("tag key or tag value can not be empty"))
+				helper.ExpectErrorWithMessage(err, "tag key or tag value can not be empty")
 
 				By("Create machinepool with invalid tags")
-				machinePoolName_3 := helper.GenerateRandomName("mp-73492-2", 2)
-				output, err = machinePoolService.CreateMachinePool(
+				_, err = machinePoolService.CreateMachinePool(
 					clusterID,
-					machinePoolName_3,
+					helper.GenerateRandomName("mp-73492-2", 2),
 					"--replicas", "3",
 					"--tags", "#.bar")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(ContainSubstring(
-						"ERR: invalid tag format for tag '[#.bar]'. Expected tag format: 'key value'"))
+				helper.ExpectErrorWithMessage(err, "invalid tag format for tag '[#.bar]'. expected tag format: 'key value'")
 			})
 
 		It("create/edit/describe maxunavailable/maxsurge for HCP nodepools - [id:74387]",
@@ -1523,15 +1501,13 @@ var _ = Describe("Edit nodepool",
 
 					By("Create nodepool with max-surge/max-unavailable set with different inavlid values")
 					machinePoolName := helper.GenerateRandomName("ocp-74387", 2)
-					output, err := machinePoolService.CreateMachinePool(
+					_, err := machinePoolService.CreateMachinePool(
 						clusterID,
 						machinePoolName,
 						"--replicas", "3",
 						"--max-surge", flags["max surge"],
 						"--max-unavailable", flags["max unavailable"])
-					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-						To(ContainSubstring(flags["errMsg"]))
+					helper.ExpectErrorWithMessage(err, flags["errMsg"])
 				}
 
 				By("Create a nodepool to check edit validation")
@@ -1645,14 +1621,12 @@ var _ = Describe("Edit nodepool",
 				for _, flags := range reqEditBody {
 
 					By("Edit nodepool with max-surge/max-unavailable set with different invalid values")
-					output, err := machinePoolService.EditMachinePool(
+					_, err := machinePoolService.EditMachinePool(
 						clusterID,
 						machinePoolName,
 						"--max-surge", flags["max surge"],
 						"--max-unavailable", flags["max unavailable"])
-					Expect(err).To(HaveOccurred())
-					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-						To(ContainSubstring(flags["errMsg"]))
+					helper.ExpectErrorWithMessage(err, flags["errMsg"])
 				}
 			})
 
@@ -1781,12 +1755,8 @@ var _ = Describe("Edit nodepool",
 					machinePool_Name,
 					"--replicas", "3",
 					"--ec2-metadata-http-tokens", "invalid")
-				Expect(err).To(HaveOccurred())
-				Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-					To(
-						ContainSubstring(
-							"ERR: expected a valid http tokens value : ec2-metadata-http-tokens " +
-								"value should be one of 'required', 'optional'"))
+				helper.ExpectErrorWithMessage(err, "expected a valid http tokens value : ec2-metadata-http-tokens "+
+					"value should be one of 'required', 'optional'")
 			})
 
 		It("Edit machine pool to the ROSA Hypershift cluster - [id:56778]", labels.Runtime.Day2, labels.High, labels.FedRAMP,
