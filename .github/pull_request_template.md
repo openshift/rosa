@@ -14,6 +14,6 @@
 - [ ] No breaking changes
 ## Checklist
 - [ ] Commit format follows `OCM-XXXXX | type: description`
-- [ ] `make install-hooks` has been run
+- [ ] Required pre-commit, commit-msg, and pre-push checks pass, via installed hooks or explicit execution
 - [ ] Tests added/updated where appropriate
 - [ ] Manually tested the change

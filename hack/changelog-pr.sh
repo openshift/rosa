@@ -185,7 +185,7 @@ N/A
 - [x] Commit subject/title follows \`[JIRA-TICKET] | [TYPE]: <MESSAGE>\`.
 - [x] PR description clearly explains both **what** changed and **why**.
 - [x] Relevant Jira/GitHub issues and related PRs are linked.
-- [ ] \`make install-hooks\` has been run in this clone.
+- [ ] Required pre-commit, commit-msg, and pre-push checks pass, via installed hooks or explicit execution.
 - [ ] Tests were added/updated where appropriate.
 - [ ] I manually tested the change.
 - [ ] \`make test\` passes.

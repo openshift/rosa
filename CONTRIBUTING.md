@@ -21,7 +21,7 @@ Tool-specific entrypoints such as [CLAUDE.md](CLAUDE.md) and [GEMINI.md](GEMINI.
 To contribute bug fixes or features to ROSA:
 
 - Communicate your intent.
-- BEFORE YOUR FIRST COMMIT IN A NEW CLONE, YOU MUST RUN `make install-hooks`.
+- Optionally install repository hooks with `make install-hooks`; all checks remain mandatory even without automatic hooks.
 - Make your changes.
 - Test your changes.
 - Run `make fmt` to align with the project formatting.
@@ -37,7 +37,7 @@ to follow [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/#
 In this repository, the conventional-commit type still lives inside the required `OCM-XXXXX | <type>: <message>` or
 `ROSAENG-XXXX | <type>: <message>` subject format described below.
 
-REQUIRED BEFORE YOUR FIRST COMMIT IN A CLONE:
+Optional automatic hook installation:
 ```shell
 # Install pre-commit. Examples:
 #   pip install pre-commit
@@ -46,7 +46,10 @@ REQUIRED BEFORE YOUR FIRST COMMIT IN A CLONE:
 make install-hooks
 ```
 
-YOU MUST LET THE LOCAL HOOKS RUN ON EVERY COMMIT AND PUSH. DO NOT BYPASS LOCAL HOOKS.
+Automatic repository hook installation is optional, but the checks are mandatory for every commit and push.
+If `core.hooksPath` is configured, `make install-hooks` preserves it and skips installation.
+The only migration is the repository's legacy local `.githooks` setting; an inherited custom setting remains intact.
+Do not disable existing hooks or bypass checks. Install `pre-commit` to run checks explicitly even when automatic installation is skipped.
 
 The hooks are configured in `.pre-commit-config.yaml` and perform:
 - `pre-commit`: checks merge conflicts and YAML syntax, runs gitleaks, formats staged Go files (imports + gofmt), and adds Apache 2.0 license headers to staged files missing them
@@ -58,10 +61,21 @@ The hooks are configured in `.pre-commit-config.yaml` and perform:
 - check runs are fail-fast: execution stops at the first failing step
 - if you hit any bumps when committing, please let us know
 
-To manually run all hooks on all files:
+Without automatic hooks, run each required stage explicitly:
 ```shell
-pre-commit run --all-files
+# Before every commit, check staged changes (including gitleaks):
+pre-commit run --hook-stage pre-commit
+
+# Prepare the complete commit message in a file, then validate it:
+pre-commit run --hook-stage commit-msg --commit-msg-filename /path/to/commit-message
+git commit -s -F /path/to/commit-message
+
+# After committing, with no tracked changes, and before every push:
+pre-commit run --hook-stage pre-push --all-files
 ```
+
+Use the same validated message for the commit. Keep any existing environment hooks enabled.
+`pre-commit run --hook-stage pre-commit --all-files` can additionally check all tracked files, but does not replace commit-message or pre-push validation.
 
 Use this aggregated command before pushing:
 ```shell
@@ -72,11 +86,13 @@ make basic-checks                 # format + format-check + build + lint + chang
 Coverage in these check flows evaluates changed Go files only and requires a minimum of 80% of executable changed lines.
 Changed-files coverage uses `github.com/vearutop/gocovdiff@v1.4.2` via `go run`; if it is not already in your Go module cache, Go fetches it automatically.
 
-Use these stage-specific commands when you want to run what each hook runs:
+These Make targets provide check subsets and the full pre-push checks:
 ```shell
 make pre-commit-checks
 make pre-push-checks
 ```
+
+`make pre-commit-checks` only formats staged Go files and checks staged-file licenses; it does not replace the full pre-commit stage, including gitleaks.
 
 Use these commands for individual checks:
 ```shell
@@ -109,7 +125,7 @@ download against the upstream `sha256sum.txt` for that release. For local runs, 
 or rely on that bootstrap. `yq` is optional; the wrapper falls back to awk when `yq` is not
 installed.
 
-Commit message checks are performed by the `commit-msg` hook during commits.
+Commit message checks are performed by the `commit-msg` hook during commits, or by the explicit commit-msg stage above when repository hooks are not installed.
 
 Formatting helpers:
 ```shell
