@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	seaplanemocks "github.com/openshift/rosa/pkg/seaplane/mocks"
 	"github.com/openshift/rosa/pkg/test"
 )
@@ -354,6 +355,70 @@ var _ = Describe("runSeaplaneEdit (machinepool)", func() {
 			runSeaplaneEdit(t.RosaRuntime, &EditMachinepoolUserOptions{machinepool: "my-np", replicas: 5},
 				makeEditCmd("5"), nil)
 		}).To(Panic())
+	})
+
+	Describe("Spot max price updates", func() {
+		spotNodePool := func(maxPrice string) *v1alpha1.NodePool {
+			return &v1alpha1.NodePool{
+				ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
+				Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Platform: v1alpha1.NodePoolPlatform{
+						AWS: &v1alpha1.AWSNodePoolPlatform{
+							Placement: &hypershiftv1beta1.PlacementOptions{
+								MarketType: hypershiftv1beta1.MarketTypeSpot,
+								Spot:       hypershiftv1beta1.SpotOptions{MaxPrice: maxPrice},
+							},
+						},
+					},
+				}},
+			}
+		}
+
+		It("updates the Spot max price on an existing Spot node pool", func() {
+			cmd := makeEditCmd("")
+			Expect(cmd.Flags().Set("spot-max-price", "0.75")).To(Succeed())
+
+			ctrl := gomock.NewController(GinkgoT())
+			seaplaneClient, _, nodePools := newEditMPMocks(ctrl)
+			existing := spotNodePool("0.50")
+			nodePools.EXPECT().Get(gomock.Any(), "np-uid", gomock.Any()).Return(existing, nil)
+
+			handler := &seaplaneNodePoolUpdate{
+				nodePoolKey:  "np-uid",
+				nodePoolName: "np-uid",
+				cmd:          cmd,
+				userOptions:  &EditMachinepoolUserOptions{spotMaxPrice: "0.75"},
+			}
+			updated := &v1alpha1.NodePool{}
+			t.RosaRuntime.SeaplaneClient = seaplaneClient
+
+			Expect(handler.PostExpand(context.Background(), t.RosaRuntime, nil, updated)).To(Succeed())
+			Expect(updated.Spec.NodePool.Platform.AWS.Placement.MarketType).
+				To(Equal(hypershiftv1beta1.MarketTypeSpot))
+			Expect(updated.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice).To(Equal("0.75"))
+		})
+
+		It("maps the on-demand Spot price sentinel to an empty max price", func() {
+			cmd := makeEditCmd("")
+			Expect(cmd.Flags().Set("spot-max-price", mpOpts.SpotPriceOnDemand)).To(Succeed())
+
+			ctrl := gomock.NewController(GinkgoT())
+			seaplaneClient, _, nodePools := newEditMPMocks(ctrl)
+			existing := spotNodePool("0.50")
+			nodePools.EXPECT().Get(gomock.Any(), "np-uid", gomock.Any()).Return(existing, nil)
+
+			handler := &seaplaneNodePoolUpdate{
+				nodePoolKey:  "np-uid",
+				nodePoolName: "np-uid",
+				cmd:          cmd,
+				userOptions:  &EditMachinepoolUserOptions{spotMaxPrice: mpOpts.SpotPriceOnDemand},
+			}
+			updated := &v1alpha1.NodePool{}
+			t.RosaRuntime.SeaplaneClient = seaplaneClient
+
+			Expect(handler.PostExpand(context.Background(), t.RosaRuntime, nil, updated)).To(Succeed())
+			Expect(updated.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice).To(BeEmpty())
+		})
 	})
 })
 

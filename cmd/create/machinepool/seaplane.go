@@ -132,16 +132,17 @@ func runSeaplaneCreate(r *rosa.Runtime, userOptions *mpOpts.CreateMachinepoolUse
 // seaplaneNodePoolCreate implements seaplanepathbind.NodePoolCreateHandler for rosa create machinepool.
 type seaplaneNodePoolCreate struct {
 	seaplanepathbind.GeneratedNodePoolCreatePrompt
-	userOptions          *mpOpts.CreateMachinepoolUserOptions
-	argv                 []string
-	cmd                  *cobra.Command
-	clusterKey           string
-	clusterName          string
-	clusterUID           string
-	userOptionsValidated bool
-	labels               map[string]string
-	taints               []hypershiftv1beta1.Taint
-	resourceTags         []hypershiftv1beta1.AWSResourceTag
+	userOptions                   *mpOpts.CreateMachinepoolUserOptions
+	argv                          []string
+	cmd                           *cobra.Command
+	clusterKey                    string
+	clusterName                   string
+	clusterUID                    string
+	userOptionsValidated          bool
+	labels                        map[string]string
+	taints                        []hypershiftv1beta1.Taint
+	resourceTags                  []hypershiftv1beta1.AWSResourceTag
+	spotWithoutTerminationHandler bool
 }
 
 func (h *seaplaneNodePoolCreate) validateAndParseUserOptions() error {
@@ -373,9 +374,11 @@ func (h *seaplaneNodePoolCreate) PostExpand(
 			obj.Spec.NodePool.Platform.AWS.Placement = &hypershiftv1beta1.PlacementOptions{}
 		}
 		obj.Spec.NodePool.Platform.AWS.Placement.MarketType = hypershiftv1beta1.MarketTypeSpot
-		if h.userOptions.SpotMaxPrice != "" {
+		if h.userOptions.SpotMaxPrice != "" && h.userOptions.SpotMaxPrice != mpOpts.SpotPriceOnDemand {
 			obj.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice = h.userOptions.SpotMaxPrice
 		}
+		h.spotWithoutTerminationHandler = cluster.Spec.HostedCluster.Platform.AWS == nil ||
+			cluster.Spec.HostedCluster.Platform.AWS.TerminationHandlerQueueURL == ""
 	}
 
 	// Security groups
@@ -425,5 +428,9 @@ func (h *seaplaneNodePoolCreate) PostExpand(
 func (h *seaplaneNodePoolCreate) PostResponse(_ context.Context, r *rosa.Runtime, created *v1alpha1.NodePool) error {
 	r.Reporter.Infof("Machine pool '%s' created successfully on hosted cluster '%s'",
 		seaplane.NodePoolDisplayName(h.clusterName, created.Name), h.clusterKey)
+	if h.spotWithoutTerminationHandler {
+		r.Reporter.Warnf("Spot NodePool created without termination handler configuration. " +
+			"Nodes will not be gracefully drained on interruptions.")
+	}
 	return nil
 }
