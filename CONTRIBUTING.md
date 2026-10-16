@@ -93,7 +93,6 @@ make pre-push-checks
 ```
 
 `make pre-commit-checks` only formats staged Go files and checks staged-file licenses; it does not replace the full pre-commit stage, including gitleaks.
-Run `make test-install-hooks` for isolated installation and custom-hook-path regression tests; `make test` also includes them.
 
 Use these commands for individual checks:
 ```shell

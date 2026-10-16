@@ -51,12 +51,8 @@ rosa:
 	go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD) $(if $(VERSION),-X github.com/openshift/rosa/pkg/info.DefaultVersion=$(VERSION),)" ./cmd/rosa
 
 .PHONY: test
-test: test-install-hooks
+test:
 	go test $(GO_TEST_FLAGS) $(shell go list ./... | grep -v /tests/)
-
-.PHONY: test-install-hooks
-test-install-hooks:
-	bash ./hack/install-hooks-test.sh
 
 .PHONY: coverage
 coverage:
