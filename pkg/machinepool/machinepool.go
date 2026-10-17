@@ -36,6 +36,7 @@ import (
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool" //nolint:depguard
 	"github.com/openshift/rosa/pkg/output"                     //nolint:depguard
 	"github.com/openshift/rosa/pkg/rosa"                       //nolint:depguard
+	"github.com/openshift/rosa/pkg/tagging"
 )
 
 const (
@@ -1591,6 +1592,11 @@ func getNodePoolsString(nodePools []*cmv1.NodePool) string {
 
 func (m *machinePool) EditMachinePool(cmd *cobra.Command, machinePoolId string, clusterKey string,
 	cluster *cmv1.Cluster, r *rosa.Runtime) error {
+	if cmd.Flags().Changed("tags") {
+		if err := tagging.ValidateCluster(cluster); err != nil {
+			return err
+		}
+	}
 	if cluster.State() != cmv1.ClusterStateReady {
 		return fmt.Errorf("cluster '%s' is not yet ready", clusterKey)
 	}
@@ -1899,6 +1905,7 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	isUpgradeMaxUnavailableSet := cmd.Flags().Changed("max-unavailable")
 	isSpotSet := cmd.Flags().Changed("use-spot-instances")
 	isSpotMaxPriceSet := cmd.Flags().Changed("spot-max-price")
+	isTagsSet := cmd.Flags().Changed("tags")
 	requestedUseSpotInstances := false
 	if isSpotSet {
 		requestedUseSpotInstances, err = strconv.ParseBool(cmd.Flags().Lookup("use-spot-instances").Value.String())
@@ -1912,7 +1919,8 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 
 	// isAnyAdditionalParameterSet is true if at least one parameter not related to replicas and autoscaling is set
 	isAnyAdditionalParameterSet := isLabelsSet || isTaintsSet || isAutorepairSet || isTuningsConfigSet ||
-		isKubeletConfigSet || isUpgradeMaxSurgeSet || isUpgradeMaxUnavailableSet || isSpotSet || isSpotMaxPriceSet
+		isKubeletConfigSet || isUpgradeMaxSurgeSet || isUpgradeMaxUnavailableSet || isSpotSet || isSpotMaxPriceSet ||
+		isTagsSet
 	isAnyParameterSet := isMinReplicasSet || isMaxReplicasSet || isReplicasSet ||
 		isAutoscalingSet || isAnyAdditionalParameterSet
 
@@ -1929,6 +1937,27 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	}
 	if !exists {
 		return fmt.Errorf("machine pool '%s' does not exist for hosted cluster '%s'", nodePoolID, clusterKey)
+	}
+	tagChanges, err := prepareNodePoolTagEdit(cmd, cluster, nodePool, r)
+	if err != nil {
+		return err
+	}
+	if isTagsSet && onlyMachinePoolTagsChanged(cmd) {
+		if len(tagChanges) == 0 {
+			r.Reporter.Infof("AWS tags are already up to date for machine pool '%s'", nodePoolID)
+			return nil
+		}
+		update, err := cmv1.NewNodePool().ID(nodePoolID).Build()
+		if err != nil {
+			return fmt.Errorf("failed to build tag update for machine pool '%s': %w", nodePoolID, err)
+		}
+		_, err = r.OCMClient.UpdateNodePoolWithTags(cluster.ID(), update, tagChanges)
+		if err != nil {
+			return fmt.Errorf("failed to update machine pool '%s' on hosted cluster '%s': %w",
+				nodePoolID, clusterKey, err)
+		}
+		r.Reporter.Infof("Updated machine pool '%s' on hosted cluster '%s'", nodePoolID, clusterKey)
+		return nil
 	}
 
 	autoscaling, replicas, minReplicas, maxReplicas, err := getNodePoolReplicas(cmd, nodePoolID,
@@ -2232,7 +2261,11 @@ func editNodePool(cmd *cobra.Command, nodePoolID string,
 	}
 
 	r.Reporter.Debugf("Updating machine pool '%s' on hosted cluster '%s'", nodePool.ID(), clusterKey)
-	_, err = r.OCMClient.UpdateNodePool(cluster.ID(), update)
+	if len(tagChanges) > 0 {
+		_, err = r.OCMClient.UpdateNodePoolWithTags(cluster.ID(), update, tagChanges)
+	} else {
+		_, err = r.OCMClient.UpdateNodePool(cluster.ID(), update)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to update machine pool '%s' on hosted cluster '%s': %s",
 			nodePool.ID(), clusterKey, err)
