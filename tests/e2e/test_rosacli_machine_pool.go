@@ -442,6 +442,10 @@ var _ = Describe("Create machinepool",
 				Expect(err).ToNot(HaveOccurred(), out.String())
 				DeferCleanup(func() error {
 					_, err := machinePoolService.DeleteMachinePool(clusterID, mpName)
+					if err != nil && (strings.Contains(strings.ToLower(err.Error()), "not found") ||
+						strings.Contains(strings.ToLower(err.Error()), "does not exist")) {
+						return nil
+					}
 					return err
 				})
 

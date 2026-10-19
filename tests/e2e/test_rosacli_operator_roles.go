@@ -148,7 +148,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 						"-y")
 					Expect(err).To(BeNil())
 					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-					Expect(textData).To(ContainSubstring("Operator Roles already exists"))
+					Expect(textData).To(MatchRegexp("(?i)Operator Roles already exists"))
 				case false:
 					By("Create operator-roles on classic non-sts cluster")
 					_, err := ocmResourceService.CreateOIDCProvider(
@@ -182,15 +182,13 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					output, err := ocmResourceService.CreateOperatorRoles("-c", clusterID, "-y", "--mode", "auto")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-						To(ContainSubstring(
-							"Operator Roles already exists"))
+						To(MatchRegexp("(?i)Operator Roles already exists"))
 
 					By("Create oidc config to the cluster again")
 					output, err = ocmResourceService.CreateOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-						To(ContainSubstring(
-							"OIDC provider already exists"))
+						To(MatchRegexp("(?i)OIDC provider already exists"))
 
 					By("Delete the oidc-provider to the cluster")
 					_, err = ocmResourceService.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
@@ -223,8 +221,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					output, err = ocmResourceService.CreateOIDCProvider("--oidc-config-id", oidcConfigID, "-y", "--mode", "auto")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
-						To(ContainSubstring(
-							"OIDC provider already exists"))
+						To(MatchRegexp("(?i)OIDC provider already exists"))
 
 					By("Try to create operator-roles with --oic-config-id and cluster id at the same time")
 					_, err = ocmResourceService.CreateOperatorRoles("-c", clusterID, "--oidc-config-id", oidcConfigID)
