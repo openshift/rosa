@@ -11,7 +11,8 @@
 //
 // Expand populates an SDK struct from the tagged fields of a consumer struct.
 // Flatten reads tagged consumer struct fields back from an SDK struct.
-// Both support native Go scalar types, pointer-to-scalar, and metav1.Time.
+// UpdateDocument builds a JSON-compatible partial update from two consumer structs.
+// All support native Go scalar types, pointer-to-scalar, and metav1.Time.
 package pathbind
 
 import (
@@ -121,6 +122,176 @@ func flattenStruct(srcVal, dstVal reflect.Value) error {
 			return fmt.Errorf("pathbind.Flatten: field %s: %w", field.Name, err)
 		}
 		dstField.Set(converted)
+	}
+	return nil
+}
+
+// UpdateDocument builds a JSON-compatible partial update document from the
+// hfsdk:-tagged fields of before and after. Values are only included when they
+// change. Unlike Expand, removing a collection emits an empty collection so a
+// server can distinguish "leave this unchanged" from "remove all entries".
+// dst must be a non-nil pointer to the destination SDK struct. Its type is used
+// to convert consumer values to SDK values; the value passed as dst is not
+// modified.
+func UpdateDocument(_ context.Context, before any, after any, dst any) (map[string]any, error) {
+	beforeVal := indirect(reflect.ValueOf(before))
+	afterVal := indirect(reflect.ValueOf(after))
+	dstVal := indirect(reflect.ValueOf(dst))
+	if !beforeVal.IsValid() || beforeVal.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("pathbind.UpdateDocument: before must be a struct or pointer to struct")
+	}
+	if !afterVal.IsValid() || afterVal.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("pathbind.UpdateDocument: after must be a struct or pointer to struct")
+	}
+	if beforeVal.Type() != afterVal.Type() {
+		return nil, fmt.Errorf("pathbind.UpdateDocument: before type %s does not match after type %s",
+			beforeVal.Type(), afterVal.Type())
+	}
+	if !dstVal.IsValid() || dstVal.Kind() != reflect.Struct || !dstVal.CanSet() {
+		return nil, fmt.Errorf("pathbind.UpdateDocument: dst must be a non-nil pointer to a struct")
+	}
+
+	scratch := reflect.New(dstVal.Type())
+	document := map[string]any{}
+	if err := updateDocumentStruct(beforeVal, afterVal, scratch.Elem(), document); err != nil {
+		return nil, err
+	}
+	return document, nil
+}
+
+// IsUnset reports whether value represents an absent field in a consumer
+// struct. It uses the same semantics as Expand: nil pointers, empty strings,
+// zero non-pointer scalars, and empty collections are absent. A non-nil
+// pointer to a zero scalar is present.
+func IsUnset(value any) bool {
+	_, present := unwrap(reflect.ValueOf(value))
+	return !present
+}
+
+func updateDocumentStruct(beforeVal, afterVal, dstVal reflect.Value, document map[string]any) error {
+	afterType := afterVal.Type()
+	for fieldIndex := 0; fieldIndex < afterType.NumField(); fieldIndex++ {
+		field := afterType.Field(fieldIndex)
+		if field.PkgPath != "" {
+			continue
+		}
+		beforeField := beforeVal.Field(fieldIndex)
+		afterField := afterVal.Field(fieldIndex)
+		tag := field.Tag.Get("hfsdk")
+		if tag == "" {
+			beforeNested := structOrZero(beforeField)
+			afterNested := structOrZero(afterField)
+			if afterNested.IsValid() && afterNested.Kind() == reflect.Struct {
+				if err := updateDocumentStruct(beforeNested, afterNested, dstVal, document); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+		if tag == "-" {
+			continue
+		}
+
+		beforeValue, beforePresent := unwrap(beforeField)
+		afterValue, afterPresent := unwrap(afterField)
+		if beforePresent == afterPresent && (!beforePresent || reflect.DeepEqual(beforeValue, afterValue)) {
+			continue
+		}
+
+		segments := strings.Split(tag, ".")
+		var value any
+		if afterPresent {
+			converted, err := documentValue(dstVal, segments, afterValue)
+			if err != nil {
+				return fmt.Errorf("pathbind.UpdateDocument: field %s (path %q): %w", field.Name, tag, err)
+			}
+			value = converted
+		} else {
+			leafType, err := typeAtPath(dstVal, segments)
+			if err != nil {
+				return fmt.Errorf("pathbind.UpdateDocument: field %s (path %q): %w", field.Name, tag, err)
+			}
+			value = clearDocumentValue(leafType)
+		}
+		if err := setDocumentPath(document, segments, value); err != nil {
+			return fmt.Errorf("pathbind.UpdateDocument: field %s (path %q): %w", field.Name, tag, err)
+		}
+	}
+	return nil
+}
+
+func structOrZero(value reflect.Value) reflect.Value {
+	nested := indirect(value)
+	if nested.IsValid() {
+		return nested
+	}
+	if value.Kind() != reflect.Pointer {
+		return reflect.Value{}
+	}
+	return reflect.Zero(value.Type().Elem())
+}
+
+func documentValue(dstVal reflect.Value, segments []string, value any) (any, error) {
+	if err := setAtPath(dstVal, segments, value); err != nil {
+		return nil, err
+	}
+	return getAtPath(dstVal, segments)
+}
+
+func typeAtPath(dstVal reflect.Value, segments []string) (reflect.Type, error) {
+	current := dstVal
+	for index, segment := range segments {
+		field, ok := findField(current, segment)
+		if !ok {
+			return nil, fmt.Errorf("segment %q not found in %s", segment, current.Type())
+		}
+		if index == len(segments)-1 {
+			return field.Type(), nil
+		}
+		if field.Kind() == reflect.Pointer {
+			current = reflect.New(field.Type().Elem()).Elem()
+		} else {
+			current = field
+		}
+	}
+	return nil, fmt.Errorf("empty path")
+}
+
+func clearDocumentValue(targetType reflect.Type) any {
+	switch targetType.Kind() {
+	case reflect.Slice:
+		return []any{}
+	case reflect.Map:
+		return map[string]any{}
+	default:
+		return nil
+	}
+}
+
+func setDocumentPath(document map[string]any, segments []string, value any) error {
+	current := document
+	for index, segment := range segments {
+		if index == len(segments)-1 {
+			if _, exists := current[segment]; exists {
+				return fmt.Errorf("path %q is already present", strings.Join(segments, "."))
+			}
+			current[segment] = value
+			return nil
+		}
+
+		nested, exists := current[segment]
+		if !exists {
+			child := map[string]any{}
+			current[segment] = child
+			current = child
+			continue
+		}
+		child, ok := nested.(map[string]any)
+		if !ok {
+			return fmt.Errorf("path %q conflicts with a leaf at %q",
+				strings.Join(segments, "."), strings.Join(segments[:index+1], "."))
+		}
+		current = child
 	}
 	return nil
 }

@@ -88,6 +88,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 				Expect(np.Spec.NodePool.Platform.AWS.InstanceProfile).To(Equal("cluster1-ROSA-Worker-Role"))
 				Expect(*np.Spec.NodePool.Platform.AWS.Subnet.ID).To(Equal("subnet-abc123"))
 				Expect(np.Spec.NodePool.Platform.AWS.RootVolume.Size).To(Equal(int64(75)))
+				Expect(string(np.Spec.EC2InstanceMetadataHttpTokens)).To(Equal("optional"))
 				Expect(np.Spec.NodePool.Platform.AWS.ResourceTags).To(ConsistOf(
 					hypershiftv1beta1.AWSResourceTag{Key: "test", Value: "testvalue"},
 					hypershiftv1beta1.AWSResourceTag{Key: "test2", Value: "testValue/openshift"},
@@ -97,13 +98,14 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetCreate(t.RosaRuntime, &mpOpts.CreateMachinepoolUserOptions{
-			Name:         "my-np",
-			Version:      "4.20.3",
-			Replicas:     2,
-			InstanceType: "m5.xlarge",
-			Subnet:       "subnet-abc123",
-			RootDiskSize: "75GiB",
-			Tags:         []string{"test:testvalue", "test2:testValue/openshift"},
+			Name:                  "my-np",
+			Version:               "4.20.3",
+			Replicas:              2,
+			InstanceType:          "m5.xlarge",
+			Subnet:                "subnet-abc123",
+			RootDiskSize:          "75GiB",
+			EC2MetadataHttpTokens: "optional",
+			Tags:                  []string{"test:testvalue", "test2:testValue/openshift"},
 		}, nil)
 	})
 
@@ -121,6 +123,7 @@ var _ = Describe("runHyperfleetCreate (machinepool)", func() {
 				Expect(np.Name).To(Equal("cluster1.my-np"))
 				Expect(np.Spec.NodePool.ClusterName).To(Equal("cluster1"))
 				Expect(*np.Spec.NodePool.Replicas).To(Equal(int32(2)))
+				Expect(np.Spec.EC2InstanceMetadataHttpTokens).To(BeEmpty())
 				Expect(np.Spec.NodePool.Platform.AWS.InstanceProfile).To(Equal("cluster1-ROSA-Worker-Role"))
 				Expect(*np.Spec.NodePool.Platform.AWS.Subnet.ID).To(Equal("subnet-abc123"))
 				return created, nil
