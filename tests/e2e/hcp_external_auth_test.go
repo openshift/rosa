@@ -292,19 +292,31 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 					By("Create a break-glass-credential to the cluster")
 					userName := helper.GenerateRandomName("bgc-user-classic", 2)
 
-					_, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
+					resp, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
 						clusterID,
 						"--username", userName,
 						"--expiration", "2h")
-					helper.ExpectErrorWithMessage(err, "external authentication provider is only supported for hosted control planes")
+					Expect(err).To(HaveOccurred())
+					textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+					Expect(textData).
+						To(ContainSubstring(
+							"ERR: external authentication provider is only supported for Hosted Control Planes"))
 
 					By("List the break-glass-credentials of the cluster")
-					_, err = rosaClient.BreakGlassCredential.ListBreakGlassCredentials(clusterID)
-					helper.ExpectErrorWithMessage(err, "external authentication provider is only supported for hosted control planes")
+					resp, err = rosaClient.BreakGlassCredential.ListBreakGlassCredentials(clusterID)
+					Expect(err).To(HaveOccurred())
+					textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+					Expect(textData).
+						To(ContainSubstring(
+							"ERR: external authentication provider is only supported for Hosted Control Planes"))
 
 					By("Revoke the break-glass-credentials of the cluster")
-					_, err = rosaClient.BreakGlassCredential.DeleteBreakGlassCredential(clusterID)
-					helper.ExpectErrorWithMessage(err, "external authentication provider is only supported for hosted control planes")
+					resp, err = rosaClient.BreakGlassCredential.DeleteBreakGlassCredential(clusterID)
+					Expect(err).To(HaveOccurred())
+					textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+					Expect(textData).
+						To(ContainSubstring(
+							"ERR: external authentication provider is only supported for Hosted Control Planes"))
 				}
 
 				if hosted {
@@ -315,49 +327,77 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 						By("Create a break-glass-credential to the cluster")
 						userName := helper.GenerateRandomName("bgc-user-non-external", 2)
 
-						_, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
+						resp, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
 							clusterID,
 							"--username", userName,
 							"--expiration", "2h")
-						helper.ExpectErrorWithMessage(err, fmt.Sprintf("external authentication configuration is not enabled for cluster '%s'", clusterID))
+						Expect(err).To(HaveOccurred())
+						textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(ContainSubstring(
+								"ERR: External authentication configuration is not enabled for cluster '%s'",
+								clusterID))
 
 						By("List the break-glass-credentials of the cluster")
-						_, err = rosaClient.BreakGlassCredential.ListBreakGlassCredentials(clusterID)
-						helper.ExpectErrorWithMessage(err, fmt.Sprintf("external authentication configuration is not enabled for cluster '%s'", clusterID))
+						resp, err = rosaClient.BreakGlassCredential.ListBreakGlassCredentials(clusterID)
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(ContainSubstring(
+								"ERR: External authentication configuration is not enabled for cluster '%s'",
+								clusterID))
 
 						By("Revoke the break-glass-credentials of the cluster")
-						_, err = rosaClient.BreakGlassCredential.DeleteBreakGlassCredential(clusterID)
-						helper.ExpectErrorWithMessage(err, fmt.Sprintf("external authentication configuration is not enabled for cluster '%s'", clusterID))
+						resp, err = rosaClient.BreakGlassCredential.DeleteBreakGlassCredential(clusterID)
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(ContainSubstring(
+								"ERR: External authentication configuration is not enabled for cluster '%s'",
+								clusterID))
 
 					} else if externalAuthProvider {
 
 						By("Create break-glass-credential with invalid --username")
 						userName := helper.GenerateRandomName("bgc-user_", 2)
 
-						_, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
+						resp, err := rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
 							clusterID,
 							"--username", userName,
 							"--expiration", "2h")
-						helper.ExpectErrorWithMessage(err, fmt.Sprintf("the username '%s' must respect the regexp '^[a-za-z0-9-.]*$'", userName))
+						Expect(err).To(HaveOccurred())
+						textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(ContainSubstring("The username '%s' must respect the regexp '^[a-zA-Z0-9-.]*$'",
+								userName))
 
 						By("Create break-glass-credential with invalid --expiration")
 						userName = helper.GenerateRandomName("bgc-user-invalid-exp", 2)
 						expirationTime := "2may"
 
-						_, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
+						resp, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
 							clusterID,
 							"--username", userName,
 							"--expiration", expirationTime)
-						helper.ExpectErrorWithMessage(err, fmt.Sprintf(`invalid argument "%s" for "--expiration" flag`, expirationTime))
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(ContainSubstring(
+								`invalid argument "%s" for "--expiration" flag`,
+								expirationTime))
 
 						By("Create break-glass-credential with invalid expiration")
 						userName = helper.GenerateRandomName("bgc-user-exp-1s", 2)
 
-						_, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
+						resp, err = rosaClient.BreakGlassCredential.CreateBreakGlassCredential(
 							clusterID,
 							"--username", userName,
 							"--expiration", "1s")
-						helper.ExpectErrorWithMessage(err, "expiration needs to be at least 10 minutes from now")
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(ContainSubstring(
+								"Expiration needs to be at least 10 minutes from now"))
 					}
 				}
 			})
@@ -380,29 +420,53 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 				}
 
 				By("Create admin on --external-auth-providers-enabled cluster")
-				_, err = rosaClient.User.CreateAdmin(clusterID)
-				helper.ExpectErrorWithMessage(err, "creating the 'cluster-admin' user is not supported for clusters with external authentication configured.")
+				output, err := rosaClient.User.CreateAdmin(clusterID)
+				Expect(err).To(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					To(ContainSubstring(
+						"ERR: Creating the 'cluster-admin' user is not supported for clusters with external authentication configured."))
 
 				By("Delete admin on --external-auth-providers-enabled cluster")
-				_, err = rosaClient.User.DeleteAdmin(clusterID)
-				helper.ExpectErrorWithMessage(err, "deleting the 'cluster-admin' user is not supported for clusters with external authentication configured.")
+				output, err = rosaClient.User.DeleteAdmin(clusterID)
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					To(ContainSubstring(
+						"ERR: Deleting the 'cluster-admin' user is not supported for clusters with external authentication configured."))
 
 				By("Create idp on --external-auth-providers-enabled cluster")
 				idpName := helper.GenerateRandomName("cluster-idp", 2)
-				_, err = rosaClient.IDP.CreateIDP(clusterID, idpName, "--type", "htpasswd")
-				helper.ExpectErrorWithMessage(err, "adding idp is not supported for clusters with external authentication configured.")
+				output, err = rosaClient.IDP.CreateIDP(clusterID, idpName, "--type", "htpasswd")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					To(ContainSubstring(
+						"ERR: Adding IDP is not supported for clusters with external authentication configured."))
 
 				By("Delete idp on --external-auth-providers-enabled cluster")
-				_, err = rosaClient.IDP.DeleteIDP(clusterID, idpName)
-				helper.ExpectErrorWithMessage(err, "deleting idp is not supported for clusters with external authentication configured.")
+				output, err = rosaClient.IDP.DeleteIDP(clusterID, idpName)
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					To(ContainSubstring(
+						"ERR: Deleting IDP is not supported for clusters with external authentication configured."))
 
 				By("List user on --external-auth-providers-enabled cluster")
-				_, _, err = rosaClient.User.ListUsers(clusterID)
-				helper.ExpectErrorWithMessage(err, "listing cluster users is not supported for clusters with external authentication configured.")
+				_, output, err = rosaClient.User.ListUsers(clusterID)
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					To(ContainSubstring(
+						"ERR: Listing cluster users is not supported for clusters with external authentication configured."))
 
 				By("List idps on --external-auth-providers-enabled cluster")
-				_, _, err = rosaClient.IDP.ListIDP(clusterID)
-				helper.ExpectErrorWithMessage(err, "listing identity providers is not supported for clusters with external authentication configured.")
+				_, output, err = rosaClient.IDP.ListIDP(clusterID)
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					To(ContainSubstring(
+						"ERR: Listing identity providers is not supported for clusters with external authentication configured."))
 			})
 
 		It("to validate HCP cluster creation/list with external auth - [id:72602]",
@@ -412,11 +476,15 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 				hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				if !hostedCluster {
-					_, err := rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID)
-					helper.ExpectErrorWithMessage(err, "external authentication provider is only supported for hosted control planes")
+					output, err := rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("ERR: external authentication provider is only supported for Hosted Control Planes"))
 
-					_, err = rosaClient.ExternalAuthProvider.ListExternalAuthProvider(clusterID)
-					helper.ExpectErrorWithMessage(err, "external authentication provider is only supported for hosted control planes")
+					output, err = rosaClient.ExternalAuthProvider.ListExternalAuthProvider(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("ERR: external authentication provider is only supported for Hosted Control Planes"))
 					return
 				}
 
@@ -424,13 +492,17 @@ var _ = Describe("External auth provider", labels.Feature.ExternalAuthProvider, 
 				isExternalAuthEnabled, err := clusterService.IsExternalAuthenticationEnabled(clusterID)
 				Expect(err).ToNot(HaveOccurred())
 				if !isExternalAuthEnabled {
-					_, err := rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID,
+					output, err := rosaClient.ExternalAuthProvider.CreateExternalAuthProvider(clusterID,
 						"--name", "test")
-					helper.ExpectErrorWithMessage(err, "external authentication configuration is not enabled for cluster")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("ERR: External authentication configuration is not enabled for cluster"))
 
 					By("List external_provider to HCP cluster that external_auth_config is not enable")
-					_, err = rosaClient.ExternalAuthProvider.ListExternalAuthProvider(clusterID)
-					helper.ExpectErrorWithMessage(err, "external authentication configuration is not enabled for cluster")
+					output, err = rosaClient.ExternalAuthProvider.ListExternalAuthProvider(clusterID)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						ContainSubstring("ERR: External authentication configuration is not enabled for cluster"))
 					return
 				}
 			})
