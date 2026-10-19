@@ -3473,7 +3473,7 @@ var _ = Describe("HCP cluster creation negative testing",
 
 		It("to validate '--ec2-metadata-http-tokens' flag during creating cluster - [id:64078]",
 			labels.Medium,
-			labels.Runtime.Day1Negative, labels.Hyperfleet.InProgress,
+			labels.Runtime.Day1Negative, labels.Hyperfleet.NotApplicable,
 			func() {
 				clusterName := "ocp-64078"
 

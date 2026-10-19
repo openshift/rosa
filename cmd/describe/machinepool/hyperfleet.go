@@ -98,6 +98,13 @@ func hfSecurityGroupIDs(aws *v1alpha1.AWSNodePoolPlatform) []string {
 	return sgIDs
 }
 
+func hfNodePoolEC2MetadataHttpTokens(np *v1alpha1.NodePool) string {
+	if np.Spec.EC2InstanceMetadataHttpTokens == "" {
+		return string(v1alpha1.EC2InstanceMetadataHttpTokensRequired)
+	}
+	return string(np.Spec.EC2InstanceMetadataHttpTokens)
+}
+
 func hfNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string]interface{} {
 	replicas := int32(0)
 	if np.Spec.NodePool.Replicas != nil {
@@ -126,19 +133,20 @@ func hfNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string]inter
 	}
 
 	return map[string]interface{}{
-		"id":                 string(np.UID),
-		"name":               hyperfleet.NodePoolDisplayName(clusterName, np.Name),
-		"state":              string(np.Status.Phase),
-		"replicas":           replicas,
-		"instanceType":       instanceType,
-		"subnet":             subnetID,
-		"disk_size":          diskSize,
-		"security_group_ids": securityGroupIDs,
-		"version":            np.Spec.NodePool.Release.Image,
-		"created_at":         np.CreationTimestamp.UTC().Format(time.RFC3339),
-		"conditions":         conditions,
-		"labels":             np.Spec.Labels,
-		"taints":             np.Spec.NodePool.Taints,
+		"id":                       string(np.UID),
+		"name":                     hyperfleet.NodePoolDisplayName(clusterName, np.Name),
+		"state":                    string(np.Status.Phase),
+		"replicas":                 replicas,
+		"instanceType":             instanceType,
+		"subnet":                   subnetID,
+		"disk_size":                diskSize,
+		"security_group_ids":       securityGroupIDs,
+		"version":                  np.Spec.NodePool.Release.Image,
+		"ec2_metadata_http_tokens": hfNodePoolEC2MetadataHttpTokens(np),
+		"created_at":               np.CreationTimestamp.UTC().Format(time.RFC3339),
+		"conditions":               conditions,
+		"labels":                   np.Spec.Labels,
+		"taints":                   np.Spec.NodePool.Taints,
 	}
 }
 
@@ -277,7 +285,7 @@ func hfNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
 		spotInstances,
 		diskSize,
 		np.Spec.NodePool.Release.Image,
-		"", // EC2 Metadata Http Tokens - TODO: add support
+		hfNodePoolEC2MetadataHttpTokens(np),
 		autorepair,
 		tuningConfigs,
 		kubeletConfigs,

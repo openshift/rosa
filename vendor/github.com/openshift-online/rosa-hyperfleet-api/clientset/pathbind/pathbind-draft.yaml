@@ -111,6 +111,14 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.hostedCluster.capabilities.disabled
+              goType: array(string)
+              operations:
+                - create
+            - path: spec.hostedCluster.capabilities.enabled
+              goType: array(string)
+              operations:
+                - create
             - path: spec.hostedCluster.channel
               goType: string
               operations:
@@ -227,42 +235,34 @@ resources:
               goType: string
               operations:
                 - create
-                - update
             - path: spec.hostedCluster.networking.apiServer.advertiseAddress
               goType: string
               operations:
                 - create
-                - update
             - path: spec.hostedCluster.networking.apiServer.allowedCIDRBlocks
               goType: array(string)
               operations:
                 - create
-                - update
             - path: spec.hostedCluster.networking.apiServer.port
               goType: integer(int32)
               operations:
                 - create
-                - update
             - path: spec.hostedCluster.networking.clusterNetwork
               goType: array(object)
               operations:
                 - create
-                - update
             - path: spec.hostedCluster.networking.machineNetwork
               goType: array(object)
               operations:
                 - create
-                - update
             - path: spec.hostedCluster.networking.networkType
               goType: string
               operations:
                 - create
-                - update
             - path: spec.hostedCluster.networking.serviceNetwork
               goType: array(object)
               operations:
                 - create
-                - update
             - path: spec.hostedCluster.platform.aws.additionalAllowedPrincipals
               goType: array(string)
               operations:
@@ -406,11 +406,16 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.ec2InstanceMetadataHttpTokens
+              goType: string
+              operations:
+                - create
             - path: spec.labels
               goType: map
               operations:
                 - create
                 - update
+              resettable: true
             - path: spec.maxSurge
               goType: string
               operations:
@@ -460,7 +465,6 @@ resources:
               goType: string
               operations:
                 - create
-                - update
             - path: spec.nodePool.platform.aws.instanceProfile
               goType: string
               operations:
@@ -544,6 +548,7 @@ resources:
               operations:
                 - create
                 - update
+              resettable: true
             - path: spec.nodePool.tuningConfig
               goType: array(object)
               operations:

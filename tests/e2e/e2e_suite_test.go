@@ -5,6 +5,7 @@ package e2e
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -24,4 +25,10 @@ func TestROSACLIProvider(t *testing.T) {
 var _ = BeforeSuite(func() {
 	clusterID = config.GetClusterID()
 	ctx = context.Background()
+})
+
+var _ = BeforeEach(func() {
+	if isHyperfleetMode() && slices.Contains(CurrentSpecReport().Labels(), "hyperfleet-na") {
+		Skip("This test is not applicable to Platform API v2")
+	}
 })

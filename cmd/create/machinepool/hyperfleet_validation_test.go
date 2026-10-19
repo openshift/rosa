@@ -17,6 +17,32 @@ var _ = Describe("HyperFleet machine pool creation validation", func() {
 		Expect(handler.validateAndParseUserOptions()).To(MatchError(
 			"expected a valid OpenShift version: --version requires a non-empty value"))
 	})
+	DescribeTable("validates EC2 metadata token requirements",
+		func(value string, explicitlySet bool, expectedError string) {
+			cmd := &cobra.Command{}
+			cmd.Flags().String("ec2-metadata-http-tokens", "", "")
+			if explicitlySet {
+				Expect(cmd.Flags().Set("ec2-metadata-http-tokens", value)).To(Succeed())
+			}
+			handler := &hyperfleetNodePoolCreate{
+				cmd: cmd,
+				userOptions: &mpOpts.CreateMachinepoolUserOptions{
+					EC2MetadataHttpTokens: value,
+				},
+			}
+			err := handler.validateAndParseUserOptions()
+			if expectedError == "" {
+				Expect(err).NotTo(HaveOccurred())
+			} else {
+				Expect(err).To(MatchError(ContainSubstring(expectedError)))
+			}
+		},
+		Entry("omitted", "", false, ""),
+		Entry("required", "required", true, ""),
+		Entry("optional", "optional", true, ""),
+		Entry("invalid value", "invalid", true, "ec2-metadata-http-tokens value should be one of 'required', 'optional'"),
+		Entry("explicit empty value", "", true, "ec2-metadata-http-tokens value should be one of 'required', 'optional'"),
+	)
 	DescribeTable("rejects an explicit multi-availability-zone flag while allowing its default",
 		func(value string) {
 			cmd := &cobra.Command{}

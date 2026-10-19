@@ -402,7 +402,7 @@ Use this to plan future additions to the Hyperfleet path.
 | `--disk-size` | Not used | Optional |
 | `--additional-security-group-ids` | Not used | Optional |
 | `--tuning-configs` / `--kubelet-configs` | Not used | Optional |
-| `--ec2-metadata-http-tokens` | Not used | Optional (HCP only) |
+| `--ec2-metadata-http-tokens` | Supported; when omitted, the API defaults to `required` | Supported; when omitted, the CLI defaults to `optional` |
 | `--capacity-reservation-id` / `--capacity-reservation-preference` | Not used | Optional |
 | `--tags` | Not used | Optional |
 

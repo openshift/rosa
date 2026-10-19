@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	ginkgo "github.com/onsi/ginkgo/v2"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 
 	"github.com/openshift/rosa/tests/ci/config"
@@ -256,6 +257,13 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 	if clusterKey == "" {
 		return errors.New("no cluster name defined to wait for")
 	}
+	// Ginkgo buffers its writer in normal mode; tee readiness updates to stdout
+	// so long HyperFleet provisioning waits provide live feedback.
+	_, reporterConfig := ginkgo.GinkgoConfiguration()
+	if !reporterConfig.Verbose && !reporterConfig.VeryVerbose {
+		ginkgo.GinkgoWriter.TeeTo(os.Stdout)
+		defer ginkgo.GinkgoWriter.ClearTeeWriters()
+	}
 
 	defer func() {
 		log.Logger.Info("Going to record the necessary information")
@@ -263,7 +271,9 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 	}()
 
 	clusterService := ch.rosaClient.Cluster
-	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
+	startTime := time.Now()
+	endTime := startTime.Add(time.Duration(timeoutMin) * time.Minute)
+	log.Logger.Infof("Waiting for HyperFleet cluster %s to become Ready (timeout %d minutes)", clusterKey, timeoutMin)
 	for time.Now().Before(endTime) {
 		description, err := clusterService.DescribeClusterAndReflect(clusterKey)
 		if err != nil {
@@ -296,7 +306,8 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 			return fmt.Errorf("cluster %s is %s now. Cannot wait for it ready", clusterKey, phase)
 		case strings.ToLower(string(v1alpha1.ClusterPhaseWaitingForPlacement)),
 			strings.ToLower(string(v1alpha1.ClusterPhaseProvisioning)), "":
-			log.Logger.Infof("Cluster %s phase is %q, waiting for Ready", clusterKey, phase)
+			log.Logger.Infof("Cluster %s is in phase %q after %s; waiting for Ready",
+				clusterKey, phase, time.Since(startTime).Round(time.Second))
 			time.Sleep(2 * time.Minute)
 		default:
 			return fmt.Errorf("unknown cluster phase %q", phase)
@@ -380,33 +391,45 @@ func (ch *clusterHandler) createHyperfleetNodePoolsAfterReady() error {
 }
 
 func (ch *clusterHandler) waitForHyperfleetNodePools(clusterKey string, poolNames []string) error {
-	end := time.Now().Add(20 * time.Minute)
+	startTime := time.Now()
+	end := startTime.Add(20 * time.Minute)
 	var lastErr error
+	log.Logger.Infof("Waiting for %d Hyperfleet node pool(s) on cluster %s to become Ready",
+		len(poolNames), clusterKey)
 	for time.Now().Before(end) {
 		lastErr = nil
 		allReady := true
+		poolStates := make([]string, 0, len(poolNames))
 		for _, name := range poolNames {
 			out, err := ch.rosaClient.MachinePool.DescribeMachinePool(clusterKey, name)
 			if err != nil {
 				lastErr = err
 				allReady = false
-				break
+				poolStates = append(poolStates, fmt.Sprintf("%s=unavailable", name))
+				continue
 			}
 			nodePool, err := ch.rosaClient.MachinePool.ReflectNodePoolDescription(out)
 			if err != nil {
 				lastErr = err
 				allReady = false
-				break
+				poolStates = append(poolStates, fmt.Sprintf("%s=unavailable", name))
+				continue
 			}
-			if nodePool.State != string(v1alpha1.NodePoolPhaseReady) {
+			state := strings.TrimSpace(nodePool.State)
+			if state == "" {
+				state = "unknown"
+			}
+			poolStates = append(poolStates, fmt.Sprintf("%s=%s", name, state))
+			if state != string(v1alpha1.NodePoolPhaseReady) {
 				allReady = false
-				break
 			}
 		}
 		if allReady {
 			log.Logger.Infof("Hyperfleet node pools ready: %d", len(poolNames))
 			return nil
 		}
+		log.Logger.Infof("Cluster %s node pool status after %s: %s; waiting for Ready",
+			clusterKey, time.Since(startTime).Round(time.Second), strings.Join(poolStates, ", "))
 		time.Sleep(30 * time.Second)
 	}
 	if lastErr != nil {

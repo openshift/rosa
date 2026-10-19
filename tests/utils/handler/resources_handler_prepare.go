@@ -387,7 +387,7 @@ func (rh *resourcesHandler) AddTagsToUnManagedBYOSubnets(subnets []string, regio
 
 // PrepareSubnets will prepare pair of subnets according to the vpcID and zones
 // if zones are empty list it will list the zones and pick according to multi-zone parameter.
-// when multi-zone=true, 3 zones will be pickup
+// when multi-zone=true, 3 zones will be picked
 func (rh *resourcesHandler) PrepareSubnets(zones []string, multiZone bool) (map[string][]string, error) {
 	if rh.vpc == nil {
 		return nil, errors.New("VPC has not been initialized")

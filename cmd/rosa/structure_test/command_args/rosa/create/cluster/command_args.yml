@@ -87,6 +87,8 @@
 - name: dry-run
 - name: fake-cluster
 - name: properties
+- name: disabled
+- name: enabled
 - name: use-local-credentials
 - name: permissions-boundary
 - name: hosted-cp

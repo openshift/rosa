@@ -6,6 +6,7 @@ package test
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -30,21 +31,21 @@ const (
 	CommandArgDirectoryName = "command_args"
 )
 
-func (a *ArgVerifier) AssertCommandArgs() {
+func (a *ArgVerifier) CommandArgMismatches() []string {
+	var mismatches []string
 	for k := range a.Args {
-		flag := a.Command.Flags().Lookup(k)
-		Expect(flag).NotTo(
-			BeNil(),
-			"Flag with name '%s' does not exist on command '%s'. Have you removed a flag?",
-			k, a.Command.CommandPath())
+		if a.Command.Flags().Lookup(k) == nil {
+			mismatches = append(mismatches, "Command '"+a.Command.CommandPath()+"': missing expected flag '"+k+"'")
+		}
 	}
 
 	a.Command.Flags().VisitAll(func(flag *pflag.Flag) {
-		Expect(a.Args[flag.Name]).NotTo(
-			BeNil(),
-			"Unexpected flag '%s' on command '%s'. Have you added a new flag?",
-			flag.Name, a.Command.CommandPath())
+		if a.Args[flag.Name] == nil {
+			mismatches = append(mismatches, "Command '"+a.Command.CommandPath()+"': unexpected flag '"+flag.Name+"'")
+		}
 	})
+	sort.Strings(mismatches)
+	return mismatches
 }
 
 func NewArgVerifier(commandStructureDir string, command *cobra.Command) *ArgVerifier {

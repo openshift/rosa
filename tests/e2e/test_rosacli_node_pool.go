@@ -1803,13 +1803,17 @@ var _ = Describe("Edit nodepool",
 			Expect(mpDescription.String()).Should(MatchRegexp(`Desired replicas:[\s\t]*0`))
 		})
 
-		It("create/describe rosa hcp machinepool support imdsv2 - [id:75227]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP,
+		It("create/describe machinepool supports imdsv2 - [id:75227]",
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
 			func() {
 				By("Check the help message of 'rosa create machinepool -h'")
 				res, err := machinePoolService.RetrieveHelpForCreate()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(res.String()).To(ContainSubstring("--ec2-metadata-http-tokens"))
+				defaultTokens := constants.DefaultEc2MetadataHttpTokens
+				if isHyperfleetMode() {
+					defaultTokens = constants.RequiredEc2MetadataHttpTokens
+				}
 
 				By("Create a machinepool without --ec2-metadata-http-tokens to verify server-side default")
 				mpNameDefault := helper.GenerateRandomName("ocp-75227", 3)
@@ -1823,7 +1827,7 @@ var _ = Describe("Edit nodepool",
 							"Machine pool '%s' created successfully on hosted cluster '%s'", mpNameDefault, clusterID))
 				npDesc, err := machinePoolService.DescribeAndReflectNodePool(clusterID, mpNameDefault)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(npDesc.EC2MetadataHttpTokens).ToNot(BeEmpty())
+				Expect(npDesc.EC2MetadataHttpTokens).To(Equal(defaultTokens))
 
 				imdsv2Values := []string{
 					constants.OptionalEc2MetadataHttpTokens,
@@ -1832,10 +1836,11 @@ var _ = Describe("Edit nodepool",
 				for _, imdsv2Value := range imdsv2Values {
 					machinePool_Name := helper.GenerateRandomName("ocp-75227", 3)
 					By("Create a machinepool with --ec2-metadata-http-tokens = " + imdsv2Value)
-					output, err := machinePoolService.CreateMachinePool(clusterID,
-						machinePool_Name,
-						"--replicas", "3",
-						"--ec2-metadata-http-tokens", imdsv2Value)
+					flags := []string{"--replicas", "3"}
+					if imdsv2Value != "" {
+						flags = append(flags, "--ec2-metadata-http-tokens", imdsv2Value)
+					}
+					output, err := machinePoolService.CreateMachinePool(clusterID, machinePool_Name, flags...)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 						To(

@@ -75,8 +75,12 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil)
-		nodePools.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(np, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil).Times(2)
+		nodePools.EXPECT().Patch(gomock.Any(), "cluster1.my-np", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ platform.PatchOptions) (*v1alpha1.NodePool, error) {
+				Expect(string(data)).To(MatchJSON(`{"spec":{"nodePool":{"replicas":5}}}`))
+				return np, nil
+			})
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetEdit(t.RosaRuntime, &EditMachinepoolUserOptions{machinepool: "my-np", replicas: 5},
@@ -103,21 +107,15 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		pools.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.NodePoolList{
 			Items: []v1alpha1.NodePool{*current},
 		}, nil)
-		pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil)
-		pools.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-			func(_ context.Context, updated *v1alpha1.NodePool, _ platform.UpdateOptions) (*v1alpha1.NodePool, error) {
-				Expect(updated.Spec.AutoRepair).To(Equal(ptr.To(enabled)))
-				Expect(updated.Spec.Labels).To(Equal(original.Spec.Labels))
-				Expect(updated.Spec.NodePool.Management).To(Equal(original.Spec.NodePool.Management))
-				if autoscaling {
-					Expect(updated.Spec.NodePool.Replicas).To(BeNil())
-					Expect(updated.Spec.NodePool.AutoScaling).To(Equal(&hypershiftv1beta1.NodePoolAutoScaling{
-						Min: ptr.To(int32(3)), Max: 6,
-					}))
-				} else {
-					Expect(updated.Spec.NodePool.Replicas).To(Equal(original.Spec.NodePool.Replicas))
-				}
-				return updated, nil
+		pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil).Times(2)
+		expectedPatch := fmt.Sprintf(`{"spec":{"autoRepair":%t}}`, enabled)
+		if autoscaling {
+			expectedPatch = fmt.Sprintf(`{"spec":{"autoRepair":%t,"nodePool":{"autoScaling":{"max":6,"min":3}}}}`, enabled)
+		}
+		pools.EXPECT().Patch(gomock.Any(), "cluster1.workers", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ platform.PatchOptions) (*v1alpha1.NodePool, error) {
+				Expect(string(data)).To(MatchJSON(expectedPatch))
+				return current, nil
 			})
 		cmd := makeEditCmd("")
 		Expect(cmd.Flags().Set("autorepair", fmt.Sprint(enabled))).To(Succeed())
@@ -153,8 +151,12 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil)
-		nodePools.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(np, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil).Times(2)
+		nodePools.EXPECT().Patch(gomock.Any(), "cluster1.my-np", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ platform.PatchOptions) (*v1alpha1.NodePool, error) {
+				Expect(string(data)).To(MatchJSON(`{"spec":{"nodePool":{"replicas":5}}}`))
+				return np, nil
+			})
 
 		t.RosaRuntime.HyperFleetClient = hf
 		runHyperfleetEdit(t.RosaRuntime, &EditMachinepoolUserOptions{replicas: 5},
@@ -291,8 +293,12 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 			}}}, nil)
 			nps.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 				&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-			nps.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil)
-			nps.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(np, nil)
+			nps.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil).Times(2)
+			nps.EXPECT().Patch(gomock.Any(), "cluster1.my-np", types.MergePatchType, gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ platform.PatchOptions) (*v1alpha1.NodePool, error) {
+					Expect(string(data)).To(MatchJSON(`{"spec":{"nodePool":{"replicas":2147483647}}}`))
+					return np, nil
+				})
 			t.RosaRuntime.HyperFleetClient = hf
 			return hf, nps, np
 		}()
@@ -324,8 +330,9 @@ var _ = Describe("runHyperfleetEdit (machinepool)", func() {
 		}}}, nil)
 		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
-		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil)
-		nodePools.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("update failed"))
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil).Times(2)
+		nodePools.EXPECT().Patch(gomock.Any(), "cluster1.my-np", types.MergePatchType, gomock.Any(), gomock.Any()).
+			Return(nil, fmt.Errorf("update failed"))
 
 		t.RosaRuntime.HyperFleetClient = hf
 		Expect(func() {
