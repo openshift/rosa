@@ -89,7 +89,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				operatorRolePrefix := jsonData.DigString("aws", "sts", "operator_role_prefix")
 
 				By("Delete in-used operator roles by prefix in auto mode")
-				output, err := ocmResourceService.DeleteOperatorRoles(
+				_, err = ocmResourceService.DeleteOperatorRoles(
 					"--prefix", operatorRolePrefix,
 					"-y",
 					"--mode", "auto",
@@ -102,7 +102,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 
 				By("Delete in-used operator roles by prefix in manual mode")
 				rosaClient.Runner.SetDir(dirToClean)
-				output, err = ocmResourceService.DeleteOperatorRoles(
+				_, err = ocmResourceService.DeleteOperatorRoles(
 					"--prefix", operatorRolePrefix,
 					"-y",
 					"--mode", "manual",
@@ -110,7 +110,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 				helper.ExpectErrorWithMessage(err, "there are clusters using Operator Roles Prefix")
 
 				By("Delete in-used oidc config in auto mode")
-				output, err = ocmResourceService.DeleteOIDCConfig(
+				output, err := ocmResourceService.DeleteOIDCConfig(
 					"--oidc-config-id", oidcConfigID,
 					"--region", clusterConfig.Region,
 					"--mode", "auto",
