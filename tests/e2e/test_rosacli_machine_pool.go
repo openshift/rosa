@@ -356,23 +356,29 @@ var _ = Describe("Create machinepool",
 			func() {
 				By("Create a spot machinepool with negative price")
 				machinePoolName := "spotmp"
-				_, err := machinePoolService.CreateMachinePool(
+				output, err := machinePoolService.CreateMachinePool(
 					clusterID,
 					machinePoolName,
 					"--spot-max-price", "-10.2",
 					"--use-spot-instances",
 					"--replicas", "3")
-				helper.ExpectErrorWithMessage(err, "spot max price must be positive")
+				Expect(err).To(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(MatchRegexp("(?i)spot max price must be positive"))
 
 				By("Create a machinepool without spot instances, but with spot price")
 				machinePoolName = "nospotmp"
-				_, err = machinePoolService.CreateMachinePool(
+				output, err = machinePoolService.CreateMachinePool(
 					clusterID,
 					machinePoolName,
 					"--replicas", "3",
 					"--spot-max-price", "10.2",
 					"--use-spot-instances=false")
-				helper.ExpectErrorWithMessage(err, "can't set max price when not using spot instances")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"can't set max price when not using spot instances"))
 			})
 
 		It("can create machinepool with tags - [id:73469]",
@@ -418,11 +424,17 @@ var _ = Describe("Create machinepool",
 					Expect(err).To(HaveOccurred())
 					switch errorType {
 					case "invalidFmt":
-						helper.ExpectErrorWithMessage(err, "invalid tag format for tag")
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"invalid tag format for tag"))
 					case "noTagKey":
-						helper.ExpectErrorWithMessage(err, "invalid tag format, tag key or tag value can not be empty")
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"invalid tag format, tag key or tag value can not be empty"))
 					case "nonAscii":
-						helper.ExpectErrorWithMessage(err, "invalid machine pool aws tags")
+						Expect(out.String()).
+							Should(ContainSubstring(
+								"Invalid Machine Pool AWS tags"))
 					}
 				}
 			})
@@ -456,7 +468,9 @@ var _ = Describe("Create machinepool",
 					"--replicas", "3",
 					"--tags", `"aws:owned":true`,
 				)
-				helper.ExpectErrorWithMessage(err, "keys starting with 'aws:' are reserved for aws use")
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).
+					Should(MatchRegexp("(?i)keys starting with 'aws:' are reserved for AWS use"))
 			})
 
 		It("can create machinepool with availibility zone - [id:52352]",
@@ -793,44 +807,50 @@ var _ = Describe("Create machinepool",
 					mpName := "mp-67057"
 
 					By("Create with invalid name will fail")
-					_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, "Inv@lid",
+					output, err := rosaClient.MachinePool.CreateMachinePool(clusterID, "Inv@lid",
 						"--replicas", "0",
 						"-y",
 					)
-					helper.ExpectErrorWithMessage(err, "expected a valid name for the machine pool")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)expected a valid name for the machine pool"))
 
 					By("Create with invalid replicas will fail")
-					_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 						"--replicas", "-1",
 						"-y",
 					)
-					helper.ExpectErrorWithMessage(err, "replicas must be a non-negative integer")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)replicas must be a non-negative integer"))
 
 					By("Create with invalid labels will fail")
-					_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 						"--replicas", "0",
 						"--labels", "invalidformat",
 						"-y",
 					)
-					helper.ExpectErrorWithMessage(err, "expected key=value format for labels")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)expected key=value format for labels"))
 
 					By("Create with invalid taints fmt will fail")
-					_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 						"--replicas", "0",
 						"--taints", "aaabbb:Invalid",
 						"-y",
 					)
-					helper.ExpectErrorWithMessage(err, "expected key=value:scheduletype format for taints. got 'aaabbb:invalid'")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						MatchRegexp("(?i)expected key=value:scheduleType format for taints. Got 'aaabbb:Invalid'"))
 
 					By("Create with invalid taints effect will fail")
-					_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 						"--replicas", "0",
 						"--taints", "aaa=bbb:Invalid",
 						"-y",
 					)
-					helper.ExpectErrorWithMessage(err,
-						"invalid taint effect 'invalid', only the following effects "+
-							"are supported: 'noexecute', 'noschedule', 'prefernoschedule'")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						MatchRegexp("(?i)invalid taint effect 'Invalid'," +
+							" only the following effects are supported: 'NoExecute', 'NoSchedule', 'PreferNoSchedule'"))
 
 				})
 
@@ -840,67 +860,75 @@ var _ = Describe("Create machinepool",
 					mpName := "mp-38775"
 					fakeClusterName := "fake_38775"
 					By("Create machine pool with no flags")
-					_, err := rosaClient.MachinePool.CreateMachinePool("", "")
-					helper.ExpectErrorWithMessage(err, "required flag(s) \"cluster\" not set")
+					output, err := rosaClient.MachinePool.CreateMachinePool("", "")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)required flag(s) \"cluster\" not set"))
 
 					By("Create machine pool with non-existent cluster")
-					_, err = rosaClient.MachinePool.CreateMachinePool(fakeClusterName, mpName)
-					helper.ExpectErrorWithMessage(err,
-						fmt.Sprintf("there is no cluster with identifier or name '%s'",
-							fakeClusterName))
+					output, err = rosaClient.MachinePool.CreateMachinePool(fakeClusterName, mpName)
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						MatchRegexp("(?i)There is no cluster with identifier or name '%s'", fakeClusterName))
 
 					By("Create machine pool with negative replicas")
-					_, err = rosaClient.MachinePool.CreateMachinePool(
+					output, err = rosaClient.MachinePool.CreateMachinePool(
 						clusterID, mpName,
 						"--replicas", "-1")
-					helper.ExpectErrorWithMessage(err, "replicas must be a non-negative integer")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)replicas must be a non-negative integer"))
 
 					By("Create machine pool with invalid name")
-					_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, "%^#@")
-					helper.ExpectErrorWithMessage(err, "expected a valid name for the machine pool")
+					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, "%^#@")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)expected a valid name for the machine pool"))
 
 					By("Create machine pool with invalid instance type")
 					fakeInstanceType := "fakeType"
-					_, err = rosaClient.MachinePool.CreateMachinePool(
+					output, err = rosaClient.MachinePool.CreateMachinePool(
 						clusterID, mpName,
 						"--replicas", "0",
 						"--instance-type", fakeInstanceType)
-					helper.ExpectErrorWithMessage(err,
-						fmt.Sprintf("machine type '%s' is not supported for cloud provider",
-							fakeInstanceType))
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						MatchRegexp("(?i)Machine type '%s' is not supported for cloud provider", fakeInstanceType))
 
 					By("Set replicas and enable-autoscaling at the same time")
-					_, err = rosaClient.MachinePool.CreateMachinePool(
+					output, err = rosaClient.MachinePool.CreateMachinePool(
 						clusterID, mpName,
 						"--min-replicas", "3",
 						"--max-replicas", "6",
 						"--enable-autoscaling",
 						"--replicas", "0")
-					helper.ExpectErrorWithMessage(err, "replicas can't be set when autoscaling is enabled")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)replicas can't be set when autoscaling is enabled"))
 
 					By("Set min-replicas larger than max-replicas")
-					_, err = rosaClient.MachinePool.CreateMachinePool(
+					output, err = rosaClient.MachinePool.CreateMachinePool(
 						clusterID, mpName,
 						"--min-replicas", "6",
 						"--max-replicas", "3",
 						"--enable-autoscaling")
-					helper.ExpectErrorWithMessage(err, "max-replicas must be greater or equal to min-replicas")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)max-replicas must be greater or equal to min-replicas"))
 
 					By("Set min-replicas and max-replicas without set --enable-autoscaling")
-					_, err = rosaClient.MachinePool.CreateMachinePool(
+					output, err = rosaClient.MachinePool.CreateMachinePool(
 						clusterID, mpName,
 						"--min-replicas", "3",
 						"--max-replicas", "3")
-					helper.ExpectErrorWithMessage(err, "autoscaling must be enabled in order to set min and max replicas")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(
+						MatchRegexp("(?i)autoscaling must be enabled in order to set min and max replicas"))
 
 					By("set min-replicas and max-replicas not multiple 3 for multi-az")
-					_, err = rosaClient.MachinePool.CreateMachinePool(
+					output, err = rosaClient.MachinePool.CreateMachinePool(
 						clusterID, mpName,
 						"--min-replicas", "2",
 						"--max-replicas", "4",
 						"--enable-autoscaling")
 					if clusterConfig.MultiAZ {
-						helper.ExpectErrorWithMessage(err, "multi az clusters require that the replicas be a multiple of 3")
+						Expect(err).To(HaveOccurred())
+						Expect(output.String()).Should(MatchRegexp("(?i)multi AZ clusters require that the replicas be a multiple of 3"))
 					} else {
 						Expect(err).ToNot(HaveOccurred())
 					}
@@ -936,44 +964,53 @@ var _ = Describe("Create machinepool",
 				func() {
 					mpName := "mp-66874"
 					By("Create with too small disk size will fail")
-					_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					output, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 						"--replicas", "0",
 						"--disk-size", "2GiB",
 						"-y",
 					)
-					helper.ExpectErrorWithMessage(err,
-						fmt.Sprintf(constants.DiskSizeErrRangeMsg,
-							2, constants.MinClassicDiskSize, constants.MaxDiskSize))
+					Expect(err).To(HaveOccurred())
+
+					Expect(output.String()).Should(ContainSubstring(
+						fmt.Sprintf(
+							constants.DiskSizeErrRangeMsg,
+							2,
+							constants.MinClassicDiskSize,
+							constants.MaxDiskSize)))
 
 					By("Create with large disk size will fail")
-					_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 						"--replicas", "0",
 						"--disk-size", "17594GB",
 						"-y",
 					)
-					helper.ExpectErrorWithMessage(err,
-						fmt.Sprintf(constants.DiskSizeErrRangeMsg,
-							16385, constants.MinClassicDiskSize, constants.MaxDiskSize))
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring(
+						fmt.Sprintf(
+							constants.DiskSizeErrRangeMsg,
+							16385,
+							constants.MinClassicDiskSize,
+							constants.MaxDiskSize)))
 
 					By("Create with un-known unit will fail")
-					_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 						"--replicas", "0",
 						"--disk-size", "2GiiiB",
 						"-y",
 					)
-					helper.ExpectErrorWithMessage(err,
-						"invalid disk size format: '2giiib'. accepted units are "+
-							"giga or tera in the form of g, g, gb, gib, gi, t, t, tb, tib, ti")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)invalid disk size format: '2GiiiB'." +
+						" accepted units are Giga or Tera in the form of g, G, GB, GiB, Gi, t, T, TB, TiB, Ti"))
 
 					By("Create with too large value will fail")
-					_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 						"--replicas", "0",
 						"--disk-size", "25678987654567898765456789087654GiB",
 						"-y",
 					)
-					helper.ExpectErrorWithMessage(err,
-						"invalid disk size: '25678987654567898765456789087654gi'. "+
-							"maximum size exceeded")
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(MatchRegexp("(?i)invalid disk size: '25678987654567898765456789087654Gi'." +
+						" maximum size exceeded"))
 
 				})
 
@@ -1019,12 +1056,14 @@ var _ = Describe("Create machinepool will validate", labels.Feature.Machinepool,
 			mpName := "mp-68219"
 			By("Create machinepool with additional sg to non-byovpc cluster")
 			if !profile.ClusterConfig.BYOVPC {
-				_, err := machinePoolService.CreateMachinePool(
+				output, err := machinePoolService.CreateMachinePool(
 					clusterID, mpName,
 					"--replicas", "0",
 					"--additional-security-group-ids", "sg-fakesg",
 				)
-				helper.ExpectErrorWithMessage(err, "the cluster is non-byo vpc cluster")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)the cluster is non-byo vpc cluster"))
 				return
 			}
 
@@ -1043,12 +1082,14 @@ var _ = Describe("Create machinepool will validate", labels.Feature.Machinepool,
 				"red-hat-managed": "true",
 			})
 			Expect(err).ToNot(HaveOccurred())
-			_, err = machinePoolService.CreateMachinePool(
+			output, err := machinePoolService.CreateMachinePool(
 				clusterID, mpName,
 				"--replicas", "0",
 				"--additional-security-group-ids", sgs[0],
 			)
-			helper.ExpectErrorWithMessage(err, fmt.Sprintf("provided additional security group '%s' is red hat managed", sgs[0]))
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				MatchRegexp("(?i)Provided Additional Security Group '%s' is Red Hat managed", sgs[0]))
 
 			By("Create with sg not attahed to the vpc")
 			anotherVPC, err := vpc_client.PrepareVPC("rosaci-68219", profile.Region, "", true, "")
@@ -1061,14 +1102,14 @@ var _ = Describe("Create machinepool will validate", labels.Feature.Machinepool,
 			)
 			Expect(err).ToNot(HaveOccurred())
 
-			_, err = machinePoolService.CreateMachinePool(
+			output, err = machinePoolService.CreateMachinePool(
 				clusterID, mpName,
 				"--replicas", "0",
 				"--additional-security-group-ids", otherSgs[0],
 			)
-			helper.ExpectErrorWithMessage(err,
-				fmt.Sprintf("provided additional security group '%s' "+
-					"is not attached to vpc", otherSgs[0]))
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				MatchRegexp("(?i)Provided Additional Security Group '%s' is not attached to VPC", otherSgs[0]))
 
 			By("Create with 10+ sgs")
 			morethan10sgs, err := vpc.CreateAdditionalSecurityGroups(
@@ -1081,12 +1122,15 @@ var _ = Describe("Create machinepool will validate", labels.Feature.Machinepool,
 				defer vpc.AWSClient.DeleteSecurityGroup(sg)
 			}
 
-			_, err = machinePoolService.CreateMachinePool(
+			output, err = machinePoolService.CreateMachinePool(
 				clusterID, mpName,
 				"--replicas", "0",
 				"--additional-security-group-ids", strings.Join(morethan10sgs, ","),
 			)
-			helper.ExpectErrorWithMessage(err, "the limit for additional security groups is '10', but '11' have been supplied")
+			Expect(err).To(HaveOccurred())
+			Expect(output.String()).Should(
+				MatchRegexp("(?i)The limit for Additional Security Groups is '10'," +
+					" but '11' have been supplied"))
 
 		})
 	})
@@ -1430,34 +1474,41 @@ var _ = Describe("Edit machinepool",
 				)
 
 				By("Edit machinepool label with invalid labels p*=test will fail")
-				_, err = machinePoolService.EditMachinePool(clusterID,
+				output, err := machinePoolService.EditMachinePool(clusterID,
 					constants.DefaultClassicWorkerPool,
 					"--labels", "p*=test",
 				)
-				helper.ExpectErrorWithMessage(err, "invalid label key 'p*': name part must consist of alphanumeric characters")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)invalid label key 'p*': name part must consist of alphanumeric characters"))
 
 				By("Edit machinepool label with empty key =test will fail")
-				_, err = machinePoolService.EditMachinePool(clusterID,
+				output, err = machinePoolService.EditMachinePool(clusterID,
 					constants.DefaultClassicWorkerPool,
 					"--labels", "=test",
 				)
-				helper.ExpectErrorWithMessage(err, "invalid label key '': name part must be non-empty")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)invalid label key '': name part must be non-empty"))
 
 				By("Edit machinepool with duplicate key will fail")
-				_, err = machinePoolService.EditMachinePool(clusterID,
+				output, err = machinePoolService.EditMachinePool(clusterID,
 					constants.DefaultClassicWorkerPool,
 					"--labels", "dupkey=test,dupkey=test2",
 				)
-				helper.ExpectErrorWithMessage(err, "duplicated label key 'dupkey' used")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)duplicated label key 'dupkey' used"))
 
 				By("Edit taints with invalid values will fail")
-				_, err = machinePoolService.EditMachinePool(clusterID,
+				output, err = machinePoolService.EditMachinePool(clusterID,
 					constants.DefaultClassicWorkerPool,
 					"--taints", "dupkey=test:InvalidEffect",
 				)
-				helper.ExpectErrorWithMessage(err,
-					"invalid taint effect 'invalideffect', only the following "+
-						"effects are supported: 'noexecute', 'noschedule', 'prefernoschedule'")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)invalid taint effect 'InvalidEffect'," +
+						" only the following effects are supported: 'NoExecute', 'NoSchedule', 'PreferNoSchedule'"))
 
 				By("Remove other machinepools to make sure there is only workers left")
 				mpList, err := machinePoolService.ListAndReflectMachinePools(clusterID)
@@ -1469,11 +1520,13 @@ var _ = Describe("Edit machinepool",
 				}
 
 				By("Edit the only existing worker pool with taints will fail")
-				_, err = machinePoolService.EditMachinePool(clusterID,
+				output, err = machinePoolService.EditMachinePool(clusterID,
 					constants.DefaultClassicWorkerPool,
 					"--taints", "dupkey=test:NoSchedule",
 				)
-				helper.ExpectErrorWithMessage(err, "at least one machine pool able to run ocp workload is required")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)At least one machine pool able to run OCP workload is required"))
 			})
 		It("will validate replicas on multi-az classic cluster - [id:44776]",
 			labels.Runtime.Day2, labels.Medium, labels.FedRAMP,

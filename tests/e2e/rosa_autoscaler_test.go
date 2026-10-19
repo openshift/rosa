@@ -99,7 +99,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				Expect(err).ToNot(HaveOccurred())
 				defer func() {
 					By("Delete the additional machinepool")
-					_, err = rosaClient.MachinePool.DeleteMachinePool(
+					output, err = rosaClient.MachinePool.DeleteMachinePool(
 						clusterID,
 						machinepoolName)
 					Expect(err).ToNot(HaveOccurred())
@@ -528,26 +528,36 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 							"--gpu-limit", "nvidia.com/gpu,0,10",
 							"--gpu-limit", "amd.com/gpu,1,5",
 							"--scale-down-unneeded-time", "10s")
-						helper.ExpectErrorWithMessage(err,
-							"hosted control plane clusters do not support cluster-autoscaler configuration")
+						Expect(err).To(HaveOccurred())
+						textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(
+								ContainSubstring(
+									"ERR: Hosted Control Plane clusters do not support cluster-autoscaler configuration"))
 
 						By("Describe the autoscaler of the cluster")
 						_, err = rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
 						Expect(err).NotTo(HaveOccurred())
 
 						By("Edit the autoscaler of the cluster")
-						_, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, "--ignore-daemonsets-utilization",
+						resp, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, "--ignore-daemonsets-utilization",
 							"--min-cores", "0",
 							"--max-cores", "10",
 							"--scale-down-delay-after-add", "0s",
 							"--gpu-limit", "amd.com/gpu,1,5")
-						helper.ExpectErrorWithMessage(err, "unable to use flag")
-						helper.ExpectErrorWithMessage(err, "when editing a hosted control plane cluster autoscaler")
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).To(MatchRegexp("(?i)Unable to use flag"))
+						Expect(textData).To(MatchRegexp("(?i)when editing a Hosted Control Plane cluster autoscaler"))
 
 						By("Delete the autoscaler of the cluster")
-						_, err = rosaClient.AutoScaler.DeleteAutoScaler(clusterID)
-						helper.ExpectErrorWithMessage(err,
-							"hosted control plane clusters do not support cluster-autoscaler configuration")
+						resp, err = rosaClient.AutoScaler.DeleteAutoScaler(clusterID)
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(
+								ContainSubstring(
+									"ERR: hosted control plane clusters do not support cluster-autoscaler configuration"))
 					})
 
 				It("for classic non-autoscaler cluster",
@@ -561,33 +571,48 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						}
 
 						By("Describe autoscaler when no autoscaler exists in cluster")
-						_, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
-						helper.ExpectErrorWithMessage(err,
-							fmt.Sprintf("no autoscaler exists for cluster '%s'", clusterID))
+						output, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)
+						Expect(err).To(HaveOccurred())
+						textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+						Expect(textData).
+							To(
+								MatchRegexp("(?i)ERR: No autoscaler exists for cluster '%s'", clusterID))
 
 						By("Edit autoscaler when no autoscaler exists in cluster")
-						_, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, "--ignore-daemonsets-utilization",
+						resp, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, "--ignore-daemonsets-utilization",
 							"--min-cores", "0",
 							"--max-cores", "10",
 							"--scale-down-delay-after-add", "0s",
 							"--gpu-limit", "amd.com/gpu,1,5")
-						helper.ExpectErrorWithMessage(err,
-							fmt.Sprintf("no autoscaler for cluster '%s' has been found", clusterID))
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(
+								ContainSubstring(
+									"ERR: No autoscaler for cluster '%s' has been found", clusterID))
 
-						_, err = rosaClient.AutoScaler.EditAutoScaler(clusterID)
-						helper.ExpectErrorWithMessage(err,
-							fmt.Sprintf("no autoscaler for cluster '%s' has been found", clusterID))
+						resp, err = rosaClient.AutoScaler.EditAutoScaler(clusterID)
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(
+								ContainSubstring(
+									"ERR: No autoscaler for cluster '%s' has been found", clusterID))
 
 						By("Delete autoscaler when no autoscaler exists in cluster")
-						_, err = rosaClient.AutoScaler.DeleteAutoScaler(clusterID)
-						helper.ExpectErrorWithMessage(err,
-							fmt.Sprintf("failed to delete autoscaler configuration for cluster '%s", clusterID))
-						helper.ExpectErrorWithMessage(err,
-							fmt.Sprintf("autoscaler for cluster ID '%s' is not found", clusterID))
+						resp, err = rosaClient.AutoScaler.DeleteAutoScaler(clusterID)
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).
+							To(MatchRegexp("(?i)ERR: failed to delete autoscaler configuration for cluster '%s", clusterID))
+						Expect(textData).
+							To(MatchRegexp("(?i)Autoscaler for cluster ID '%s' is not found", clusterID))
 
 						By("Create autoscaler without setting cluster id")
-						_, err = rosaClient.AutoScaler.CreateAutoScaler("")
-						helper.ExpectErrorWithMessage(err, `error: required flag(s) "cluster" not set`)
+						resp, err = rosaClient.AutoScaler.CreateAutoScaler("")
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).To(MatchRegexp("(?i)Error: required flag(s) \"cluster\" not set"))
 
 						By("Create the autoscaler with invalid value set one at a time")
 
@@ -708,8 +733,10 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						}
 
 						for errMsg, flag := range errAndFlagCreateMap {
-							_, err = rosaClient.AutoScaler.CreateAutoScaler(clusterID, flag...)
-							helper.ExpectErrorWithMessage(err, errMsg)
+							resp, err = rosaClient.AutoScaler.CreateAutoScaler(clusterID, flag...)
+							Expect(err).To(HaveOccurred())
+							textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+							Expect(textData).To(MatchRegexp("(?i)" + errMsg))
 						}
 
 						By("Create the autoscaler to the cluster")
@@ -735,7 +762,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 							"--gpu-limit", "amd.com/gpu,1,5",
 							"--scale-down-unneeded-time", "10s")
 						Expect(err).ToNot(HaveOccurred())
-						textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
 						Expect(textData).
 							To(
 								ContainSubstring(
@@ -749,8 +776,10 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						}()
 
 						By("Edit autoscaler without setting cluster id")
-						_, err = rosaClient.AutoScaler.EditAutoScaler("")
-						helper.ExpectErrorWithMessage(err, `error: required flag(s) "cluster" not set`)
+						resp, err = rosaClient.AutoScaler.EditAutoScaler("")
+						Expect(err).To(HaveOccurred())
+						textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+						Expect(textData).To(MatchRegexp("(?i)Error: required flag(s) \"cluster\" not set"))
 
 						By("Edit the autoscaler with invalid value set one at a time")
 
@@ -871,8 +900,10 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						}
 
 						for errMsg, flag := range errAndFlagEditMap {
-							_, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, flag...)
-							helper.ExpectErrorWithMessage(err, errMsg)
+							resp, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, flag...)
+							Expect(err).To(HaveOccurred())
+							textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+							Expect(textData).To(MatchRegexp("(?i)" + errMsg))
 						}
 					})
 			})
@@ -910,12 +941,20 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 					"--gpu-limit", "nvidia.com/gpu,0,10",
 					"--gpu-limit", "amd.com/gpu,1,5",
 					"--scale-down-unneeded-time", "10s")
-				helper.ExpectErrorWithMessage(err,
-					fmt.Sprintf("autoscaler for cluster '%s' already exists", clusterID))
+				Expect(err).To(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+				Expect(textData).
+					To(
+						ContainSubstring(
+							"ERR: Autoscaler for cluster '%s' already exists", clusterID))
 
 				By("Edit autoscaler without setting cluster id")
-				_, err = rosaClient.AutoScaler.EditAutoScaler("")
-				helper.ExpectErrorWithMessage(err, `error: required flag(s) "cluster" not set`)
+				resp, err = rosaClient.AutoScaler.EditAutoScaler("")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+				Expect(textData).
+					To(
+						MatchRegexp("(?i)Error: required flag(s) \"cluster\" not set"))
 
 				By("Edit the autoscaler with invalid value set one at a time")
 
@@ -1036,8 +1075,10 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				}
 
 				for errMsg, flag := range errAndFlagEditMap {
-					_, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, flag...)
-					helper.ExpectErrorWithMessage(err, errMsg)
+					resp, err = rosaClient.AutoScaler.EditAutoScaler(clusterID, flag...)
+					Expect(err).To(HaveOccurred())
+					textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
+					Expect(textData).To(MatchRegexp("(?i)" + errMsg))
 				}
 			})
 	})

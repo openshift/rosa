@@ -418,11 +418,19 @@ var _ = Describe("HCP cluster testing",
 				Expect(clusterDetail.ExternalAuthentication).To(Equal("Enabled"))
 
 				By("Check some cmds that are not supportted")
-				_, err = rosaClient.User.CreateAdmin(clusterID)
-				helper.ExpectErrorWithMessage(err, "creating the 'cluster-admin' user is not supported for clusters with external authentication configured")
+				output, err = rosaClient.User.CreateAdmin(clusterID)
+				Expect(err).ToNot(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Creating the 'cluster-admin' user is not supported for clusters with external authentication configured"))
 
-				_, _, err = rosaClient.IDP.ListIDP(clusterID)
-				helper.ExpectErrorWithMessage(err, "listing identity providers is not supported for clusters with external authentication configured")
+				_, output, err = rosaClient.IDP.ListIDP(clusterID)
+				Expect(err).ToNot(BeNil())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Listing identity providers is not supported for clusters with external authentication configured"))
 			})
 
 		It("can edit ROSA HCP cluster with additional allowed principals - [id:74556]",
@@ -814,7 +822,8 @@ var _ = Describe("HCP cluster testing",
 					clusterID,
 					"--autonode=invalid",
 				)
-				helper.ExpectErrorWithMessage(err, "only 'enabled' is supported")
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(MatchRegexp("(?i)only 'enabled' is supported"))
 
 				By("Edit cluster autonode configuration with invalid arn format")
 				out, err = clusterService.EditCluster(
@@ -822,14 +831,16 @@ var _ = Describe("HCP cluster testing",
 					"--autonode=enabled",
 					"--autonode-iam-role-arn", "aaaaa",
 				)
-				helper.ExpectErrorWithMessage(err, "invalid iam role arn format")
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(MatchRegexp("(?i)invalid IAM role ARN format"))
 
 				By("Edit role arn when autonode configuration is not enabled")
 				out, err = clusterService.EditCluster(
 					clusterID,
 					"--autonode-iam-role-arn", autonodeRoleARN,
 				)
-				helper.ExpectErrorWithMessage(err, "cannot update iam role arn when autonode is not enabled")
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(MatchRegexp("(?i)cannot update IAM role ARN when AutoNode is not enabled"))
 
 				By("Edit then describe cluster with autonode configuration")
 				out, err = config.RetryOnIAMPropagationError(func() (bytes.Buffer, error) {

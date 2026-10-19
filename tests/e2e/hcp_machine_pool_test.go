@@ -88,14 +88,17 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			By("Create machinepool with security groups set")
 			mpName := "mp-72195"
-			_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+			output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 				"--additional-security-group-ids", strings.Join(sgIDs, ","),
 				"--replicas", "1",
 				"-y",
 			)
 			if clusterVersion.LessThan(throttleVersion) {
 				// Low version cannot support security group set
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf("additional security groups are not supported for '%s'", clusterDescription.OpenshiftVersion))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring(
+					"Additional security groups are not supported for '%s'",
+					clusterDescription.OpenshiftVersion))
 				return
 			}
 			Expect(err).ToNot(HaveOccurred())
@@ -212,7 +215,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--replicas", "3",
 				"--tags", strings.Join(tooManyTags, ","),
 			)
-			helper.ExpectErrorWithMessage(err, "invalid node pool aws tags: resource has too many aws tags")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(MatchRegexp("(?i)Invalid Node Pool AWS tags: Resource has too many AWS tags"))
 
 			By("Create machinepool with a tag too long")
 			maxKeyTagLength := 128
@@ -225,7 +229,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--replicas", "3",
 				"--tags", tag,
 			)
-			helper.ExpectErrorWithMessage(err, "expected a valid user tag key 'zzz")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(MatchRegexp("(?i)ERR: expected a valid user tag key 'zzz"))
 
 			tooLongValueTag := strings.Repeat("z", maxValueTagLength+1)
 			tag = "testKey:" + tooLongValueTag
@@ -234,7 +239,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--replicas", "3",
 				"--tags", tag,
 			)
-			helper.ExpectErrorWithMessage(err, "expected a valid user tag value 'zzz")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(MatchRegexp("(?i)ERR: expected a valid user tag value 'zzz"))
 
 			By("Create machinepool using aws as a prefix with three-part unquoted format")
 			tag = "aws:testKey:" + "testValue"
@@ -242,21 +248,24 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--replicas", "3",
 				"--tags", tag,
 			)
-			helper.ExpectErrorWithMessage(err, "invalid tag format for tag '[aws testkey testvalue]'")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(MatchRegexp("(?i)ERR: invalid tag format for tag '[aws testKey testValue]'"))
 
 			By("Create machinepool using quoted aws: reserved key")
 			out, err = machinePoolService.CreateMachinePool(clusterID, "invalid-73469",
 				"--replicas", "3",
 				"--tags", `"aws:testKey":testValue`,
 			)
-			helper.ExpectErrorWithMessage(err, "keys starting with 'aws:' are reserved for aws use")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(MatchRegexp("(?i)keys starting with 'aws:' are reserved for AWS use"))
 
 			By("Create machinepool with empty tag value is rejected for HCP")
 			out, err = machinePoolService.CreateMachinePool(clusterID, "invalid-73469",
 				"--replicas", "3",
 				"--tags", "owner:",
 			)
-			helper.ExpectErrorWithMessage(err, "tag key or tag value can not be empty")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(MatchRegexp("(?i)tag key or tag value can not be empty"))
 
 			By("Create machinepool with an invalid tag")
 			tag = "#" + ":testValue"
@@ -264,14 +273,16 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--replicas", "3",
 				"--tags", tag,
 			)
-			helper.ExpectErrorWithMessage(err, "expected a valid user tag key '#'")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(MatchRegexp("(?i)ERR: expected a valid user tag key '#'"))
 
 			tag = "testKey:" + "#"
 			out, err = machinePoolService.CreateMachinePool(clusterID, "invalid-73469",
 				"--replicas", "3",
 				"--tags", tag,
 			)
-			helper.ExpectErrorWithMessage(err, "expected a valid user tag value '#'")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).Should(MatchRegexp("(?i)ERR: expected a valid user tag value '#'"))
 		})
 
 	It("can create HCP machinepool with quoted tags containing spaces - [id:67145]",
@@ -843,40 +854,48 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			func() {
 				npName := helper.GenerateRandomName("np-66874", 2)
 				By("Create with too small disk size will fail")
-				_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
+				output, err := rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
 					"--replicas", "0",
 					"--disk-size", "2GiB",
 					"-y",
 				)
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf(constants.DiskSizeErrRangeMsg, 2, constants.MinHCPDiskSize, constants.MaxDiskSize))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring(
+					fmt.Sprintf(constants.DiskSizeErrRangeMsg, 2, constants.MinHCPDiskSize, constants.MaxDiskSize)))
 
 				By("Create with large disk size will fail")
-				_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
+				output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
 					"--replicas", "0",
 					"--disk-size", "17594GB",
 					"-y",
 				)
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf(
-					constants.DiskSizeErrRangeMsg,
-					16385, // 17594GB --> 16385GiB
-					constants.MinHCPDiskSize,
-					constants.MaxDiskSize))
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring(
+					fmt.Sprintf(
+						constants.DiskSizeErrRangeMsg,
+						16385, // 17594GB --> 16385GiB
+						constants.MinHCPDiskSize,
+						constants.MaxDiskSize)))
 
 				By("Create with un-known unit will fail")
-				_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
+				output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
 					"--replicas", "0",
 					"--disk-size", "2GiiiB",
 					"-y",
 				)
-				helper.ExpectErrorWithMessage(err, "invalid disk size format: '2giiib'. accepted units are giga or tera in the form of g, g, gb, gib, gi, t, t, tb, tib, ti")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(MatchRegexp("(?i)invalid disk size format: '2GiiiB'." +
+					" accepted units are Giga or Tera in the form of g, G, GB, GiB, Gi, t, T, TB, TiB, Ti"))
 
 				By("Create with too large value will fail")
-				_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
+				output, err = rosaClient.MachinePool.CreateMachinePool(clusterID, npName,
 					"--replicas", "0",
 					"--disk-size", "25678987654567898765456789087654GiB",
 					"-y",
 				)
-				helper.ExpectErrorWithMessage(err, "invalid disk size: '25678987654567898765456789087654gi'. maximum size exceeded")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(MatchRegexp("(?i)invalid disk size: '25678987654567898765456789087654Gi'." +
+					" maximum size exceeded"))
 			})
 
 		It("validate maximum number of nodes - [id:78277]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, func() {
@@ -913,16 +932,18 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--max-replicas", fmt.Sprintf("%v", 6001),
 				"-y",
 			)
-			helper.ExpectErrorWithMessage(err, "replicas+autoscaling.min: the total number of compute nodes")
-			helper.ExpectErrorWithMessage(err, "reduce the total compute nodes requested to be within the maximum allowed")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(MatchRegexp("(?i)Replicas+Autoscaling.Min: The total number of compute nodes"))
+			Expect(out.String()).To(MatchRegexp("(?i)Reduce the total compute nodes requested to be within the maximum allowed"))
 
 			out, err = rosaClient.MachinePool.EditMachinePool(clusterID, autoScaleMpName,
 				"--min-replicas", fmt.Sprintf("%v", 1),
 				"--max-replicas", fmt.Sprintf("%v", 6001),
 				"-y",
 			)
-			helper.ExpectErrorWithMessage(err, " replicas+autoscaling.max: the total number of compute nodes")
-			helper.ExpectErrorWithMessage(err, "reduce the total compute nodes requested to be within the maximum allowed")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(MatchRegexp("(?i) Replicas+Autoscaling.Max: The total number of compute nodes"))
+			Expect(out.String()).To(MatchRegexp("(?i)Reduce the total compute nodes requested to be within the maximum allowed"))
 
 			By("Edit node pool replicas with the numner execceed maximum number")
 			out, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
@@ -941,7 +962,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--max-replicas", fmt.Sprintf("%v", 6000),
 				"-y",
 			)
-			helper.ExpectErrorWithMessage(err, "should provide an integer number less than or equal to")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(MatchRegexp("(?i)should provide an integer number less than or equal to"))
 
 			out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
 				"--instance-type", instanceType,
@@ -950,7 +972,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--max-replicas", fmt.Sprintf("%v", 6001),
 				"-y",
 			)
-			helper.ExpectErrorWithMessage(err, "should provide an integer number less than or equal to")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(MatchRegexp("(?i)should provide an integer number less than or equal to"))
 
 			By("Create node pool replicas with the numner execceed maximum number")
 			out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
@@ -958,7 +981,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--replicas", fmt.Sprintf("%v", 6000),
 				"-y",
 			)
-			helper.ExpectErrorWithMessage(err, "should provide an integer number less than or equal to")
+			Expect(err).To(HaveOccurred())
+			Expect(out.String()).To(MatchRegexp("(?i)should provide an integer number less than or equal to"))
 		})
 	})
 

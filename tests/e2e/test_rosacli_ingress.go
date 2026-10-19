@@ -141,7 +141,11 @@ var _ = Describe("Edit default ingress",
 				By("Run command to edit a default ingress with --label-match")
 				output, err = ingressService.EditIngress(clusterID, defaultID,
 					"--label-match", "aaa=bbb,ccc=ddd")
-				helper.ExpectErrorWithMessage(err, "updating route selectors is not supported for hosted control plane clusters")
+				Expect(err).To(HaveOccurred())
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).
+					Should(ContainSubstring(
+						"ERR: Updating route selectors is not supported for Hosted Control Plane clusters"))
 			})
 
 		It("can describe ingress of a cluster - [id:73538]",
@@ -165,14 +169,18 @@ var _ = Describe("Edit default ingress",
 			func() {
 				By("Get default ingress id with no clusterID provided")
 				emptyClusterID := ""
-				_, err := ingressService.ListIngress(emptyClusterID)
-				helper.ExpectErrorWithMessage(err,
-					"cluster name, identifier or external identifier '' isn't valid: "+
-						"it must contain only letters, digits, dashes and underscore")
+				output, err := ingressService.ListIngress(emptyClusterID)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring(
+					"ERR: Cluster name, identifier or external identifier '' " +
+						"isn't valid: it must contain only letters, digits, dashes and underscore"))
 
 				By("Get cluster ingress with invalid/non-existing cluster id")
-				_, err = rosaClient.Ingress.DescribeIngress(clusterID, "xxx")
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf("failed to get ingress 'xxx' for cluster '%s'", clusterID))
+				out, err := rosaClient.Ingress.DescribeIngress(clusterID, "xxx")
+				Expect(err).To(HaveOccurred())
+				Expect(
+					out.String(),
+				).Should(MatchRegexp("(?i)ERR: Failed to get ingress 'xxx' for cluster '%s'", clusterID))
 			})
 
 		It("change load balancer type - [id:64767]",
@@ -378,7 +386,10 @@ var _ = Describe("Edit default ingress",
 					"-y",
 				)
 				if profile.ClusterConfig.PrivateLink && !isHosted {
-					helper.ExpectErrorWithMessage(err, "can't update listening mode on an aws private link cluster")
+					Expect(err).To(HaveOccurred())
+					Expect(
+						output.String(),
+					).Should(MatchRegexp("(?i)Can't update listening mode on an AWS Private Link cluster"))
 
 					By("Edit label-match only")
 					output, err = rosaClient.Ingress.EditIngress(clusterID,
@@ -476,28 +487,34 @@ var _ = Describe("Edit ingress",
 					SkipNotClassic()
 				}
 				By("Run command to edit ingress with invalid label")
-				_, err := ingressService.EditIngress(clusterID, "apps",
+				output, err := ingressService.EditIngress(clusterID, "apps",
 					"--label-match", "invalid",
 				)
-				helper.ExpectErrorWithMessage(err, "expected key=value format for label-match")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(MatchRegexp("(?i)Expected key=value format for label-match"))
 
 				By("Run command with non-allowed flag")
-				_, err = ingressService.EditIngress(clusterID, "apps",
+				output, err = ingressService.EditIngress(clusterID, "apps",
 					"--not-allowe-flag", "invalid",
 				)
-				helper.ExpectErrorWithMessage(err, "unknown flag: --not-allowe-flag")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(MatchRegexp("(?i)unknown flag: --not-allowe-flag"))
 
 				By("Edit non-existing ingress")
-				_, err = ingressService.EditIngress(clusterID, "note",
+				output, err = ingressService.EditIngress(clusterID, "note",
 					"--label-match", "invalid=invalidvalue",
 				)
-				helper.ExpectErrorWithMessage(err, "failed to get ingress 'note' for cluster")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)Failed to get ingress 'note' for cluster"))
 
 				By("Edit ingress with invalid LB-type")
-				_, err = ingressService.EditIngress(clusterID, "apps",
+				output, err = ingressService.EditIngress(clusterID, "apps",
 					"--lb-type", "invalid",
 				)
-				helper.ExpectErrorWithMessage(err, "'load_balancer_type' field needs to be one of [nlb, classic]")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)'load_balancer_type' field needs to be one of [nlb, classic]"))
 
 			})
 	})
@@ -535,29 +552,37 @@ var _ = Describe("Delete ingress validations",
 					SkipNotClassic()
 				}
 				By("Fail to delete ingress when no ingress or cluster are passed")
-				_, err := ingressService.DeleteIngress("", "")
-				helper.ExpectErrorWithMessage(err, "expected exactly one command line parameter containing the id of the ingress")
+				output, err := ingressService.DeleteIngress("", "")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)Expected exactly one command line parameter containing the id of the ingress"))
 
 				By("Fail to delete ingress when cluster is passed in but not the ingress id")
-				_, err = ingressService.DeleteIngress(clusterID, "")
-				helper.ExpectErrorWithMessage(err, "expected exactly one command line parameter containing the id of the ingress")
+				output, err = ingressService.DeleteIngress(clusterID, "")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					MatchRegexp("(?i)Expected exactly one command line parameter containing the id of the ingress"))
 
 				By("Fail to delete ingress when ingress id is passed but cluster id is not")
 				fakeIngress := "fake"
-				_, err = ingressService.DeleteIngress("", fakeIngress)
-				helper.ExpectErrorWithMessage(err, "required flag(s) \"cluster\" not set")
+				output, err = ingressService.DeleteIngress("", fakeIngress)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(MatchRegexp("(?i)required flag(s) \"cluster\" not set"))
 
 				By("Fail to delete a non-existent ingress")
-				_, err = ingressService.DeleteIngress(clusterID, fakeIngress)
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf("ingress '%s' does not exist on cluster", fakeIngress))
+				output, err = ingressService.DeleteIngress(clusterID, fakeIngress)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(MatchRegexp("(?i)Ingress '%s' does not exist on cluster", fakeIngress))
 
 				By("Fail to delete an invalid ingress")
 				invalidIngress := "invalidIngress"
-				_, err = ingressService.DeleteIngress(clusterID, invalidIngress)
-				helper.ExpectErrorWithMessage(err,
-					fmt.Sprintf("identifier '%s' isn't valid: it must contain "+
-						"between three and five lowercase letters or digits",
-						invalidIngress))
+				output, err = ingressService.DeleteIngress(clusterID, invalidIngress)
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(
+					ContainSubstring(
+						"identifier '%s' isn't valid: it must contain between three and five lowercase letters or digits",
+						invalidIngress,
+					))
 
 			})
 	})

@@ -14,7 +14,6 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/handler"
-	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Edit IDP User",
@@ -207,8 +206,9 @@ var _ = Describe("Validate user", // TODO could be transformed as day1 negative
 					"--region", region,
 					"--non-sts",
 				)
-				_ = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				helper.ExpectErrorWithMessage(err, "assword must be at least")
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(err).To(HaveOccurred())
+				Expect(textData).Should(MatchRegexp("(?i)assword must be at least"))
 
 				By("Try to create cluster with invalid admin password on classic STS cluster")
 				output, err = clusterService.CreateDryRun(
@@ -217,7 +217,8 @@ var _ = Describe("Validate user", // TODO could be transformed as day1 negative
 					"--cluster-admin-password", invalidPassword,
 					"--region", region,
 				)
-				_ = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				helper.ExpectErrorWithMessage(err, "assword must be at least")
+				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(err).To(HaveOccurred())
+				Expect(textData).Should(MatchRegexp("(?i)assword must be at least"))
 			})
 	})

@@ -414,12 +414,13 @@ var _ = Describe("Validation testing",
 					arbitraryPoliciesToClean[0],
 					arbitraryPoliciesToClean[1],
 				}
-				_, err = arbitraryPolicyService.AttachPolicy(
+				out, err := arbitraryPolicyService.AttachPolicy(
 					supportRoleName,
 					policyArnsWithOneInValidFormat,
 					"--mode", "auto",
 				)
-				helper.ExpectErrorWithMessage(err, "invalid policy arn")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)Invalid policy arn"))
 
 				By("not-existed policies arn when attach")
 				policyArnsWithNotExistedOne := []string{
@@ -427,12 +428,13 @@ var _ = Describe("Validation testing",
 					arbitraryPoliciesToClean[0],
 					arbitraryPoliciesToClean[1],
 				}
-				_, err = arbitraryPolicyService.AttachPolicy(
+				out, err = arbitraryPolicyService.AttachPolicy(
 					supportRoleName,
 					policyArnsWithNotExistedOne,
 					"--mode", "auto",
 				)
-				helper.ExpectErrorWithMessage(err, "not found")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)not found"))
 
 				By("not-existed role name when attach")
 				notExistedRoleName := "notExistedRoleName"
@@ -440,8 +442,9 @@ var _ = Describe("Validation testing",
 					arbitraryPoliciesToClean[0],
 					arbitraryPoliciesToClean[1],
 				}
-				_, err = arbitraryPolicyService.AttachPolicy(notExistedRoleName, policyArns, "--mode", "auto")
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf("role with name %s cannot be found", notExistedRoleName))
+				out, err = arbitraryPolicyService.AttachPolicy(notExistedRoleName, policyArns, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)role with name %s cannot be found", notExistedRoleName))
 
 				By("number of the attaching policies exceed the quote (L-0DA4ABF3) when attach")
 				policyArnsWithNine := arbitraryPoliciesToClean[0:9]
@@ -454,38 +457,46 @@ var _ = Describe("Validation testing",
 				}()
 
 				policyArnWithTen := []string{arbitraryPoliciesToClean[9]}
-				_, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnWithTen, "--mode", "auto")
-				helper.ExpectErrorWithMessage(err, "failed to attach policies due to quota limitations (total limit: 10")
+				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnWithTen, "--mode", "auto")
+				Expect(err).ToNot(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)Failed to attach policies due to quota limitations (total limit: 10"))
 
 				By("role has no red-hat-managed=true tag when attach")
-				_, err = arbitraryPolicyService.AttachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
-				helper.ExpectErrorWithMessage(err, "cannot attach/detach policies to non-rosa roles")
+				out, err = arbitraryPolicyService.AttachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)Cannot attach/detach policies to non-ROSA roles"))
 
 				By("empry string in the policy-arn when attach")
 				policyArnsWithEmptyString := []string{""}
-				_, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithEmptyString, "--mode", "auto")
-				helper.ExpectErrorWithMessage(err, "expected a valid policy")
+				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithEmptyString, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)expected a valid policy"))
 
 				By("policy arn with invalid format when detach")
 
-				_, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithOneInValidFormat, "--mode", "auto")
-				helper.ExpectErrorWithMessage(err, "invalid policy arn")
+				out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithOneInValidFormat, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)Invalid policy arn"))
 
 				By("not-existed policies arn when detach")
-				_, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithNotExistedOne, "--mode", "auto")
-				helper.ExpectErrorWithMessage(err, "not found")
+				out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithNotExistedOne, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)not found"))
 
 				By("not-existed role name when detach")
-				_, err = arbitraryPolicyService.DetachPolicy(notExistedRoleName, policyArns, "--mode", "auto")
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf("role with name %s cannot be found", notExistedRoleName))
+				out, err = arbitraryPolicyService.DetachPolicy(notExistedRoleName, policyArns, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)role with name %s cannot be found", notExistedRoleName))
 
 				By("role has no red-hat-managed=true tag when detach")
-				_, err = arbitraryPolicyService.DetachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
-				helper.ExpectErrorWithMessage(err, "cannot attach/detach policies to non-rosa roles")
+				out, err = arbitraryPolicyService.DetachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)Cannot attach/detach policies to non-ROSA roles"))
 
 				By("empry string in the policy-arn when detach")
-				_, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithEmptyString, "--mode", "auto")
-				helper.ExpectErrorWithMessage(err, "expected a valid policy")
+				out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithEmptyString, "--mode", "auto")
+				Expect(err).NotTo(BeNil())
+				Expect(out.String()).To(MatchRegexp("(?i)expected a valid policy"))
 			})
 	})
 

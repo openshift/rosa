@@ -426,9 +426,8 @@ var _ = Describe("Network Resources",
 				Expect(err).To(HaveOccurred())
 				stackNameToClean = append(stackNameToClean, stackName2)
 
-				helper.ExpectErrorWithMessage(err,
-					"when using a custom template please use "+
-						"`--template-dir` to specify the template directory")
+				Expect(output.String()).To(
+					MatchRegexp("(?i)when using a custom template please use `--template-dir` to specify the template directory"))
 
 				By("Delete the cloudformation created in previous step")
 				params = cloudformation.DeleteStackInput{
@@ -765,7 +764,9 @@ var _ = Describe("Network Resources",
 				By("Try to create network by setting invalid arguments and flags")
 				for key, value := range reqAndErrBody {
 					output, err := networkResourcesService.CreateNetworkResources(false, value...)
-					helper.ExpectErrorWithMessage(err, key)
+					Expect(err).To(HaveOccurred())
+					resp := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(resp).To(MatchRegexp("(?i)" + key))
 					if key == withoutCidrErrorMessage || key == incorrectCidrErrorMessage {
 						resp := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 						Expect(resp).To(ContainSubstring(rollBackInProgress))
