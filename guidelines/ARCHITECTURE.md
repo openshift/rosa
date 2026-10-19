@@ -332,7 +332,6 @@ incrementally.
   - `assets/bindata.go`
   - `pkg/*/mocks/`
   - `cmd/create/idp/mocks/`
-  - vendored dependencies under `vendor/`
 - Command tree or flag changes usually require updates under `cmd/rosa/structure_test/` and may require `make generate-docs`.
 
 ## Risk Hotspots

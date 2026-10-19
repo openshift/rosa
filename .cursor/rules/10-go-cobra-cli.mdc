@@ -14,6 +14,6 @@ alwaysApply: false
 - Update command structure contracts when commands or flags change:
   - `cmd/rosa/structure_test/command_structure.yml`
   - matching `cmd/rosa/structure_test/command_args/**/command_args.yml`
-- Do not change imports, run `go mod tidy`, or run `go mod vendor` unless the task explicitly requires it.
+- Do not change imports or run `go mod tidy` unless the task explicitly requires it.
 - Use descriptive names and repo casing conventions such as `...Hcp`.
 - Keep user-facing output consistent with `pkg/output`, `pkg/reporter`, and `pkg/interactive`.

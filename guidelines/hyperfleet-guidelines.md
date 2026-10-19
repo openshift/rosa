@@ -52,7 +52,7 @@ pkg/hyperfleet/
   nodepool.go        — ResolveNodePoolUID
   mocks/
     hyperfleet_mock.go   — generated mock for clientset.Interface
-    wrappers_mock.go     — generated mocks for ClusterInterface, NodePoolInterface, V1alpha1PublicInterface
+    wrappers_mock.go     — generated mocks for the platform interfaces (Cluster, NodePool, OidcConfig, DNSReservation, V1alpha1Public)
 
 pkg/rosa/
   runtime.go         — WithHyperFleet() runtime builder
@@ -343,9 +343,10 @@ terminating the process.
 make generate
 ```
 
-The `Makefile` runs `mockgen` against the vendored clientset interfaces and
-applies a `perl` fixup to rewrite the import path from the vendor-prefixed
-form back to the canonical module path.
+The `Makefile` runs `mockgen` in source mode against `hyperfleet.go` and
+`platform/bridge_wrappers_generated.go` from the clientset module in the Go
+module cache, so every interface in those files gets a mock, including ones added
+by a clientset bump.
 
 Do not edit mock files by hand.
 

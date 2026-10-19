@@ -23,3 +23,5 @@ dist/
 **/__debug_bin*
 **/ginkgo.report
 **/*.test
+# Dependencies are resolved from Go modules; never commit a local `go mod vendor` tree.
+/vendor/
