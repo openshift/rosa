@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 	errors "github.com/zgalor/weberr"
 
-	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/interactive"
 	interactiveLogForwarding "github.com/openshift/rosa/pkg/interactive/logforwarding"
 	"github.com/openshift/rosa/pkg/logforwarding"
@@ -76,10 +75,6 @@ func NewCreateLogForwarderCommand() *cobra.Command {
 func CreateLogForwarderRunner(userOptions *CreateLogForwarderUserOptions) rosa.CommandRunner {
 	return func(_ context.Context, r *rosa.Runtime, cmd *cobra.Command, _ []string) error {
 		options := NewCreateLogForwarderOptions()
-
-		if fedramp.Enabled() {
-			return fmt.Errorf("log forwarding is not supported on Govcloud")
-		}
 
 		err := options.Bind(userOptions)
 		if err != nil {
