@@ -165,6 +165,26 @@ Types other than `fix:` and `feat:` are allowed:
 - `style`: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
 - `test`: Adding missing tests or correcting existing tests
 
+Use `feat` or `fix` for user-visible functionality or behavior changes, including
+changes to defaults and interactive behavior. Do not label these changes `chore`.
+Reserve `chore` for internal maintenance with no user-facing behavior change; use
+`chore(deps)` for dependency updates that should appear in release notes.
+
+Mark breaking commits with `!` after the type or scope (for example,
+`feat(cluster)!: change a default`) or a `BREAKING CHANGE:` footer. When applicable,
+include the actual impact and migration instructions in that footer, not just a
+generic warning. For example:
+
+```text
+ROSAENG-1234 | fix!: remove the old configuration flag
+
+BREAKING CHANGE: --old-config was removed; use --config instead.
+```
+
+Reviewers should verify that the commit type reflects user-visible impact and that
+breaking changes explain any required migration. This is contributor and review
+guidance, not automated semantic-impact enforcement.
+
 [!IMPORTANT]
 DCO Sign-off Required: Every commit must include a Developer Certificate of Origin (DCO) sign-off line (Signed-off-by: Name <email>). Use git commit -s when committing.
 
@@ -181,10 +201,19 @@ contains the complete changelog history.
    to be reviewed.
 4. A human reviews and merges that PR.
 
-The changelog follows the existing format with sections for FEATURES,
-ENHANCEMENTS (with Bug fixes, Documentation, and Chores subsections), and other
-categories. Commits are automatically grouped based on their conventional commit
-type.
+When a release has breaking commits, a BREAKING CHANGES section appears immediately
+below its heading, before FEATURES. Each breaking commit appears only there, with
+its impact and migration details when provided. The section is omitted when empty.
+Other commits are grouped by conventional commit type into FEATURES, ENHANCEMENTS
+(including Bug fixes, Documentation, and Dependencies), and other categories.
+Ordinary maintenance types (`test`, `ci`, `build`, `chore`) and internal scopes
+(`ci`, `test`, `e2e`) are excluded, except for breaking commits and `chore(deps)`
+dependency release notes. Internal scopes still exclude nonbreaking commits.
+
+These conventions apply to future commits; published CHANGELOG entries are not
+retroactively regenerated. Historical user-facing commits labeled `chore` can be
+omitted by the current filtering policy, so reviewers should account for that
+tradeoff when inspecting historical previews.
 
 Contributors do **not** add changelog fragments to feature PRs.
 

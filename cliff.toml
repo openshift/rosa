@@ -50,11 +50,22 @@ body = """
 {%- else -%}
 ## [unreleased]
 {%- endif -%}
+{%- set breaking_commits = commits | filter(attribute="breaking", value=true) -%}
+{%- if breaking_commits %}
+
+BREAKING CHANGES:
+{% for commit in breaking_commits %}
+   * {{ commit.message | upper_first | split(pat="\n") | first }}
+{% if commit.breaking_description and commit.breaking_description != commit.message %}
+     {{ commit.breaking_description | replace(from="\n", to="\n     ") }}
+{% endif -%}
+{%- endfor -%}
+{%- endif -%}
 {%- for group in ["<!-- 1 -->FEATURES:", "<!-- 2 -->ENHANCEMENTS:", "<!-- 4 -->SECURITY:", "<!-- 5 -->REVERTS:"] -%}
 {%- set_global group_commits = [] -%}
 {%- set_global scopes = [] -%}
 {%- for commit in commits -%}
-{%- if self::group(commit=commit) == group -%}
+{%- if not commit.breaking and self::group(commit=commit) == group -%}
 {%- set_global group_commits = group_commits | concat(with=commit) -%}
 {%- set_global scopes = scopes | concat(with=self::scope(commit=commit)) -%}
 {%- endif -%}
