@@ -287,10 +287,6 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).ToNot(HaveOccurred(), out.String())
 			DeferCleanup(func() error {
 				_, err := machinePoolService.DeleteMachinePool(clusterID, mpID)
-				if err != nil && (strings.Contains(strings.ToLower(err.Error()), "not found") ||
-					strings.Contains(strings.ToLower(err.Error()), "does not exist")) {
-					return nil
-				}
 				return err
 			})
 
