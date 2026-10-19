@@ -1529,14 +1529,6 @@ func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
 		return roleList, err
 	}
 	for _, role := range roles {
-		isValidOperatorRole, err := c.ValidateIfRosaOperatorRole(role, credRequest)
-		if err != nil {
-			return roleList, err
-		}
-		if !isValidOperatorRole {
-			continue
-		}
-
 		listRoleTagsOutput, err := c.iamClient.ListRoleTags(context.Background(),
 			&iam.ListRoleTagsInput{
 				RoleName: role.RoleName,
@@ -1547,6 +1539,11 @@ func (c *awsClient) GetOperatorRolesFromAccountByClusterID(clusterID string,
 			}
 			return roleList, err
 		}
+		role.Tags = listRoleTagsOutput.Tags
+		if !checkIfROSAOperatorRole(role, credRequest) {
+			continue
+		}
+
 		isTagged := false
 		for _, tag := range listRoleTagsOutput.Tags {
 			switch aws.ToString(tag.Key) {

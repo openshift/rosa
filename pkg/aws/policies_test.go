@@ -2483,28 +2483,24 @@ var _ = Describe("GetOperatorRolesFromAccountByClusterID", func() {
 		It("skips the deleted role instead of failing the whole scan", func() {
 			deletedRole := "deleted-role-openshift-ns"
 			keptRole := "kept-role-openshift-ns"
+			unrelatedRole := "unrelated-role"
+			taggedOnlyRole := "unnamed-role"
 
 			mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				&iam.ListRolesOutput{
 					Roles: []iamtypes.Role{
 						{RoleName: &deletedRole},
 						{RoleName: &keptRole},
+						{RoleName: &unrelatedRole},
+						{RoleName: &taggedOnlyRole},
 					},
 				}, nil)
 
-			// Name match alone satisfies checkIfROSAOperatorRole, so the first
-			// (ValidateIfRosaOperatorRole) ListRoleTags call can return empty tags.
-			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
-				RoleName: &deletedRole,
-			}).Return(&iam.ListRoleTagsOutput{}, nil)
-			// The second, direct ListRoleTags call finds the role already gone.
+			// The role is gone by the time its tags are looked up.
 			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
 				RoleName: &deletedRole,
 			}).Return(nil, &iamtypes.NoSuchEntityException{Message: awsSdk.String("not found")})
 
-			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
-				RoleName: &keptRole,
-			}).Return(&iam.ListRoleTagsOutput{}, nil)
 			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
 				RoleName: &keptRole,
 			}).Return(&iam.ListRoleTagsOutput{
@@ -2513,9 +2509,30 @@ var _ = Describe("GetOperatorRolesFromAccountByClusterID", func() {
 				},
 			}, nil)
 
+			// Matches the cluster ID tag but neither its name nor its tags identify it
+			// as a ROSA operator role, so it must be excluded.
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &unrelatedRole,
+			}).Return(&iam.ListRoleTagsOutput{
+				Tags: []iamtypes.Tag{
+					{Key: aws.String(tags.ClusterID), Value: aws.String("cluster-123")},
+				},
+			}, nil)
+
+			// Only the operator_namespace tag identifies it as an operator role; its
+			// name alone would not match.
+			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
+				RoleName: &taggedOnlyRole,
+			}).Return(&iam.ListRoleTagsOutput{
+				Tags: []iamtypes.Tag{
+					{Key: aws.String(tags.OperatorNamespace), Value: aws.String("openshift-ns")},
+					{Key: aws.String(tags.ClusterID), Value: aws.String("cluster-123")},
+				},
+			}, nil)
+
 			roleList, err := client.GetOperatorRolesFromAccountByClusterID("cluster-123", credRequest)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(roleList).To(ConsistOf(keptRole))
+			Expect(roleList).To(ConsistOf(keptRole, taggedOnlyRole))
 		})
 	})
 
@@ -2527,9 +2544,6 @@ var _ = Describe("GetOperatorRolesFromAccountByClusterID", func() {
 				&iam.ListRolesOutput{
 					Roles: []iamtypes.Role{{RoleName: &roleName}},
 				}, nil)
-			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
-				RoleName: &roleName,
-			}).Return(&iam.ListRoleTagsOutput{}, nil)
 			mockIamAPI.EXPECT().ListRoleTags(gomock.Any(), &iam.ListRoleTagsInput{
 				RoleName: &roleName,
 			}).Return(nil, fmt.Errorf("throttled"))

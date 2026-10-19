@@ -417,8 +417,7 @@ var _ = Describe("Cluster Upgrade testing",
 				time.Sleep(3 * time.Minute)
 
 				By("Upgrade cluster")
-				scheduledDate := time.Now().Format("2006-01-02")
-				scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+				scheduledDate, scheduledTime := upgradeScheduleAt(10 * time.Minute)
 
 				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
@@ -834,8 +833,7 @@ var _ = Describe("Describe/List rosa upgrade",
 				Expect(output.String()).To(MatchRegexp(`%s\s+recommended\s+`, upgradingVersion))
 
 				By("Create a cluster upgrade policy")
-				scheduledDate := time.Now().Format("2006-01-02")
-				scheduledTime := time.Now().Add(30 * time.Minute).UTC().Format("15:04")
+				scheduledDate, scheduledTime := upgradeScheduleAt(30 * time.Minute)
 				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
 					"--schedule-date", scheduledDate,
@@ -1067,8 +1065,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 					clusterID))
 
 			By("Create manual type upgrade policy with schedule information")
-			scheduledDate := time.Now().Format("2006-01-02")
-			scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+			scheduledDate, scheduledTime := upgradeScheduleAt(10 * time.Minute)
 			output, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--version", targetVersion,
@@ -1164,8 +1161,7 @@ var _ = Describe("ROSA HCP cluster upgrade",
 					defer arbitraryPolicyService.AttachPolicy(r, []string{p}, "--mode", "auto")
 
 					By("upgrade cluster with account roles which is detached managed policies")
-					scheduledDate := time.Now().Format("2006-01-02")
-					scheduledTime := time.Now().Add(10 * time.Minute).UTC().Format("15:04")
+					scheduledDate, scheduledTime := upgradeScheduleAt(10 * time.Minute)
 					output, err = upgradeService.Upgrade(
 						"-c", clusterID,
 						"--version", upgradeVersion,
@@ -1228,8 +1224,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 					"testing")
 			}
 
-			scheduledDate := time.Now().Format("2006-01-02")
-			scheduledTime := time.Now().Add(50 * time.Minute).UTC().Format("15:04")
+			scheduledDate, scheduledTime := upgradeScheduleAt(50 * time.Minute)
 
 			By("Prepare cluster for y-stream upgrade target discovery")
 			upgradingVersion, err := prepareYStreamUpgradeVersion(
