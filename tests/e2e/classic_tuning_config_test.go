@@ -52,6 +52,7 @@ var _ = Describe("Tuning Config(s) on Classic cluster", labels.Feature.TuningCon
 				clusterID,
 				tcName,
 				string(tcJSON))
-			helper.ExpectErrorWithMessage(err, "this command is only supported for hosted control planes")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("This command is only supported for Hosted Control Planes"))
 		})
 })

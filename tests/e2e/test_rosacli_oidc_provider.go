@@ -10,7 +10,6 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
-	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("OIDC provider",
@@ -66,17 +65,21 @@ var _ = Describe("OIDC provider",
 					Expect(textData).To(ContainSubstring("OIDC provider already exists"))
 				case false:
 					By("Create oidc-provider on classic non-sts cluster")
-					_, err := ocmResourceService.CreateOIDCProvider(
+					output, err := ocmResourceService.CreateOIDCProvider(
 						"--mode", "auto",
 						"-c", clusterID,
 						"-y")
-					helper.ExpectErrorWithMessage(err, "is not an sts cluster")
+					Expect(err).NotTo(BeNil())
+					textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+					Expect(textData).To(ContainSubstring("is not an STS cluster"))
 				}
 				By("Create oidc-provider on not-existed cluster")
-				_, err = ocmResourceService.CreateOIDCProvider(
+				output, err := ocmResourceService.CreateOIDCProvider(
 					"--mode", "auto",
 					"-c", notExistedClusterID,
 					"-y")
-				helper.ExpectErrorWithMessage(err, "there is no cluster with identifier or name")
+				Expect(err).NotTo(BeNil())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("There is no cluster with identifier or name"))
 			})
 	})
