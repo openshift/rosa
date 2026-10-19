@@ -210,7 +210,7 @@ func ValidateHTTPProxy(val interface{}) error {
 		if httpProxy == "" {
 			return nil
 		}
-		return validateProxyURL(httpProxy, "http-proxy", []string{"http"})
+		return validateProxyURL(httpProxy, "http-proxy", []string{"http", "https"})
 	}
 	return fmt.Errorf("can only validate strings, got '%v'", val)
 }

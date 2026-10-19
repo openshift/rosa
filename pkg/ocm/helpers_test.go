@@ -784,16 +784,49 @@ var _ = Describe("ValidateHTTPProxy", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("rejects proxy with https scheme", func() {
+	It("accepts proxy with https scheme", func() {
 		err := ValidateHTTPProxy("https://proxy.example.com:8080")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("invalid http-proxy value: URL scheme must be 'http://'"))
+		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("rejects proxy with non-http scheme", func() {
+	DescribeTable("accepts https proxy with authentication", func(proxyURL string) {
+		Expect(ValidateHTTPProxy(proxyURL)).To(Succeed())
+	},
+		Entry("basic authentication", "https://user:password@proxy.example.com:8080"),
+		Entry("encoded forward slash", "https://user:pass%2Fword@proxy.example.com:8080"),
+		Entry("encoded at sign", "https://user:pass%40word@proxy.example.com:8080"),
+		Entry("encoded colon", "https://user:pass%3Aword@proxy.example.com:8080"),
+	)
+
+	DescribeTable("rejects malformed https proxy URLs", func(proxyURL, expectedError string) {
+		err := ValidateHTTPProxy(proxyURL)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("invalid http-proxy value: " + expectedError))
+	},
+		Entry("missing host", "https://", "host is missing"),
+		Entry("spaces", "https://proxy.example.com :8080", "URL cannot contain spaces"),
+		Entry("malformed IPv6", "https://proxy.example.com[::1]:8080", "invalid IP-literal"),
+		Entry("path", "https://proxy.example.com:8080/path", "proxy URL should not contain a path '/path'"),
+		Entry("invalid IP and port", "https://10/.0.0.161:9999999",
+			"proxy URL should not contain a path '/.0.0.161:9999999'"),
+		Entry("unencoded forward slash", "https://user:pass/word@proxy.example.com:8080",
+			"password contains invalid character '/'"),
+		Entry("unencoded at sign", "https://user:pass@word@proxy.example.com:8080",
+			"password contains invalid character '@'"),
+		Entry("unencoded hash", "https://user:pass#word@proxy.example.com:8080",
+			"password contains invalid character '#'"),
+	)
+
+	It("rejects non-string input", func() {
+		err := ValidateHTTPProxy(123)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("can only validate strings, got '123'"))
+	})
+
+	It("rejects proxy with unsupported scheme", func() {
 		err := ValidateHTTPProxy("ftp://proxy.example.com:1080")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("invalid http-proxy value: URL scheme must be 'http://'"))
+		Expect(err.Error()).To(Equal("invalid http-proxy value: URL scheme must be 'http://' or 'https://'"))
 	})
 
 	It("rejects proxy without scheme", func() {
