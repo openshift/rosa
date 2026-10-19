@@ -17,6 +17,7 @@ limitations under the License.
 package cluster
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -34,6 +35,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	upgradecheck "github.com/openshift/rosa/pkg/upgrade"
 )
 
 var args struct {
@@ -45,7 +47,10 @@ var args struct {
 	schedule                 string
 	allowMinorVersionUpdates bool
 	dryRun                   bool
+	checkPDBs                bool
 }
+
+var runPotentialPDBBlockerCheck = upgradecheck.CheckPotentialPDBBlockers
 
 var nodeDrainOptions = []string{
 	"15 minutes",
@@ -60,8 +65,10 @@ var nodeDrainOptions = []string{
 var Cmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "Upgrade cluster",
-	Long: "Upgrade cluster to a new available version. Use '--dry-run' to acknowledge any gates before attempting" +
-		" an upgrade",
+	Long: "Upgrade cluster to a new available version. Use '--dry-run' to run upgrade pre-checks before attempting" +
+		" an upgrade; this can acknowledge version gates in OCM. For Classic clusters, the dry-run also checks PDBs" +
+		" and selected pod placement for potential node drain blockers using the current Kubernetes context. Use" +
+		" '--check-pdbs' to run a read-only PDB check without upgrade checks or scheduling.",
 	Example: `  # Interactively schedule an upgrade on the cluster named "mycluster"
   rosa upgrade cluster --cluster=mycluster --interactive
 
@@ -69,7 +76,10 @@ var Cmd = &cobra.Command{
   rosa upgrade cluster -c mycluster --version 4.12.20
 
   # Check if any gates need to be acknowledged before attempting an upgrade
-  rosa upgrade cluster -c mycluster --version 4.12.20 --dry-run`,
+  rosa upgrade cluster -c mycluster --version 4.12.20 --dry-run
+
+  # Check current PDBs without running upgrade checks or scheduling an upgrade
+  rosa upgrade cluster -c mycluster --check-pdbs`,
 	Run:  run,
 	Args: cobra.NoArgs,
 }
@@ -144,8 +154,16 @@ func init() {
 		&args.dryRun,
 		"dry-run",
 		false,
-		"Simulate upgrading the cluster, or run through acknowledgements required to upgrade prior to upgrading"+
-			" a cluster.",
+		"Run upgrade pre-checks without scheduling an upgrade. This can acknowledge version gates in OCM. For Classic"+
+			" clusters, also check PDBs and selected pod placement for potential node drain blockers using the current"+
+			" Kubernetes context.",
+	)
+
+	flags.BoolVar(
+		&args.checkPDBs,
+		"check-pdbs",
+		false,
+		"Run a read-only PDB check for a Classic cluster. Does not run upgrade checks or schedule an upgrade.",
 	)
 
 	flags.MarkDeprecated("control-plane", "Flag is deprecated, and can be omitted when running this "+
@@ -155,7 +173,16 @@ func init() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	r := rosa.NewRuntime().WithAWS().WithOCM()
+	r := rosa.NewRuntime()
+	if err := validateCheckPDBsFlags(cmd); err != nil {
+		r.Reporter.Errorf(err.Error())
+		os.Exit(1)
+	}
+	if args.checkPDBs {
+		r.WithOCM()
+	} else {
+		r.WithAWS().WithOCM()
+	}
 	defer r.Cleanup()
 	err := runWithRuntime(r, cmd)
 	if err != nil {
@@ -165,6 +192,13 @@ func run(cmd *cobra.Command, _ []string) {
 }
 
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
+	if err := validateCheckPDBsFlags(cmd); err != nil {
+		return err
+	}
+	if args.checkPDBs {
+		return runPDBCheckOnly(r, cmd)
+	}
+
 	// Define variables
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
@@ -396,10 +430,32 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	if args.dryRun {
-		r.Reporter.Infof(
-			"Upgrading cluster '%s' should succeed. Please wait 1 to 2 minutes, then rerun this command"+
-				" without the '--dry-run' flag, to allow time for the acknowledged agreements to be reflected.",
-			cluster.ID())
+		if isHypershift {
+			r.Reporter.Infof("PDB drain check is not applicable to hosted control plane upgrades")
+			r.Reporter.Infof(
+				"ROSA upgrade pre-checks for cluster '%s' completed. Please wait 1 to 2 minutes, then rerun this command"+
+					" without the '--dry-run' flag, to allow time for the acknowledged agreements to be reflected.",
+				cluster.ID())
+		} else {
+			pdbCheckComplete, blockerCount := reportPotentialPDBBlockers(r, cmd, cluster, false)
+			switch {
+			case blockerCount > 0 && !pdbCheckComplete:
+				r.Reporter.Infof("ROSA upgrade pre-checks for cluster '%s' completed with PDB findings, but not all "+
+					"PDBs could be verified. Review the warnings before scheduling the upgrade.", cluster.ID())
+			case blockerCount > 0:
+				r.Reporter.Infof("ROSA upgrade pre-checks for cluster '%s' completed with potential PDB blockers. "+
+					"Review the PDB warnings before scheduling the upgrade.", cluster.ID())
+			case !pdbCheckComplete:
+				r.Reporter.Infof("ROSA upgrade policy and acknowledgement checks for cluster '%s' completed, but the "+
+					"PDB check was inconclusive. Review cluster access and the PDB warning, then rerun the dry-run.",
+					cluster.ID())
+			default:
+				r.Reporter.Infof(
+					"ROSA upgrade pre-checks for cluster '%s' completed. Please wait 1 to 2 minutes, then rerun this command"+
+						" without the '--dry-run' flag, to allow time for the acknowledged agreements to be reflected.",
+					cluster.ID())
+			}
+		}
 		return nil
 	}
 
@@ -410,6 +466,63 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	r.Reporter.Infof("Upgrade successfully scheduled for cluster '%s'", clusterKey)
+	return nil
+}
+
+var checkPDBsConflictingFlags = []string{
+	"dry-run",
+	"version",
+	"schedule",
+	"schedule-date",
+	"schedule-time",
+	"allow-minor-version-updates",
+	"node-drain-grace-period",
+	"mode",
+	"control-plane",
+	"interactive",
+}
+
+func validateCheckPDBsFlags(cmd *cobra.Command) error {
+	if !args.checkPDBs {
+		return nil
+	}
+	if cmd == nil {
+		return fmt.Errorf("the '--check-pdbs' option requires a command context to validate incompatible flags")
+	}
+	for _, name := range checkPDBsConflictingFlags {
+		if flag := cmd.Flags().Lookup(name); flag != nil && flag.Changed {
+			return fmt.Errorf("the '--check-pdbs' option cannot be combined with '--%s'", name)
+		}
+	}
+	return nil
+}
+
+func runPDBCheckOnly(r *rosa.Runtime, cmd *cobra.Command) error {
+	clusterKey := r.GetClusterKey()
+	cluster, err := r.OCMClient.GetCluster(clusterKey, nil)
+	if err != nil {
+		if strings.Contains(err.Error(), "there are ") && strings.Contains(err.Error(), "clusters with identifier or name") {
+			return fmt.Errorf("could not uniquely identify cluster '%s' without AWS account lookup; use the cluster ID: %w",
+				clusterKey, err)
+		}
+		return fmt.Errorf("failed to get cluster '%s': %w", clusterKey, err)
+	}
+	r.ClusterKey = clusterKey
+	r.Cluster = cluster
+	if cluster.Hypershift().Enabled() {
+		return fmt.Errorf("the '--check-pdbs' option is supported only for Classic clusters")
+	}
+
+	complete, blockerCount := reportPotentialPDBBlockers(r, cmd, cluster, true)
+	if !complete {
+		return fmt.Errorf("PDB check was inconclusive; resolve the warnings above and rerun with '--check-pdbs'")
+	}
+	if blockerCount == 0 {
+		r.Reporter.Infof("PDB check for cluster '%s' completed with no current blockers", cluster.ID())
+	} else {
+		r.Reporter.Infof("PDB check for cluster '%s' completed with %d potential blocker(s)",
+			cluster.ID(), blockerCount)
+	}
 	return nil
 }
 
@@ -442,6 +555,77 @@ func createUpgradePolicyHypershift(r *rosa.Runtime, clusterKey string,
 		return err
 	}
 	return nil
+}
+
+func reportPotentialPDBBlockers(r *rosa.Runtime, cmd *cobra.Command, cluster *cmv1.Cluster, checkOnly bool) (bool, int) {
+	ctx := context.Background()
+	if cmd != nil && cmd.Context() != nil {
+		ctx = cmd.Context()
+	}
+	clusterAPIURL := ""
+	if cluster != nil {
+		if clusterAPI, ok := cluster.GetAPI(); ok && clusterAPI != nil {
+			clusterAPIURL = clusterAPI.URL()
+		}
+	}
+	blockers, err := runPotentialPDBBlockerCheck(ctx, clusterAPIURL)
+	if err != nil {
+		retry := "then rerun the dry-run."
+		if checkOnly {
+			retry = "then rerun with '--check-pdbs'."
+		}
+		r.Reporter.Warnf("PDB preflight for cluster '%s' could not be completed: %v. "+
+			"The result is inconclusive; check the current kubeconfig context, Kubernetes API access, and PDB status, %s",
+			cluster.ID(), err, retry)
+	}
+	if len(blockers) == 0 {
+		if err == nil {
+			r.Reporter.Infof("No current PDB drain blockers were identified")
+		}
+		return err == nil, 0
+	}
+
+	r.Reporter.Warnf("PDB preflight found %d potential node drain blocker(s) in cluster '%s':",
+		len(blockers), cluster.ID())
+	for _, blocker := range blockers {
+		r.Reporter.Warnf("PDB '%s/%s' may block node drain: %s", blocker.Namespace, blocker.Name,
+			strings.Join(blocker.Reasons, "; "))
+		r.Reporter.Warnf("Current status: disruptions allowed=%d, healthy=%d, required=%d, expected=%d; spec: %s",
+			blocker.DisruptionsAllowed, blocker.CurrentHealthy, blocker.DesiredHealthy,
+			blocker.ExpectedPods, blocker.Budget)
+		if len(blocker.Nodes) > 0 {
+			r.Reporter.Warnf("Affected node(s): %s", formatPDBList(blocker.Nodes))
+		}
+		if len(blocker.MatchingPods) > 0 {
+			r.Reporter.Warnf("Selected pod(s): %s", formatPDBList(blocker.MatchingPods))
+		}
+		r.Reporter.Warnf("Inspect the PDB (requires oc): oc -n %s get pdb %s -o yaml",
+			blocker.Namespace, blocker.Name)
+		r.Reporter.Warnf("Review/edit this PDB (requires oc): oc -n %s edit pdb %s",
+			blocker.Namespace, blocker.Name)
+	}
+	r.Reporter.Warnf("A PDB blocker may delay node draining. Workloads still blocked when the configured node drain grace " +
+		"period expires may be forcibly evicted.")
+	r.Reporter.Warnf("For each PDB you own, restore enough healthy replicas first if the workload is below its required " +
+		"availability. If the workload can tolerate more voluntary disruption, use that PDB's edit command above " +
+		"to adjust minAvailable/maxUnavailable so the drain can proceed. " +
+		"If a pod matches multiple PDBs, make their selectors non-overlapping. Contact Red Hat support about " +
+		"platform-managed PDBs.")
+	if checkOnly {
+		r.Reporter.Warnf("Rerun 'rosa upgrade cluster --check-pdbs' after changes.")
+	} else {
+		r.Reporter.Warnf("Rerun this dry-run after changes.")
+	}
+	return err == nil, len(blockers)
+}
+
+func formatPDBList(values []string) string {
+	const maxPDBExamples = 8
+	if len(values) <= maxPDBExamples {
+		return strings.Join(values, ", ")
+	}
+	return fmt.Sprintf("%s, ... and %d more", strings.Join(values[:maxPDBExamples], ", "),
+		len(values)-maxPDBExamples)
 }
 
 func createUpgradePolicyClassic(r *rosa.Runtime, cmd *cobra.Command, clusterKey string,
