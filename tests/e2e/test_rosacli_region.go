@@ -14,7 +14,6 @@ import (
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
-	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Region",
@@ -93,9 +92,10 @@ var _ = Describe("Region",
 				}
 
 				By("Check unsupported flag")
-				invalidFlag, _, err := ocmResourceService.ListRegion("--invalid")
+				invalidFlag, out, err := ocmResourceService.ListRegion("--invalid")
+				Expect(err).To(HaveOccurred())
 				Expect(invalidFlag).To(BeEmpty())
-				helper.ExpectErrorWithMessage(err, "unknown flag: --invalid")
+				Expect(out.String()).To(ContainSubstring("unknown flag: --invalid"))
 			})
 
 		It("List instance-types with region flag - [id:72174]",
@@ -134,8 +134,9 @@ var _ = Describe("Region",
 				Expect(availableMachineTypesIDs).To(ContainElements(typesList))
 
 				By("Try to list instance-types with invalid region")
-				availableMachineTypes, _, err = ocmResourceService.ListInstanceTypes(
+				availableMachineTypes, output, err := ocmResourceService.ListInstanceTypes(
 					"--region", "xxx", "--role-arn", classicInstallerRoleArn)
-				helper.ExpectErrorWithMessage(err, "unsupported region 'xxx', available regions")
+				Expect(err).To(HaveOccurred())
+				Expect(output.String()).Should(ContainSubstring("ERR: Unsupported region 'xxx', available regions"))
 			})
 	})

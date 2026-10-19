@@ -11,7 +11,6 @@ import (
 
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
-	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("rosacli config",
@@ -92,7 +91,8 @@ var _ = Describe("rosacli config",
 				Expect(configString).To(Equal(value))
 			}
 			By("Set not supported config via rosacli")
-			_, err := ocmService.SetConfig("scopes", "test_scopes")
-			helper.ExpectErrorWithMessage(err, "setting scopes is unsupported")
+			out, err := ocmService.SetConfig("scopes", "test_scopes")
+			Expect(err).ToNot(BeNil())
+			Expect(out.String()).To(ContainSubstring("Setting scopes is unsupported"))
 		})
 	})
