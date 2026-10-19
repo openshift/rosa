@@ -867,13 +867,11 @@ var _ = Describe("Describe/List rosa upgrade",
 
 				By("Run command to list the upgrades without cluster set")
 				output, err = upgradeService.ListUpgrades()
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("required flag(s) \"cluster\" not set"))
+				helper.ExpectErrorWithMessage(err, "required flag(s) \"cluster\" not set")
 
 				By("Run command to list the upgrades invalid flag")
 				output, err = upgradeService.ListUpgrades("-c", clusterID, "--interactive")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("unknown flag: --interactive"))
+				helper.ExpectErrorWithMessage(err, "unknown flag: --interactive")
 
 			})
 	})
@@ -1176,12 +1174,8 @@ var _ = Describe("ROSA HCP cluster upgrade",
 						"--mode", "manual",
 						"-y",
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).
-						To(
-							ContainSubstring(
-								fmt.Sprintf("failed while validating managed policies: role"+
-									" '%s' is missing the attached managed policy '%s'", r, p)))
+					helper.ExpectErrorWithMessage(err, fmt.Sprintf("failed while validating managed policies: role"+
+						" '%s' is missing the attached managed policy '%s'", r, p))
 
 					By("Attach the deleted managed policies")
 					_, err = arbitraryPolicyService.AttachPolicy(r, []string{p}, "--mode", "auto")
@@ -1254,8 +1248,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 					"-m", "auto",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Expected a valid version to upgrade cluster to"))
+				helper.ExpectErrorWithMessage(err, "expected a valid version to upgrade cluster to")
 
 				By("Upgrade the cluster with invalid schedule-date")
 				output, err = upgradeService.Upgrade(
@@ -1266,8 +1259,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 					"-m", "auto",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("schedule date should use the format 'yyyy-mm-dd'"))
+				helper.ExpectErrorWithMessage(err, "schedule date should use the format 'yyyy-mm-dd'")
 
 				By("Upgrade the cluster with passed schedule-date")
 				output, err = upgradeService.Upgrade(
@@ -1278,8 +1270,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 					"-m", "auto",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Cannot set upgrade to start earlier than 5 minutes from now"))
+				helper.ExpectErrorWithMessage(err, "cannot set upgrade to start earlier than 5 minutes from now")
 
 				By("Upgrade the cluster with invalid schedule-time")
 				output, err = upgradeService.Upgrade(
@@ -1290,21 +1281,18 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 					"-m", "auto",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Schedule time should use the format 'HH:mm'"))
+				helper.ExpectErrorWithMessage(err, "schedule time should use the format 'hh:mm'")
 
 				By("Run command to upgrade cluster without cluster set")
 				output, err = upgradeService.Upgrade()
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("required flag(s) \"cluster\" not set"))
+				helper.ExpectErrorWithMessage(err, "required flag(s) \"cluster\" not set")
 
 				By("Run invalid command to upgrade cluster")
 				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
 					"y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("unknown command \"y\" for \"rosa upgrade cluster\""))
+				helper.ExpectErrorWithMessage(err, "unknown command \"y\" for \"rosa upgrade cluster\"")
 
 				By("Schedule upgrade again to the cluster")
 				output, err = upgradeService.Upgrade(
@@ -1335,8 +1323,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 					"--version", "4.6.9",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Expected a valid version to upgrade cluster to"))
+				helper.ExpectErrorWithMessage(err, "expected a valid version to upgrade cluster to")
 
 				By("Upgrade the cluster with invalid schedule-date")
 				output, err = upgradeService.Upgrade(
@@ -1346,8 +1333,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 					"--version", upgradingVersion,
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("schedule date should use the format 'yyyy-mm-dd'"))
+				helper.ExpectErrorWithMessage(err, "schedule date should use the format 'yyyy-mm-dd'")
 
 				By("Upgrade the cluster with passed schedule-date")
 				output, err = upgradeService.Upgrade(
@@ -1357,8 +1343,7 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 					"--version", upgradingVersion,
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Cannot set upgrade to start earlier than 5 minutes from now"))
+				helper.ExpectErrorWithMessage(err, "cannot set upgrade to start earlier than 5 minutes from now")
 
 				By("Upgrade the cluster with invalid schedule-time")
 				output, err = upgradeService.Upgrade(
@@ -1368,21 +1353,18 @@ var _ = Describe("Create cluster upgrade policy validation", labels.Feature.Clus
 					"--version", upgradingVersion,
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Schedule time should use the format 'HH:mm'"))
+				helper.ExpectErrorWithMessage(err, "schedule time should use the format 'hh:mm'")
 
 				By("Run command to upgrade cluster without cluster set")
 				output, err = upgradeService.Upgrade()
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("required flag(s) \"cluster\" not set"))
+				helper.ExpectErrorWithMessage(err, "required flag(s) \"cluster\" not set")
 
 				By("Run invalid command to upgrade cluster")
 				output, err = upgradeService.Upgrade(
 					"-c", clusterID,
 					"y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("unknown command \"y\" for \"rosa upgrade cluster\""))
+				helper.ExpectErrorWithMessage(err, "unknown command \"y\" for \"rosa upgrade cluster\"")
 
 				By("Schedule upgrade again to the cluster")
 				output, err = upgradeService.Upgrade(

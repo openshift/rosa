@@ -127,8 +127,7 @@ var _ = Describe("Edit cluster",
 					Expect(err).To(BeNil())
 					Expect(out.String()).To(ContainSubstring("Updated cluster"))
 				} else {
-					Expect(err).ToNot(BeNil())
-					Expect(out.String()).To(ContainSubstring("is not available for the desired channel group"))
+					helper.ExpectErrorWithMessage(err, "is not available for the desired channel group")
 				}
 
 				By("Edit cluster with the channel group which has no available version")
@@ -243,10 +242,7 @@ var _ = Describe("Edit cluster",
 							"You are choosing to make your cluster API private. You will not be able to access your cluster"))
 					Expect(textData).Should(ContainSubstring("Updated cluster '%s'", clusterID))
 				} else {
-					Expect(err).ToNot(BeNil())
-					Expect(rosaClient.Parser.TextData.Input(out).Parse().Tip()).
-						Should(ContainSubstring(
-							"Failed to update cluster"))
+					helper.ExpectErrorWithMessage(err, "failed to update cluster")
 				}
 				defer func() {
 					By("Edit cluster to private back to false")
@@ -289,8 +285,7 @@ var _ = Describe("Edit cluster",
 					By("Attempt to edit cluster with UWM flag and expect error")
 					_, err = clusterService.EditCluster(clusterID,
 						"--disable-workload-monitoring")
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
+					helper.ExpectErrorWithMessage(err, "not supported for hosted control plane clusters")
 
 					By("Check that UWM is NOT shown in cluster description")
 					output, err := clusterService.DescribeCluster(clusterID)
@@ -406,8 +401,7 @@ var _ = Describe("Edit cluster",
 				Expect(err).To(BeNil())
 
 				if isSTS && !isHostedCP {
-					Expect(editErr).ToNot(BeNil())
-					Expect(textData).Should(ContainSubstring("Failed to update cluster"))
+					helper.ExpectErrorWithMessage(editErr, "failed to update cluster")
 
 					Expect(CD.Private).To(Equal("Yes"))
 				} else {
@@ -459,11 +453,9 @@ var _ = Describe("Edit cluster",
 				Expect(output.EnableDeleteProtection).To(Equal(deleteProtection))
 
 				By("Attempt to delete cluster with delete protection enabled")
-				out, err := clusterService.DeleteCluster(clusterID, "-y")
-				Expect(err).To(HaveOccurred())
-				textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-				Expect(textData).Should(ContainSubstring("delete protection is active on cluster"))
-				Expect(textData).Should(ContainSubstring("--enable-delete-protection=false"))
+				_, err = clusterService.DeleteCluster(clusterID, "-y")
+				helper.ExpectErrorWithMessage(err, "delete protection is active on cluster")
+				helper.ExpectErrorWithMessage(err, "--enable-delete-protection=false")
 
 				By("Disable delete protection on the cluster")
 				deleteProtection = constants.DeleteProtectionDisabled
@@ -481,18 +473,14 @@ var _ = Describe("Edit cluster",
 			labels.Medium, labels.Runtime.Day2, labels.Exclude,
 			func() {
 				By("Enable delete protection with invalid values")
-				resp, err := clusterService.EditCluster(clusterID,
+				_, err := clusterService.EditCluster(clusterID,
 					"--enable-delete-protection=aaa",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "aaa" for "--enable-delete-protection"`))
+				helper.ExpectErrorWithMessage(err, `error: invalid argument "aaa" for "--enable-delete-protection"`)
 
-				resp, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=", "-y")
-				Expect(err).To(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "" for "--enable-delete-protection"`))
+				_, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=", "-y")
+				helper.ExpectErrorWithMessage(err, `error: invalid argument "" for "--enable-delete-protection"`)
 			})
 
 		It("can edit proxy successfully - [id:46308]", labels.High, labels.Runtime.Day2, labels.FedRAMP,
@@ -646,32 +634,20 @@ var _ = Describe("Edit cluster",
 			labels.Medium, labels.Runtime.Day2,
 			func() {
 				By("Change the billing account with invalid value")
-				output, err := clusterService.EditCluster(clusterID, "--billing-account", "qweD3")
-				Expect(err).ToNot(BeNil())
-				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"not valid. Rerun the command with a valid billing account number"))
+				_, err := clusterService.EditCluster(clusterID, "--billing-account", "qweD3")
+				helper.ExpectErrorWithMessage(err, "not valid. rerun the command with a valid billing account number")
 
-				output, err = clusterService.EditCluster(clusterID, "--billing-account", "123")
-				Expect(err).ToNot(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"not valid. Rerun the command with a valid billing account number"))
+				_, err = clusterService.EditCluster(clusterID, "--billing-account", "123")
+				helper.ExpectErrorWithMessage(err, "not valid. rerun the command with a valid billing account number")
 
 				By("Change the billing account with an empty string")
-				output, err = clusterService.EditCluster(clusterID, "--billing-account", " ")
-				Expect(err).ToNot(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).
-					Should(ContainSubstring(
-						"not valid. Rerun the command with a valid billing account number"))
+				_, err = clusterService.EditCluster(clusterID, "--billing-account", " ")
+				helper.ExpectErrorWithMessage(err, "not valid. rerun the command with a valid billing account number")
 
 				By("Check the billing account is NOT changed")
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
-				output, err = clusterService.DescribeCluster(clusterID)
+				output, err := clusterService.DescribeCluster(clusterID)
 				Expect(err).To(BeNil())
 				CD, err := clusterService.ReflectClusterDescription(output)
 				Expect(err).To(BeNil())
@@ -748,22 +724,18 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 		labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
 		func() {
 			By("Validate that deletion of upgrade policy for rosa cluster will work via rosacli")
-			output, err := upgradeService.DeleteUpgrade()
-			Expect(err).To(HaveOccurred())
-			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring(`required flag(s) "cluster" not set`))
+			_, err := upgradeService.DeleteUpgrade()
+			helper.ExpectErrorWithMessage(err, `required flag(s) "cluster" not set`)
 
 			By("Delete an non-existent upgrade when cluster has no scheduled policy")
-			output, err = upgradeService.DeleteUpgrade("-c", clusterID)
+			output, err := upgradeService.DeleteUpgrade("-c", clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
+			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
 			Expect(textData).Should(ContainSubstring(`There are no scheduled upgrades on cluster '%s'`, clusterID))
 
 			By("Delete with unknown flag --interactive")
-			output, err = upgradeService.DeleteUpgrade("-c", clusterID, "--interactive")
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("Error: unknown flag: --interactive"))
+			_, err = upgradeService.DeleteUpgrade("-c", clusterID, "--interactive")
+			helper.ExpectErrorWithMessage(err, "error: unknown flag: --interactive")
 		})
 
 	It("can validate create/delete upgrade policies for HCP clusters - [id:73814]",
@@ -783,77 +755,59 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 
 			By("Upgrade cluster with invalid cluster id")
 			invalidClusterID := helper.GenerateRandomString(30)
-			output, err := upgradeService.Upgrade("-c", invalidClusterID)
-			Expect(err).To(HaveOccurred())
-			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
-					"ERR: Failed to get cluster '%s': There is no cluster with identifier or name '%s'",
+			_, err = upgradeService.Upgrade("-c", invalidClusterID)
+			helper.ExpectErrorWithMessage(err,
+				fmt.Sprintf("failed to get cluster '%s': there is no cluster with identifier or name '%s'",
 					invalidClusterID,
 					invalidClusterID))
 
 			By("Upgrade cluster with incorrect format of the date and time")
-			output, err = upgradeService.Upgrade(
+			_, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
 				"--schedule-date=\"2024-06\"",
 				"--schedule-time=\"09:00:12\"",
 				"-y")
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("ERR: schedule date should use the format 'yyyy-mm-dd'"))
+			helper.ExpectErrorWithMessage(err, "schedule date should use the format 'yyyy-mm-dd'")
 
 			By("Upgrade cluster using --schedule, --schedule-date and --schedule-time flags at the same time")
-			output, err = upgradeService.Upgrade(
+			_, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
 				"--schedule-date=\"2024-06-24\"",
 				"--schedule-time=\"09:00\"",
 				"--schedule=\"5 5 * * *\"",
 				"-y")
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
-					"ERR: the '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+			helper.ExpectErrorWithMessage(err,
+				"the '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'")
 
 			By("Upgrade cluster using --schedule and --version flags at the same time")
-			output, err = upgradeService.Upgrade(
+			_, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
 				"--schedule=\"5 5 * * *\"",
 				"--version=4.15.10",
 				"-y")
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
-					"ERR: the '--schedule' option is mutually exclusive with '--version'"))
+			helper.ExpectErrorWithMessage(err,
+				"the '--schedule' option is mutually exclusive with '--version'")
 
 			By("Upgrade cluster with value not match the cron epression")
-			output, err = upgradeService.Upgrade(
+			_, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
 				"--schedule=\"5 5\"",
 				"-y")
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
-					"ERR: Schedule '\"5 5\"' is not a valid cron expression"))
+			helper.ExpectErrorWithMessage(err, `schedule '"5 5"' is not a valid cron expression`)
 
 			By("Upgrade cluster with node_drain_grace_period")
-			output, err = upgradeService.Upgrade(
+			_, err = upgradeService.Upgrade(
 				"-c", clusterID,
 				"--mode=auto",
 				"--schedule", "20 20 * * *",
 				"--node-drain-grace-period", "60",
 				"-y")
-			Expect(err).To(HaveOccurred())
-			textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).
-				To(ContainSubstring(
-					"ERR: node-drain-grace-period flag is not supported to hosted clusters"))
+			helper.ExpectErrorWithMessage(err,
+				"node-drain-grace-period flag is not supported to hosted clusters")
 		})
 
 	It("can validate cluster proxy well - [id:46310]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP,
@@ -872,12 +826,11 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 
 			By("Edit cluster with invalid http_proxy set")
 			if !profile.ClusterConfig.BYOVPC {
-				output, err := clusterService.EditCluster(clusterID,
+				_, err := clusterService.EditCluster(clusterID,
 					"--http-proxy", "http://test-proxy.com",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: Cluster-wide proxy is not supported on clusters using the default VPC"))
+				helper.ExpectErrorWithMessage(err,
+					"cluster-wide proxy is not supported on clusters using the default vpc")
 				return
 			}
 			originalHttpProxy, originalHTTPSProxy, originalNoProxy, originalCAFile := "", "", "", ""
@@ -898,11 +851,10 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				"http://test-proxy.com/extra": "ERR: invalid http-proxy value: proxy URL should not contain a path '/extra'",
 			}
 			for illegalHttpProxy, errMessage := range invalidHTTPProxy {
-				output, err := clusterService.EditCluster(clusterID,
+				_, err := clusterService.EditCluster(clusterID,
 					"--http-proxy", illegalHttpProxy,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring(errMessage))
+				helper.ExpectErrorWithMessage(err, errMessage)
 			}
 
 			By("Edit cluster with invalid https_proxy set")
@@ -912,19 +864,17 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				"https://test-proxy.com/extra": "ERR: invalid https-proxy value: proxy URL should not contain a path '/extra'",
 			}
 			for illegalHTTPSProxy, errMessage := range invalidHTTPSProxy {
-				output, err := clusterService.EditCluster(clusterID,
+				_, err := clusterService.EditCluster(clusterID,
 					"--https-proxy", illegalHTTPSProxy,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring(errMessage))
+				helper.ExpectErrorWithMessage(err, errMessage)
 			}
 
 			By("Edit cluster with invalid no_proxy ")
-			output, err := clusterService.EditCluster(clusterID,
+			_, err = clusterService.EditCluster(clusterID,
 				"--no-proxy", "*",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring(`ERR: expected a valid user no-proxy value`))
+			helper.ExpectErrorWithMessage(err, "expected a valid user no-proxy value")
 
 			By("Edit cluster with invalid additional_trust_bundle set")
 			tempDir, err := os.MkdirTemp("", "*")
@@ -932,31 +882,27 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			defer os.RemoveAll(tempDir)
 			tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-46310"), "invalid CA")
 			Expect(err).ToNot(HaveOccurred())
-			output, err = clusterService.EditCluster(clusterID,
+			_, err = clusterService.EditCluster(clusterID,
 				"--additional-trust-bundle-file", tempFile,
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring(`ERR: Failed to parse additional trust bundle`))
+			helper.ExpectErrorWithMessage(err, "failed to parse additional trust bundle")
 
 			By("Edit wide-proxy cluster with invalid additional_trust_bundle set path")
-			output, err = clusterService.EditCluster(clusterID,
+			_, err = clusterService.EditCluster(clusterID,
 				"--additional-trust-bundle-file", "/not/existing",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(ContainSubstring(`ERR: open /not/existing: no such file or directory`))
+			helper.ExpectErrorWithMessage(err, "open /not/existing: no such file or directory")
 
 			By("Edit cluster which is set no-proxy but others empty")
-			output, err = clusterService.EditCluster(clusterID,
+			_, err = clusterService.EditCluster(clusterID,
 				"--http-proxy", "",
 				"--https-proxy", "",
 				"--no-proxy", "example.com",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(
-				ContainSubstring("ERR: Failed to update cluster"))
+			helper.ExpectErrorWithMessage(err, "failed to update cluster")
 
 			By("Set all http settings to empty")
-			output, err = clusterService.EditCluster(clusterID,
+			_, err = clusterService.EditCluster(clusterID,
 				"--http-proxy", "",
 				"--https-proxy", "",
 				"--no-proxy", "",
@@ -968,12 +914,10 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 				"--no-proxy", originalNoProxy,
 			)
 			By("Edit cluster which is not set http-proxy and http-proxy  with the command")
-			output, err = clusterService.EditCluster(clusterID,
+			_, err = clusterService.EditCluster(clusterID,
 				"--no-proxy", "example.com",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).Should(
-				ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
+			helper.ExpectErrorWithMessage(err, "expected at least one of the following: http-proxy, https-proxy")
 		})
 
 	It("can validate cluster registry config patching well - [id:77149]", labels.Medium, labels.Runtime.Day2,
@@ -1011,23 +955,18 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 			hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
 			if !hostedCluster {
-				output, err := clusterService.EditCluster(clusterID,
+				_, err := clusterService.EditCluster(clusterID,
 					"--autonode-iam-role-arn", roleArn,
 					"--autonode", "enabled")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("AutoNode is only supported for Hosted Control Plane clusters"))
+				helper.ExpectErrorWithMessage(err, "autonode is only supported for hosted control plane clusters")
 				return
 			}
 			By("Invalide value of --autonode flag")
-			output, err := clusterService.EditCluster(clusterID,
+			_, err = clusterService.EditCluster(clusterID,
 				"--autonode-iam-role-arn", roleArn,
 				"--autonode", "invalid")
-			Expect(err).To(HaveOccurred())
-			Expect(output.String()).To(SatisfyAll(
-				ContainSubstring("invalid value for --autonode"),
-				ContainSubstring("only 'enabled' is supported"),
-			))
+			helper.ExpectErrorWithMessage(err, "invalid value for --autonode")
+			helper.ExpectErrorWithMessage(err, "only 'enabled' is supported")
 
 			By("Check current autonode setting")
 			jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -1040,28 +979,22 @@ var _ = Describe("Edit cluster validation should", labels.Feature.Cluster, func(
 					"--autonode-iam-role-arn", "invalide-arn",
 				}
 				By("Validate invalide autonde-iam-role-arn when autonode is enabled")
-				output, err = clusterService.EditCluster(clusterID,
+				_, err = clusterService.EditCluster(clusterID,
 					subCommandArgs...)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("nvalid IAM role ARN format"))
+				helper.ExpectErrorWithMessage(err, "nvalid iam role arn format")
 			} else {
 				subCommandArgs = []string{
 					"--autonode-iam-role-arn", "invalide-arn",
 					"--autonode", "enabled",
 				}
 				By("Validate invalide autonde-iam-role-arn when autonode is not enabled")
-				output, err = clusterService.EditCluster(clusterID,
+				_, err = clusterService.EditCluster(clusterID,
 					subCommandArgs...)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("nvalid IAM role ARN format"))
+				helper.ExpectErrorWithMessage(err, "nvalid iam role arn format")
 				By("Edit autonde-iam-role-arn without --autonode flag ")
-				output, err = clusterService.EditCluster(clusterID,
+				_, err = clusterService.EditCluster(clusterID,
 					"--autonode-iam-role-arn", roleArn)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("nable AutoNode first with --autonode=enabled"))
+				helper.ExpectErrorWithMessage(err, "nable autonode first with --autonode=enabled")
 			}
 		})
 })
@@ -1181,14 +1114,14 @@ var _ = Describe("Additional security groups validation",
 
 				By("Try creating cluster with additional security groups but no subnet-ids")
 				for additionalSecurityGroupFlag := range securityGroups {
-					output, err, _ := rosaclient.Cluster.Create(
+					output, _, createErr := rosaclient.Cluster.Create(
 						clusterName,
 						"--region", resourcesHandler.GetVPC().Region,
 						"--replicas", "3",
 						additionalSecurityGroupFlag, strings.Join(sgIDs, ","),
 						"--non-sts",
 					)
-					Expect(err).To(HaveOccurred())
+					Expect(createErr).To(HaveOccurred())
 					index = strings.Index(additionalSecurityGroupFlag, "a")
 					flagName = additionalSecurityGroupFlag[index:]
 					Expect(output.String()).To(ContainSubstring(
@@ -1198,7 +1131,7 @@ var _ = Describe("Additional security groups validation",
 
 				By("Try creating cluster with additional security groups and ocp version lower than 4.14")
 				for additionalSecurityGroupFlag := range securityGroups {
-					output, err, _ := rosaclient.Cluster.Create(
+					output, _, createErr := rosaclient.Cluster.Create(
 						clusterName,
 						"--region", resourcesHandler.GetVPC().Region,
 						"--replicas", "3",
@@ -1209,7 +1142,7 @@ var _ = Describe("Additional security groups validation",
 						"-y",
 						"--non-sts",
 					)
-					Expect(err).To(HaveOccurred())
+					Expect(createErr).To(HaveOccurred())
 					index = strings.Index(additionalSecurityGroupFlag, "a")
 					flagName = additionalSecurityGroupFlag[index:]
 					Expect(output.String()).To(ContainSubstring(
@@ -1219,7 +1152,7 @@ var _ = Describe("Additional security groups validation",
 
 				By("Try creating cluster with invalid additional security groups")
 				for additionalSecurityGroupFlag, value := range invalidSecurityGroups {
-					output, err, _ := rosaclient.Cluster.Create(
+					_, _, createErr := rosaclient.Cluster.Create(
 						clusterName,
 						"--region", resourcesHandler.GetVPC().Region,
 						"--replicas", "3",
@@ -1229,14 +1162,14 @@ var _ = Describe("Additional security groups validation",
 						"--channel-group", rosacli.VersionChannelGroupCandidate,
 						"--non-sts",
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).To(ContainSubstring("Security Group ID '%s' doesn't have 'sg-' prefix", value))
+					helper.ExpectErrorWithMessage(createErr,
+						fmt.Sprintf("security group id '%s' doesn't have 'sg-' prefix", value))
 				}
 
 				By("Try creating cluster with additional security groups with invalid and more than 10 SG ids")
 				for additionalSecurityGroupFlag := range securityGroups {
 
-					output, err, _ := rosaclient.Cluster.Create(
+					_, _, createErr := rosaclient.Cluster.Create(
 						clusterName,
 						"--region", resourcesHandler.GetVPC().Region,
 						"--replicas", "3",
@@ -1246,10 +1179,8 @@ var _ = Describe("Additional security groups validation",
 						"--channel-group", rosacli.VersionChannelGroupCandidate,
 						"--non-sts",
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).To(ContainSubstring(
-						"limit for Additional Security Groups is '10', but '11' have been supplied"),
-					)
+					helper.ExpectErrorWithMessage(createErr,
+						"limit for additional security groups is '10', but '11' have been supplied")
 				}
 			})
 	})
@@ -1500,43 +1431,35 @@ var _ = Describe("Classic cluster creation validation",
 				clusterName := "ocp-56440"
 
 				By("Create cluster with invalid tag key")
-				out, err := clusterService.CreateDryRun(
+				_, err := clusterService.CreateDryRun(
 					clusterName, "--tags=~~~:cluster", "--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
-						"expected a valid user tag key '~~~' matching ^[\\pL\\pZ\\pN_.:/=+\\-@]{1,128}$"))
+				helper.ExpectErrorWithMessage(err,
+					`expected a valid user tag key '~~~' matching ^[\pL\pZ\pN_.:/=+\-@]{1,128}$`)
 
 				By("Create cluster with invalid tag value")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--tags=name:****", "--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
-						"expected a valid user tag value '****' matching ^[\\pL\\pZ\\pN_.:/=+\\-@]{0,256}$"))
+				helper.ExpectErrorWithMessage(err,
+					`expected a valid user tag value '****' matching ^[\pL\pZ\pN_.:/=+\-@]{0,256}$`)
 
 				By("Create cluster with duplicate tag key")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--tags=name:test1,op:clound,name:test2", "--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
-						"invalid tags, user tag keys must be unique, duplicate key 'name' found"))
+				helper.ExpectErrorWithMessage(err,
+					"invalid tags, user tag keys must be unique, duplicate key 'name' found")
 
 				By("Create cluster with invalid tag format")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--tags=test1,test2,test4", "--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
-						"invalid tag format for tag '[test1]'. Expected tag format: 'key value'"))
+				helper.ExpectErrorWithMessage(err,
+					"invalid tag format for tag '[test1]'. expected tag format: 'key value'")
 
 				By("Create cluster with empty tag value is allowed for Classic")
-				out, err = clusterService.CreateDryRun(
+				out, err := clusterService.CreateDryRun(
 					clusterName, "--tags", "foo:", "--non-sts",
 				)
 				combined := out.String()
@@ -1547,13 +1470,11 @@ var _ = Describe("Classic cluster creation validation",
 					NotTo(ContainSubstring("tag key or tag value can not be empty"))
 
 				By("Create cluster with invalid tag format")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--tags=name:gender:age", "--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
-						"invalid tag format for tag '[name gender age]'. Expected tag format: 'key value'"))
+				helper.ExpectErrorWithMessage(err,
+					"invalid tag format for tag '[name gender age]'. expected tag format: 'key value'")
 			})
 
 		It("to validate AWS tags with spaces and quoting for Classic - [id:67145]",
@@ -1577,24 +1498,20 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(combined).NotTo(ContainSubstring("ambiguous unquoted tag"))
 
 				By("Create cluster dry-run with reserved aws: key is rejected")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName,
 					"--tags", `"aws:owned":true`,
 					"--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring("keys starting with 'aws:' are reserved for AWS use"))
+				helper.ExpectErrorWithMessage(err, "keys starting with 'aws:' are reserved for aws use")
 
 				By("Create cluster dry-run with ambiguous mixed quoted tags is rejected")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName,
 					"--tags", `"env":prod,tag:2 value2`,
 					"--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring("ambiguous unquoted tag"))
+				helper.ExpectErrorWithMessage(err, "ambiguous unquoted tag")
 
 				By("Create cluster dry-run with empty tag value is allowed for Classic")
 				out, err = clusterService.CreateDryRun(
@@ -1617,66 +1534,51 @@ var _ = Describe("Classic cluster creation validation",
 				minSize := constants.MinClassicDiskSize
 				maxSize := constants.MaxDiskSize
 				clusterName := helper.GenerateRandomName("ocp-66372", 2)
-				client := rosacli.NewClient()
 
 				By("Try a worker disk size that's too small")
-				out, err := clusterService.CreateDryRun(
+				_, err := clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", fmt.Sprintf("%dGiB", minSize-1), "--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				stdout := client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize)))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize))
 
 				By("Try a worker disk size that's a little bigger")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", fmt.Sprintf("%dGiB", maxSize+1), "--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize)))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize))
 
 				By("Try a worker disk size that's very big")
 				veryBigData := "34567865467898765789"
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", fmt.Sprintf("%sGiB", veryBigData), "--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring("expected a valid machine pool root disk size value '%sGiB': "+
-						"invalid disk size: '%sGi'. maximum size exceeded",
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("expected a valid machine pool root disk size value '%sgib': "+
+						"invalid disk size: '%sgi'. maximum size exceeded",
 						veryBigData,
 						veryBigData))
 
 				By("Try a worker disk size that's negative")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", "-1GiB", "--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(
-						ContainSubstring(
-							"expected a valid machine pool root disk size value '-1GiB': " +
-								"invalid disk size: '-1Gi'. positive size required"))
+				helper.ExpectErrorWithMessage(err,
+					"expected a valid machine pool root disk size value '-1gib': "+
+						"invalid disk size: '-1gi'. positive size required")
 
 				By("Try a worker disk size that's a string")
 				invalidStr := "invalid"
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--worker-disk-size", invalidStr, "--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(
-						ContainSubstring(
-							"expected a valid machine pool root disk size value '%s': invalid disk size "+
-								"format: '%s'. accepted units are Giga or Tera in the form of "+
-								"g, G, GB, GiB, Gi, t, T, TB, TiB, Ti",
-							invalidStr,
-							invalidStr))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("expected a valid machine pool root disk size value '%s': invalid disk size "+
+						"format: '%s'. accepted units are giga or tera in the form of "+
+						"g, g, gb, gib, gi, t, t, tb, tib, ti",
+						invalidStr,
+						invalidStr))
 			})
 
 		It("to validate to create cluster with availability zones - [id:52692]",
@@ -1685,34 +1587,27 @@ var _ = Describe("Classic cluster creation validation",
 				clusterName := "ocp-52692"
 
 				By("Create cluster with the zone not available in the region")
-				out, err := clusterService.CreateDryRun(
+				_, err := clusterService.CreateDryRun(
 					clusterName, "--availability-zones", "us-east-2e", "--region", "us-east-2", "--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
-						"expected a valid availability zone, 'us-east-2e' doesn't belong to region 'us-east-2' availability zones"))
+				helper.ExpectErrorWithMessage(err,
+					"expected a valid availability zone, 'us-east-2e' doesn't belong to region 'us-east-2' availability zones")
 
 				By("Create cluster with zones not match region")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--availability-zones", "us-west-2b", "--region", "us-east-2", "--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
-						"expected a valid availability zone, 'us-west-2b' doesn't belong to region 'us-east-2' availability zones"))
+				helper.ExpectErrorWithMessage(err,
+					"expected a valid availability zone, 'us-west-2b' doesn't belong to region 'us-east-2' availability zones")
 
 				By("Create cluster with dup zones set")
-				out, err = clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName,
 					"--availability-zones", "us-west-2b,us-west-2b,us-west-2b",
 					"--region", "us-west-2",
 					"--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring(
-						"Found duplicate Availability Zone: us-west-2b"))
+				helper.ExpectErrorWithMessage(err, "found duplicate availability zone: us-west-2b")
 
 				By("Prepare BYO VPC subnets to assert availability-zones warning")
 				testingRegion := constants.CommonAWSRegion
@@ -1731,7 +1626,7 @@ var _ = Describe("Classic cluster creation validation",
 				}, ",")
 
 				By("Create classic cluster with both zone and subnet set")
-				out, err = clusterService.CreateDryRun(
+				out, err := clusterService.CreateDryRun(
 					clusterName,
 					"--region", testingRegion,
 					"--availability-zones", zone,
@@ -1778,69 +1673,56 @@ var _ = Describe("Classic cluster creation validation",
 				By("Create ROSA cluster with the --worker-mp-labels flag and invalid key")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", invalidKey, "-y")
-				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				index := strings.Index(invalidKey, "=")
 				key := invalidKey[:index]
-				Expect(output.String()).
-					To(
-						ContainSubstring(
-							"invalid label key '%s': name part must consist of alphanumeric characters, '-', '_' "+
-								"or '.', and must start and end with an alphanumeric character",
-							key))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("invalid label key '%s': name part must consist of alphanumeric characters, '-', '_' "+
+						"or '.', and must start and end with an alphanumeric character",
+						key))
 
 				By("Create ROSA cluster with the --worker-mp-labels flag and empty key")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", emptyKey, "-y")
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(
-						ContainSubstring(
-							"invalid label key '': name part must be non-empty; name part must consist of alphanumeric " +
-								"characters, '-', '_' or '.', and must start and end with an alphanumeric character"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					"invalid label key '': name part must be non-empty; name part must consist of alphanumeric "+
+						"characters, '-', '_' or '.', and must start and end with an alphanumeric character")
 
 				By("Create ROSA cluster with the --worker-mp-labels flag without any value")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", emptyWorkerMpLabel, "-y")
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("expected key=value format for labels"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, "expected key=value format for labels")
 
 				By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label key")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", longKey, "-y")
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				index = strings.Index(longKey, "=")
 				longLabelKey := longKey[:index]
-				Expect(output.String()).
-					To(
-						ContainSubstring(
-							"invalid label key '%s': name part must be no more than 63 bytes", longLabelKey))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("invalid label key '%s': name part must be no more than 63 bytes", longLabelKey))
 
 				By("Create ROSA cluster with the --worker-mp-labels flag and >63 character label value")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", longValue, "-y")
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				index = strings.Index(longValue, "=")
 				longLabelValue := longValue[index+1:]
 				key = longValue[:index]
-				Expect(output.String()).
-					To(
-						ContainSubstring("invalid label value '%s': at key: '%s': must be no more than 63 bytes",
-							longLabelValue,
-							key))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("invalid label value '%s': at key: '%s': must be no more than 63 bytes",
+						longLabelValue,
+						key))
 
 				By("Create ROSA cluster with the --worker-mp-labels flag and duplicated key")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--worker-mp-labels", duplicateKey, "-y")
 				index = strings.Index(duplicateKey, "=")
 				key = duplicateKey[:index]
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("duplicated label key '%s' used", key))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("duplicated label key '%s' used", key))
 			})
 
 		It("to validate to create the cluster with version not in the channel group - [id:74399]",
@@ -1849,13 +1731,10 @@ var _ = Describe("Classic cluster creation validation",
 				clusterName := "ocp-74399"
 
 				By("Create cluster with version not in channel group")
-				errorOutput, err := clusterService.CreateDryRun(
+				_, err := clusterService.CreateDryRun(
 					clusterName, "--version=4.15.100",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(errorOutput.String()).
-					To(
-						ContainSubstring("xpected a valid OpenShift version"))
+				helper.ExpectErrorWithMessage(err, "xpected a valid openshift version")
 			})
 
 		It("to validate to create the cluster with setting 'fips' flag but '--etcd-encryption=false' - [id:74436]",
@@ -1864,11 +1743,10 @@ var _ = Describe("Classic cluster creation validation",
 				clusterName := "ocp-74436"
 
 				By("Create cluster with fips flag but '--etcd-encryption=false")
-				errorOutput, err := clusterService.CreateDryRun(
+				_, err := clusterService.CreateDryRun(
 					clusterName, "--fips", "--etcd-encryption=false", "--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(errorOutput.String()).To(ContainSubstring("etcd encryption cannot be disabled on clusters with FIPS mode"))
+				helper.ExpectErrorWithMessage(err, "etcd encryption cannot be disabled on clusters with fips mode")
 			})
 		It("validate use-local-credentials won't work with sts - [id:76481]",
 			labels.Medium, labels.Runtime.Day1Negative,
@@ -1898,7 +1776,7 @@ var _ = Describe("Classic cluster creation validation",
 				Expect(err).To(BeNil())
 				ar := arl.DigAccountRoles(accrolePrefix, false)
 				By("Create cluster with use-local-credentials flag but with sts")
-				out, err := clusterService.CreateDryRun(
+				_, err = clusterService.CreateDryRun(
 					clusterName, "--sts",
 					"--role-arn", ar.InstallerRole,
 					"--support-role-arn", ar.SupportRole,
@@ -1906,8 +1784,7 @@ var _ = Describe("Classic cluster creation validation",
 					"--worker-iam-role", ar.WorkerRole,
 					"--use-local-credentials",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("Local credentials are not supported for STS clusters"))
+				helper.ExpectErrorWithMessage(err, "local credentials are not supported for sts clusters")
 			})
 	})
 
@@ -1945,11 +1822,9 @@ var _ = Describe("Create cluster delete protection",
 			Expect(clusterDescription.EnableDeleteProtection).To(Equal(constants.DeleteProtectionEnabled))
 
 			By("Attempt to delete cluster with delete protection enabled")
-			out, err := clusterService.DeleteCluster(clusterID, "-y")
-			Expect(err).To(HaveOccurred())
-			textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-			Expect(textData).Should(ContainSubstring("delete protection is active on cluster"))
-			Expect(textData).Should(ContainSubstring("--enable-delete-protection=false"))
+			_, err = clusterService.DeleteCluster(clusterID, "-y")
+			helper.ExpectErrorWithMessage(err, "delete protection is active on cluster")
+			helper.ExpectErrorWithMessage(err, "--enable-delete-protection=false")
 
 			By("Disable delete protection on the cluster")
 			_, err = clusterService.EditCluster(clusterID, "--enable-delete-protection=false", "-y")
@@ -2071,21 +1946,17 @@ var _ = Describe("Create cluster with invalid options will",
 			labels.Medium, labels.Runtime.Day1Negative,
 			func() {
 				By("Create cluster with invalid enable-delete-protection value")
-				resp, _, err := clusterService.Create("test-cluster-dp",
+				_, _, err := clusterService.Create("test-cluster-dp",
 					"--enable-delete-protection=aaa",
 					"--dry-run",
 				)
-				Expect(err).To(HaveOccurred())
-				textData := rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "aaa" for "--enable-delete-protection"`))
+				helper.ExpectErrorWithMessage(err, `error: invalid argument "aaa" for "--enable-delete-protection"`)
 
-				resp, _, err = clusterService.Create("test-cluster-dp",
+				_, _, err = clusterService.Create("test-cluster-dp",
 					"--enable-delete-protection=",
 					"--dry-run",
 				)
-				Expect(err).To(HaveOccurred())
-				textData = rosaClient.Parser.TextData.Input(resp).Parse().Tip()
-				Expect(textData).Should(ContainSubstring(`Error: invalid argument "" for "--enable-delete-protection"`))
+				helper.ExpectErrorWithMessage(err, `error: invalid argument "" for "--enable-delete-protection"`)
 			})
 
 		It("to validate subnet well when create cluster - [id:37177]", labels.Medium, labels.Runtime.Day1Negative,
@@ -2107,32 +1978,28 @@ var _ = Describe("Create cluster with invalid options will",
 				By("Create cluster with non-existed subnets on AWS")
 				clusterName := "cluster-37177"
 
-				output, _, err := clusterService.Create(clusterName,
+				_, _, err = clusterService.Create(clusterName,
 					"--subnet-ids", "subnet-nonexisting",
 					"--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("he subnet ID 'subnet-nonexisting' does not exist"))
+				helper.ExpectErrorWithMessage(err, "he subnet id 'subnet-nonexisting' does not exist")
 
 				By("Create multi_az cluster with subnet which only support 1 zone")
-				output, _, err = clusterService.Create(clusterName,
+				_, _, err = clusterService.Create(clusterName,
 					"--subnet-ids", subnetMap["private"].ID,
 					"--multi-az",
 					"--region", testingTegion,
 					"--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("the number of subnets for a 'multi-AZ' 'cluster' should be '6'," +
-						" instead received: '1'"))
+				helper.ExpectErrorWithMessage(err, "the number of subnets for a 'multi-az' 'cluster' should be '6',"+
+					" instead received: '1'")
 
 				// Can only test when az number is bigger than 2
 				if len(azs) > 2 {
 					By("Create single_az cluster with multiple zones set")
 					subnetMap2, err := vpc.PreparePairSubnetByZone(azs[1])
 					Expect(err).ToNot(HaveOccurred())
-					output, _, err = clusterService.Create(clusterName,
+					_, _, err = clusterService.Create(clusterName,
 						"--subnet-ids", strings.Join(
 							[]string{
 								subnetMap["private"].ID,
@@ -2142,10 +2009,8 @@ var _ = Describe("Create cluster with invalid options will",
 						"--region", testingTegion,
 						"--non-sts",
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(
-						ContainSubstring("Only a single availability zone can be provided" +
-							" to a single-availability-zone cluster, instead received 2"))
+					helper.ExpectErrorWithMessage(err, "only a single availability zone can be provided"+
+						" to a single-availability-zone cluster, instead received 2")
 				}
 
 				By("Create multi_az cluster with 5 subnet set")
@@ -2160,7 +2025,7 @@ var _ = Describe("Create cluster with invalid options will",
 							subnetMap["public"].ID)
 					}
 					fiveSubnetsList := fitZoneSubnets[0:5]
-					output, _, err = clusterService.Create(clusterName,
+					_, _, err = clusterService.Create(clusterName,
 						"--subnet-ids", strings.Join(
 							fiveSubnetsList,
 							","),
@@ -2168,9 +2033,8 @@ var _ = Describe("Create cluster with invalid options will",
 						"--multi-az",
 						"--non-sts",
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(
-						ContainSubstring("the number of subnets for a 'multi-AZ' 'cluster' should be '6', instead received: '%d'",
+					helper.ExpectErrorWithMessage(err,
+						fmt.Sprintf("the number of subnets for a 'multi-az' 'cluster' should be '6', instead received: '%d'",
 							len(fiveSubnetsList)))
 				}
 
@@ -2189,16 +2053,15 @@ var _ = Describe("Create cluster with invalid options will",
 					additionalSubnetsNumber--
 				}
 
-				output, _, err = clusterService.Create(clusterName,
+				_, _, err = clusterService.Create(clusterName,
 					"--subnet-ids", strings.Join(
 						sameZoneSubnets, ","),
 					"--region", testingTegion,
 					"--multi-az",
 					"--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("The number of Availability Zones for a Multi AZ cluster should be 3, instead received: 1"))
+				helper.ExpectErrorWithMessage(err,
+					"the number of availability zones for a multi az cluster should be 3, instead received: 1")
 			})
 
 		It("to validate the network when create cluster - [id:38857]", labels.Medium, labels.Runtime.Day1Negative,
@@ -2211,24 +2074,22 @@ var _ = Describe("Create cluster with invalid options will",
 					"--pod-cidr":     "10111.0.0.0/16",
 				}
 				for flag, invalidValue := range illegalCIDRMap {
-					output, err := clusterService.CreateDryRun(clusterName,
+					_, err := clusterService.CreateDryRun(clusterName,
 						flag, invalidValue,
 						"--non-sts",
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).Should(
-						ContainSubstring(`invalid argument "%s" for "%s" flag: invalid CIDR address: %s`,
+					helper.ExpectErrorWithMessage(err,
+						fmt.Sprintf(`invalid argument "%s" for "%s" flag: invalid cidr address: %s`,
 							invalidValue, flag, invalidValue))
 				}
 				By("Check the overlapped CIDR block validation")
-				output, err := clusterService.CreateDryRun(clusterName,
+				_, err := clusterService.CreateDryRun(clusterName,
 					"--service-cidr", "1.0.0.0/16",
 					"--pod-cidr", "1.0.0.0/16",
 					"--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("Service CIDR '1.0.0.0/16' and pod CIDR '1.0.0.0/16' overlap"))
+				helper.ExpectErrorWithMessage(err,
+					"service cidr '1.0.0.0/16' and pod cidr '1.0.0.0/16' overlap")
 
 				By("Check the invalid machine/service/pod CIDR")
 				invalidCIDRMap := map[string]string{
@@ -2237,54 +2098,48 @@ var _ = Describe("Create cluster with invalid options will",
 					"--pod-cidr":     "1.0.0.0/28",
 				}
 				for flag, invalidValue := range invalidCIDRMap {
-					output, err := clusterService.CreateDryRun(clusterName,
+					_, err := clusterService.CreateDryRun(clusterName,
 						flag, invalidValue,
 						"--non-sts",
 					)
-					Expect(err).To(HaveOccurred())
 					switch flag {
 					case "--machine-cidr":
-						Expect(output.String()).Should(
-							ContainSubstring("The allowed block size must be between a /16 netmask and /25"))
+						helper.ExpectErrorWithMessage(err,
+							"the allowed block size must be between a /16 netmask and /25")
 					case "--service-cidr":
-						Expect(output.String()).Should(
-							ContainSubstring("Service CIDR value range is too small for correct provisioning."))
+						helper.ExpectErrorWithMessage(err,
+							"service cidr value range is too small for correct provisioning.")
 					case "--pod-cidr":
-						Expect(output.String()).Should(
-							ContainSubstring("Pod CIDR value range is too small for correct provisioning"))
+						helper.ExpectErrorWithMessage(err,
+							"pod cidr value range is too small for correct provisioning")
 					}
 					time.Sleep(3 * time.Second) // sleep 3 seconds for next round run
 
 				}
 				By("Check the invalid machine CIDR for multi az")
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--multi-az",
 					"--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("The allowed block size must be between a /16 netmask and /24"))
+				helper.ExpectErrorWithMessage(err,
+					"the allowed block size must be between a /16 netmask and /24")
 
 				By("Check illegal host prefix")
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "28",
 					"--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("Subnet length should be between 23 and 26"))
+				helper.ExpectErrorWithMessage(err, "subnet length should be between 23 and 26")
 
 				By("Check invalid host prefix")
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--machine-cidr", "2.0.0.0/25",
 					"--host-prefix", "invalid",
 					"--non-sts",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring(`invalid argument "invalid" for "--host-prefix" flag`))
+				helper.ExpectErrorWithMessage(err, `invalid argument "invalid" for "--host-prefix" flag`)
 			})
 
 		It("to validate the invalid proxy when create cluster - [id:45509]", labels.Medium, labels.Runtime.Day1Negative,
@@ -2292,15 +2147,13 @@ var _ = Describe("Create cluster with invalid options will",
 				zone := constants.CommonAWSRegion + "a"
 				clusterName := "rosacli-45509"
 				By("Create rosa cluster which has proxy without subnets set by command ")
-				output, err := clusterService.CreateDryRun(
+				_, err := clusterService.CreateDryRun(
 					"cl-45509",
 					"--http-proxy", "http://example.com",
 					"--https-proxy", "https://example.com",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring(
-					"cluster_wide_proxy is only supported if subnetIDs exist"),
-				)
+				helper.ExpectErrorWithMessage(err,
+					"cluster_wide_proxy is only supported if subnetids exist")
 
 				By("Prepare vpc with subnets")
 				vpc, err := vpc_client.PrepareVPC(clusterName, constants.CommonAWSRegion, "", true, "")
@@ -2313,7 +2166,7 @@ var _ = Describe("Create cluster with invalid options will",
 				publicSubnet := subnetMap["public"].ID
 
 				By("Create ccs existing cluster with invalid http_proxy set")
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -2321,11 +2174,10 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--http-proxy", "invalid",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring("invalid http-proxy value: URL is missing scheme"))
+				helper.ExpectErrorWithMessage(err, "invalid http-proxy value: url is missing scheme")
 
 				By("Create ccs existing cluster with invalid http_proxy not started with http")
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -2333,12 +2185,10 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--http-proxy", "nohttp.prefix.com",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("invalid http-proxy value: URL is missing scheme"))
+				helper.ExpectErrorWithMessage(err, "invalid http-proxy value: url is missing scheme")
 
 				By("Create ccs existing cluster with invalid https_proxy set")
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -2346,9 +2196,7 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--https-proxy", "invalid",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: invalid https-proxy value: URL is missing scheme"))
+				helper.ExpectErrorWithMessage(err, "invalid https-proxy value: url is missing scheme")
 
 				By("Create wide-proxy cluster with invalid additional_trust_bundle set")
 				tempDir, err := os.MkdirTemp("", "*")
@@ -2357,7 +2205,7 @@ var _ = Describe("Create cluster with invalid options will",
 				tempFile, err := helper.CreateFileWithContent(path.Join(tempDir, "rosacli-45509"), "invalid CA")
 				Expect(err).ToNot(HaveOccurred())
 
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -2365,12 +2213,10 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--additional-trust-bundle-file", tempFile,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: Failed to parse additional trust bundle"))
+				helper.ExpectErrorWithMessage(err, "failed to parse additional trust bundle")
 
 				By("Create wide-proxy cluster with invalid additional_trust_bundle set path")
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -2378,12 +2224,10 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--additional-trust-bundle-file", "/not/existing",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: open /not/existing: no such file or directory"))
+				helper.ExpectErrorWithMessage(err, "open /not/existing: no such file or directory")
 
 				By("Create wide-proxy cluster with only no_proxy set")
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -2391,11 +2235,9 @@ var _ = Describe("Create cluster with invalid options will",
 					}, ","),
 					"--no-proxy", "nohttp.prefix.com",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: Expected at least one of the following: http-proxy, https-proxy"))
+				helper.ExpectErrorWithMessage(err, "expected at least one of the following: http-proxy, https-proxy")
 
-				output, err = clusterService.CreateDryRun(clusterName,
+				_, err = clusterService.CreateDryRun(clusterName,
 					"--region", constants.CommonAWSRegion,
 					"--subnet-ids", strings.Join([]string{
 						privateSubnet,
@@ -2405,9 +2247,7 @@ var _ = Describe("Create cluster with invalid options will",
 					"--https-proxy", "https://example.com",
 					"--no-proxy", "*",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(
-					ContainSubstring("ERR: expected a valid user no-proxy value"))
+				helper.ExpectErrorWithMessage(err, "expected a valid user no-proxy value")
 			})
 	})
 
@@ -2430,19 +2270,16 @@ var _ = Describe("Classic cluster deletion validation",
 				notExistID := "no-exist-cluster-id"
 				By("Delete the cluster without indicated cluster Name or ID")
 				cmd := []string{"rosa", "delete", "cluster"}
-				out, err := rosaClient.Runner.RunCMD(cmd)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("\"cluster\" not set"))
+				_, err := rosaClient.Runner.RunCMD(cmd)
+				helper.ExpectErrorWithMessage(err, `"cluster" not set`)
 
 				By("Delete a non-existed cluster")
-				out, err = clusterService.DeleteCluster(notExistID, "-y")
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("There is no cluster with identifier or name"))
+				_, err = clusterService.DeleteCluster(notExistID, "-y")
+				helper.ExpectErrorWithMessage(err, "there is no cluster with identifier or name")
 
 				By("Delete with unknown flag --interactive")
-				out, err = clusterService.DeleteCluster(notExistID, "-y", "--interactive")
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("unknown flag: --interactive"))
+				_, err = clusterService.DeleteCluster(notExistID, "-y", "--interactive")
+				helper.ExpectErrorWithMessage(err, "unknown flag: --interactive")
 			})
 	})
 
@@ -2524,7 +2361,7 @@ var _ = Describe("Classic cluster creation negative testing",
 				By("Create cluster with latest version and use the low version account-roles")
 				clusterName := "cluster45176"
 				operatorRolePrefix := "cluster45176-xvfa"
-				out, _, err := clusterService.Create(
+				_, _, err = clusterService.Create(
 					clusterName, "--sts",
 					"--mode", "auto",
 					"--role-arn", ar.InstallerRole,
@@ -2534,9 +2371,8 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", operatorRolePrefix,
 					"-y", "--dry-run",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("is not compatible with version"))
-				Expect(out.String()).To(ContainSubstring("to create compatible roles and try again"))
+				helper.ExpectErrorWithMessage(err, "is not compatible with version")
+				helper.ExpectErrorWithMessage(err, "to create compatible roles and try again")
 			})
 		It("to validate to create sts cluster with invalid role arn and operator IAM roles prefix - [id:41824]",
 			labels.Low, labels.Runtime.Day1Negative,
@@ -2558,7 +2394,7 @@ var _ = Describe("Classic cluster creation negative testing",
 				By("Create cluster with operator roles prefix longer than 32 characters")
 				clusterName := "test41824"
 				oprPrefixExceed32Chars := "opPrefix45742opPrefix45742opPrefix45742"
-				output, _, err = clusterService.Create(
+				_, _, err = clusterService.Create(
 					clusterName, "--sts",
 					"--mode", "auto",
 					"--role-arn", ar.InstallerRole,
@@ -2568,12 +2404,11 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", oprPrefixExceed32Chars,
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(output.String()).To(ContainSubstring("Expected a prefix with no more than 32 characters"))
+				helper.ExpectErrorWithMessage(err, "expected a prefix with no more than 32 characters")
 
 				By("Create cluster with operator roles prefix with invalid format")
 				oprPrefixInvaliad := "%%%###@@@"
-				output, _, err = clusterService.Create(
+				_, _, err = clusterService.Create(
 					clusterName, "--sts",
 					"--mode", "auto",
 					"--role-arn", ar.InstallerRole,
@@ -2583,12 +2418,11 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", oprPrefixInvaliad,
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(output.String()).To(ContainSubstring("Expected valid operator roles prefix matching"))
+				helper.ExpectErrorWithMessage(err, "expected valid operator roles prefix matching")
 
 				By("Create cluster with account roles with invalid format")
 				invalidArn := "invalidaArnFormat"
-				output, _, err = clusterService.Create(
+				_, _, err = clusterService.Create(
 					clusterName, "--sts",
 					"--mode", "auto",
 					"--role-arn", invalidArn,
@@ -2598,8 +2432,7 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", clusterName,
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(output.String()).To(ContainSubstring("Expected a valid Role ARN"))
+				helper.ExpectErrorWithMessage(err, "expected a valid role arn")
 			})
 
 		It("to validate creating a cluster with invalid subnets - [id:72657]",
@@ -2609,11 +2442,10 @@ var _ = Describe("Classic cluster creation negative testing",
 				clusterName := "ocp-72657"
 
 				By("Create cluster with invalid subnets")
-				out, err := clusterService.CreateDryRun(
+				_, err := clusterService.CreateDryRun(
 					clusterName, "--subnet-ids", "subnet-xxx", "--non-sts",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+				helper.ExpectErrorWithMessage(err, "the subnet id 'subnet-xxx' does not exist")
 			})
 		It("to validate to create sts cluster with dulicated role arns- [id:74620]",
 			labels.Low, labels.Runtime.Day1Negative,
@@ -2634,7 +2466,7 @@ var _ = Describe("Classic cluster creation negative testing",
 
 				By("Create cluster with operator roles prefix longer than 32 characters")
 				clusterName := "test41824"
-				output, _, err = clusterService.Create(
+				_, _, err = clusterService.Create(
 					clusterName, "--sts",
 					"--mode", "auto",
 					"--role-arn", ar.InstallerRole,
@@ -2644,8 +2476,7 @@ var _ = Describe("Classic cluster creation negative testing",
 					"--operator-roles-prefix", clusterName,
 					"-y",
 				)
-				Expect(err).ToNot(BeNil())
-				Expect(output.String()).To(ContainSubstring("ROSA IAM roles must have unique ARNs"))
+				helper.ExpectErrorWithMessage(err, "rosa iam roles must have unique arns")
 			})
 
 		It("to validate creating a cluster with invalid autoscaler - [id:66761]",
@@ -2714,14 +2545,11 @@ var _ = Describe("Classic cluster creation negative testing",
 				for errMsg, flag := range errAndFlagMap {
 
 					flag = append(flag, basicFlags...)
-					out, err := clusterService.CreateDryRun(
+					_, err := clusterService.CreateDryRun(
 						clusterName,
 						flag...,
 					)
-					Expect(err).NotTo(BeNil())
-					Expect(err).To(HaveOccurred())
-					textData := rosaClient.Parser.TextData.Input(out).Parse().Tip()
-					Expect(textData).To(ContainSubstring(errMsg))
+					helper.ExpectErrorWithMessage(err, errMsg)
 				}
 			})
 	})
@@ -2792,8 +2620,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				rosalCommand.AddFlags("--cluster-name", clusterName)
 				rosalCommand.AddFlags("--disable-workload-monitoring")
 				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not supported for Hosted Control Plane clusters"))
+				helper.ExpectErrorWithMessage(err, "not supported for hosted control plane clusters")
 			})
 
 		It("to validate AWS tags with empty values and reserved keys for HCP - [id:67145]",
@@ -2809,18 +2636,14 @@ var _ = Describe("HCP cluster creation negative testing",
 				By("Create HCP cluster with empty tag value is rejected")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--tags", "owner:", "-y")
-				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring("tag key or tag value can not be empty"))
+				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, "tag key or tag value can not be empty")
 
 				By("Create HCP cluster with reserved aws: key is rejected")
 				rosalCommand.DeleteFlag("--tags", true)
 				rosalCommand.AddFlags("--tags", `"aws:owned":true`)
-				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(ContainSubstring("keys starting with 'aws:' are reserved for AWS use"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, "keys starting with 'aws:' are reserved for aws use")
 			})
 
 		It("create HCP cluster with network type validation can work well via rosa cli - [id:73725]",
@@ -2835,36 +2658,28 @@ var _ = Describe("HCP cluster creation negative testing",
 				}
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--no-cni", "--network-type='{OVNKubernetes,OpenshiftSDN}'", "-y")
-				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(
-						ContainSubstring(
-							"ERR: expected a valid network type. Valid values: [OpenShiftSDN OVNKubernetes]"))
+				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					"expected a valid network type. valid values: [openshiftsdn ovnkubernetes]")
 
 				By("Create HCP cluster with invalid --no-cni value")
 				rosalCommand.DeleteFlag("--network-type", true)
 				rosalCommand.DeleteFlag("--no-cni", true)
 				rosalCommand.AddFlags("--no-cni=ui")
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(
-						ContainSubstring(
-							`Failed to execute root command: invalid argument "ui" for "--no-cni" flag: ` +
-								`strconv.ParseBool: parsing "ui": invalid syntax`))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					`failed to execute root command: invalid argument "ui" for "--no-cni" flag: `+
+						`strconv.parsebool: parsing "ui": invalid syntax`)
 
 				By("Create HCP cluster with --no-cni and --network-type=OVNKubernetes at the same time")
 				rosalCommand.DeleteFlag("--no-cni=ui", false)
 				rosalCommand.AddFlags("--no-cni", "--network-type=OVNKubernetes")
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: --no-cni and --network-type are mutually exclusive parameters"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, "--no-cni and --network-type are mutually exclusive parameters")
 
 				By("Create non-HCP cluster with --no-cni flag")
-				output, err = clusterService.CreateDryRun("ocp-73725", "--no-cni", "--non-sts")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: Disabling CNI is supported only for Hosted Control Planes"))
+				_, err = clusterService.CreateDryRun("ocp-73725", "--no-cni", "--non-sts")
+				helper.ExpectErrorWithMessage(err, "disabling cni is supported only for hosted control planes")
 			})
 
 		It("to validate creating a hosted cluster with invalid subnets - [id:75916]",
@@ -2880,9 +2695,8 @@ var _ = Describe("HCP cluster creation negative testing",
 				By("Create cluster with invalid subnets")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--subnet-ids", "subnet-xxx", "-y")
-				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, "the subnet id 'subnet-xxx' does not exist")
 			})
 
 		It("to warn when --availability-zones is set with BYO VPC for HCP - [id:52692]",
@@ -2916,7 +2730,6 @@ var _ = Describe("HCP cluster creation negative testing",
 				minSize := constants.MinHCPDiskSize
 				maxSize := constants.MaxDiskSize
 				clusterName := helper.GenerateRandomName("ocp-66372", 2)
-				client := rosacli.NewClient()
 
 				replacingFlags := map[string]string{
 					"-c":              clusterName,
@@ -2933,61 +2746,47 @@ var _ = Describe("HCP cluster creation negative testing",
 					fmt.Sprintf("%dGiB", minSize-1),
 					"-y")
 
-				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				stdout := client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize)))
+				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf(constants.DiskSizeErrRangeMsg, minSize-1, minSize, maxSize))
 
 				By("Try a worker disk size that's a little bigger")
 				replacingFlags["--worker-disk-size"] = fmt.Sprintf("%dGiB", maxSize+1)
 				rosalCommand.ReplaceFlagValue(replacingFlags)
-				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring(fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize)))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf(constants.DiskSizeErrRangeMsg, maxSize+1, minSize, maxSize))
 
 				By("Try a worker disk size that's very big")
 				veryBigData := "34567865467898765789"
 				replacingFlags["--worker-disk-size"] = fmt.Sprintf("%sGiB", veryBigData)
 				rosalCommand.ReplaceFlagValue(replacingFlags)
-				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(ContainSubstring("expected a valid machine pool root disk size value '%sGiB': "+
-						"invalid disk size: '%sGi'. maximum size exceeded",
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("expected a valid machine pool root disk size value '%sgib': "+
+						"invalid disk size: '%sgi'. maximum size exceeded",
 						veryBigData,
 						veryBigData))
 
 				By("Try a worker disk size that's negative")
 				replacingFlags["--worker-disk-size"] = "-1GiB"
 				rosalCommand.ReplaceFlagValue(replacingFlags)
-				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(
-						ContainSubstring(
-							"expected a valid machine pool root disk size value '-1GiB': " +
-								"invalid disk size: '-1Gi'. positive size required"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					"expected a valid machine pool root disk size value '-1gib': "+
+						"invalid disk size: '-1gi'. positive size required")
 
 				By("Try a worker disk size that's a string")
 				invalidStr := "invalid"
 				replacingFlags["--worker-disk-size"] = invalidStr
 				rosalCommand.ReplaceFlagValue(replacingFlags)
-				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				stdout = client.Parser.TextData.Input(out).Parse().Tip()
-				Expect(stdout).
-					To(
-						ContainSubstring(
-							"expected a valid machine pool root disk size value '%s': invalid disk size "+
-								"format: '%s'. accepted units are Giga or Tera in the form of "+
-								"g, G, GB, GiB, Gi, t, T, TB, TiB, Ti",
-							invalidStr,
-							invalidStr))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("expected a valid machine pool root disk size value '%s': invalid disk size "+
+						"format: '%s'. accepted units are giga or tera in the form of "+
+						"g, g, gb, gib, gi, t, t, tb, tib, ti",
+						invalidStr,
+						invalidStr))
 			})
 
 		It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
@@ -3003,14 +2802,11 @@ var _ = Describe("HCP cluster creation negative testing",
 				By("Create cluster with a CIDR that doesn't exist")
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--machine-cidr", "192.168.1.0/23", "-y")
-				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(
-						ContainSubstring(
-							"ERR: All Hosted Control Plane clusters need a pre-configured VPC. " +
-								"Please check: " +
-								"https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"))
+				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					"all hosted control plane clusters need a pre-configured vpc. "+
+						"please check: "+
+						"https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc")
 			})
 
 		It("to validate create cluster with external_auth_config can work well - [id:73755]",
@@ -3018,12 +2814,9 @@ var _ = Describe("HCP cluster creation negative testing",
 			func() {
 				By("Create non-HCP cluster with --external-auth-providers-enabled")
 				clusterName := helper.GenerateRandomName("ocp-73755", 2)
-				output, err := clusterService.CreateDryRun(clusterName, "--external-auth-providers-enabled")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(
-						ContainSubstring(
-							"ERR: External authentication configuration is only supported for a Hosted Control Plane cluster."))
+				_, err := clusterService.CreateDryRun(clusterName, "--external-auth-providers-enabled")
+				helper.ExpectErrorWithMessage(err,
+					"external authentication configuration is only supported for a hosted control plane cluster.")
 
 				By("Create HCP cluster with --external-auth-providers-enabled and cluster version lower than 4.15")
 				cg := rosacli.VersionChannelGroupStable
@@ -3047,13 +2840,11 @@ var _ = Describe("HCP cluster creation negative testing",
 					rosalCommand.AddFlags("--external-auth-providers-enabled")
 				}
 				rosalCommand.AddFlags("--dry-run")
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(
-						ContainSubstring(
-							"External authentication is only supported in version '4.15.9' or greater, current cluster version is '%s'",
-							foundVersion))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("external authentication is only supported in version "+
+						"'4.15.9' or greater, current cluster version is '%s'",
+						foundVersion))
 			})
 
 		It("to validate '--ec2-metadata-http-tokens' flag during creating cluster - [id:64078]",
@@ -3063,15 +2854,12 @@ var _ = Describe("HCP cluster creation negative testing",
 				clusterName := "ocp-64078"
 
 				By("Create classic cluster with invalid httpTokens")
-				errorOutput, err := clusterService.CreateDryRun(
+				_, err := clusterService.CreateDryRun(
 					clusterName, "--ec2-metadata-http-tokens=invalid",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(errorOutput.String()).
-					To(
-						ContainSubstring(
-							"ERR: Expected a valid http tokens value : " +
-								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
+				helper.ExpectErrorWithMessage(err,
+					"expected a valid http tokens value : "+
+						"ec2-metadata-http-tokens value should be one of 'required', 'optional'")
 
 				By("Create HCP cluster  with invalid httpTokens")
 				replacingFlags := map[string]string{
@@ -3082,13 +2870,10 @@ var _ = Describe("HCP cluster creation negative testing",
 
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--ec2-metadata-http-tokens=invalid", "-y")
-				out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).
-					To(
-						ContainSubstring(
-							"ERR: Expected a valid http tokens value : " +
-								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					"expected a valid http tokens value : "+
+						"ec2-metadata-http-tokens value should be one of 'required', 'optional'")
 			})
 
 		It("expose additional allowed principals for HCP negative - [id:74433]",
@@ -3136,10 +2921,9 @@ var _ = Describe("HCP cluster creation negative testing",
 				}
 				rosalCommand.ReplaceFlagValue(replacingFlags)
 				rosalCommand.AddFlags("--dry-run", "--default-ingress-route-selector", "10.0.0.1", "-y")
-				output, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring(
-					"Updating default ingress settings is not supported for Hosted Control Plane clusters"))
+				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					"updating default ingress settings is not supported for hosted control plane clusters")
 			})
 
 		It("to validate create cluster with audit log forwarding - [id:73672]",
@@ -3161,21 +2945,15 @@ var _ = Describe("HCP cluster creation negative testing",
 					rosalCommand.DeleteFlag("--audit-log-arn", true)
 				}
 
-				output, err := clusterService.CreateDryRun(clusterName, "--audit-log-arn", "dummy-arn", "--non-sts")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(
-						ContainSubstring(
-							"ERR: Audit log forwarding to AWS CloudWatch is only supported for Hosted Control Plane clusters"))
+				_, err := clusterService.CreateDryRun(clusterName, "--audit-log-arn", "dummy-arn", "--non-sts")
+				helper.ExpectErrorWithMessage(err,
+					"audit log forwarding to aws cloudwatch is only supported for hosted control plane clusters")
 
 				By("Create HCP cluster with incorrect format audit log arn")
 				rosalCommand.AddFlags("--audit-log-arn", "qwertyugf234543234")
-				output, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(
-						ContainSubstring(
-							"ERR: Expected a valid value for audit log arn matching ^arn:aws"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					"expected a valid value for audit log arn matching ^arn:aws")
 			})
 
 		It("to validate role's managed policy when creating hcp cluster - [id:59547]",
@@ -3241,13 +3019,10 @@ var _ = Describe("HCP cluster creation negative testing",
 					By("Create cluster with the account roles")
 					rosalCommand.ReplaceFlagValue(replacingFlags)
 
-					out, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).
-						To(
-							ContainSubstring(
-								fmt.Sprintf("Failed while validating account roles: role"+
-									" '%s' is missing the attached managed policy '%s'", r, p)))
+					_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+					helper.ExpectErrorWithMessage(err,
+						fmt.Sprintf("failed while validating account roles: role"+
+							" '%s' is missing the attached managed policy '%s'", r, p))
 
 					By("Attach the deleted managed policies")
 					_, err = arbitraryPolicyService.AttachPolicy(r, []string{p}, "--mode", "auto")
@@ -3306,9 +3081,8 @@ var _ = Describe("HCP cluster creation negative testing",
 					"--channel", "candidate-4.22",
 					"--channel-group", "candidate",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(
-					"if any flags in the group [channel channel-group] are set none of the others can be"))
+				helper.ExpectErrorWithMessage(err,
+					"if any flags in the group [channel channel-group] are set none of the others can be")
 			})
 
 		It("to validate hcp creation with registry config via rosacli - [id:76396]",
@@ -3521,9 +3295,8 @@ var _ = Describe("HCP cluster creation subnets validation",
 					Expect(err).ToNot(HaveOccurred())
 					Expect(out.String()).To(ContainSubstring(successOutput))
 				} else {
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).To(ContainSubstring(failOutput_1))
-					Expect(out.String()).To(ContainSubstring(failOutput_2))
+					helper.ExpectErrorWithMessage(err, failOutput_1)
+					helper.ExpectErrorWithMessage(err, failOutput_2)
 				}
 
 				By("Create a public cluster with 4 private subnets (2 subnets from same AZ) and 1 public subnet")
@@ -3540,9 +3313,8 @@ var _ = Describe("HCP cluster creation subnets validation",
 					Expect(err).ToNot(HaveOccurred())
 					Expect(out.String()).To(ContainSubstring(successOutput))
 				} else {
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).To(ContainSubstring(failOutput_1))
-					Expect(out.String()).To(ContainSubstring(failOutput_2))
+					helper.ExpectErrorWithMessage(err, failOutput_1)
+					helper.ExpectErrorWithMessage(err, failOutput_2)
 				}
 
 				By("Create a public cluster with 1 private subnet and 2 public subnet from same AZ")
@@ -3575,9 +3347,8 @@ var _ = Describe("HCP cluster creation subnets validation",
 					Expect(err).ToNot(HaveOccurred())
 					Expect(out.String()).To(ContainSubstring(successOutput))
 				} else {
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).To(ContainSubstring(failOutput_1))
-					Expect(out.String()).To(ContainSubstring(failOutput_2))
+					helper.ExpectErrorWithMessage(err, failOutput_1)
+					helper.ExpectErrorWithMessage(err, failOutput_2)
 				}
 
 				By("Create a private cluster with 4 private subnets (2 subnets from same AZ)")
@@ -3593,21 +3364,19 @@ var _ = Describe("HCP cluster creation subnets validation",
 					Expect(err).ToNot(HaveOccurred())
 					Expect(out.String()).To(ContainSubstring(successOutput))
 				} else {
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).To(ContainSubstring(failOutput_1))
-					Expect(out.String()).To(ContainSubstring(failOutput_2))
+					helper.ExpectErrorWithMessage(err, failOutput_1)
+					helper.ExpectErrorWithMessage(err, failOutput_2)
 				}
 
 				By("Create a private cluster with 1 private subnet and 1 public subnet")
 				subnets = []string{subnetMap["private"][0], subnetMap["public"][0]}
 				rosalCommand.ReplaceFlagValue(map[string]string{"--subnet-ids": strings.Join(subnets, ",")})
 				out, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).To(HaveOccurred())
-				Expect(out.String()).To(ContainSubstring(
-					"The following subnets have been excluded because they have an " +
-						"Internet Gateway Targetded Route and the Cluster choice is private: [" + subnetMap["public"][0] + "]"))
-				Expect(out.String()).To(ContainSubstring(
-					"Cluster is set as private, cannot use public '%s'", subnetMap["public"][0]))
+				helper.ExpectErrorWithMessage(err,
+					"the following subnets have been excluded because they have an "+
+						"internet gateway targetded route and the cluster choice is private: ["+subnetMap["public"][0]+"]")
+				helper.ExpectErrorWithMessage(err,
+					fmt.Sprintf("cluster is set as private, cannot use public '%s'", subnetMap["public"][0]))
 			})
 	})
 
@@ -3857,7 +3626,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 
 				By("Create another cluster with the same operator-roles-prefix")
 				clusterName := "test-45742b"
-				out, _, err := clusterService.Create(
+				_, _, err = clusterService.Create(
 					clusterName, "--sts",
 					"--mode", "auto",
 					"--role-arn", ar.InstallerRole,
@@ -3867,9 +3636,8 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 					"--operator-roles-prefix", operatorRolePreifx,
 					"-y",
 				)
-				Expect(err).NotTo(BeNil())
-				Expect(out.String()).To(ContainSubstring("already exists"))
-				Expect(out.String()).To(ContainSubstring("provide a different prefix"))
+				helper.ExpectErrorWithMessage(err, "already exists")
+				helper.ExpectErrorWithMessage(err, "provide a different prefix")
 			})
 	})
 
@@ -4162,9 +3930,8 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			rosalCommand.ReplaceFlagValue(map[string]string{
 				"--oidc-config-id": oidcConfigToClean,
 			})
-			stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-			Expect(err).NotTo(BeNil())
-			Expect(stdout.String()).To(ContainSubstring("does not have trusted relationship to"))
+			_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+			helper.ExpectErrorWithMessage(err, "does not have trusted relationship to")
 
 			By("Find the nearest backward minor version")
 			output, err = clusterService.DescribeCluster(clusterID)
@@ -4205,9 +3972,8 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--oidc-config-id": originalOidcConfigID,
 				})
-				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).NotTo(BeNil())
-				Expect(stdout.String()).To(ContainSubstring("is not compatible with cluster version"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err, "is not compatible with cluster version")
 			}
 		})
 })
@@ -4383,16 +4149,15 @@ var _ = Describe("Sts cluster creation with external id",
 				By("Create cluster with external id not same with the role setting one")
 				notMatchExternalID := "333B9588-36A5-ECA4-BE8D-7C673B77CDCD"
 				rosalCommand.AddFlags("--external-id", notMatchExternalID)
-				stdout, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				Expect(err).ToNot(BeNil())
-				Expect(stdout.String()).To(ContainSubstring(
-					"does not match trust policy for installer role"))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				helper.ExpectErrorWithMessage(err,
+					"does not match trust policy for installer role")
 
 				By("Create cluster with external id")
 				rosalCommand.ReplaceFlagValue(map[string]string{
 					"--external-id": ExternalID,
 				})
-				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
+				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).To(BeNil())
 
 				rosaClient.Runner.UnsetArgs()
@@ -4808,10 +4573,9 @@ var _ = Describe("Sts cluster creation supplemental testing",
 
 				By("Create cluster with '--sts' flag")
 				testingClusterName = helper.GenerateRandomName("c55701", 2)
-				output, _, err = clusterService.Create(testingClusterName, "--sts")
-				Expect(err).NotTo(BeNil())
-				Expect(output.String()).To(ContainSubstring("More than one Installer role found"))
-				Expect(output.String()).To(ContainSubstring("Expected a valid role ARN"))
+				_, _, err = clusterService.Create(testingClusterName, "--sts")
+				helper.ExpectErrorWithMessage(err, "more than one installer role found")
+				helper.ExpectErrorWithMessage(err, "expected a valid role arn")
 
 				By("Create cluster with '--non-sts' flag")
 				testingClusterName = helper.GenerateRandomName("c55701", 2)

@@ -19,6 +19,7 @@ import (
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
@@ -119,24 +120,21 @@ var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
 					"--mirrors", tMirror,
 					"--type", tType,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("required flag(s) \"cluster\" not set"))
+				helper.ExpectErrorWithMessage(err, "required flag(s) \"cluster\" not set")
 
 				output, err = imageMirrorService.CreateImageMirror(
 					"-c", clusterID,
 					"--source", "source/validation",
 					"--type", tType,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("required flag(s) \"mirrors\" not set"))
+				helper.ExpectErrorWithMessage(err, "required flag(s) \"mirrors\" not set")
 
 				output, err = imageMirrorService.CreateImageMirror(
 					"-c", clusterID,
 					"--mirrors", tMirror,
 					"--type", tType,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("required flag(s) \"source\" not set"))
+				helper.ExpectErrorWithMessage(err, "required flag(s) \"source\" not set")
 
 				output, err = imageMirrorService.CreateImageMirror(
 					"-c", "notexistcid",
@@ -144,8 +142,7 @@ var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
 					"--mirrors", tMirror,
 					"--type", tType,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("There is no cluster with identifier or name"))
+				helper.ExpectErrorWithMessage(err, "there is no cluster with identifier or name")
 
 				output, err = imageMirrorService.CreateImageMirror(
 					"-c", clusterID,
@@ -153,8 +150,7 @@ var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
 					"--mirrors", tMirror,
 					"--type", tType,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("already exists for cluster"))
+				helper.ExpectErrorWithMessage(err, "already exists for cluster")
 
 				output, err = imageMirrorService.CreateImageMirror(
 					"-c", clusterID,
@@ -162,8 +158,7 @@ var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
 					"--mirrors", tMirror,
 					"--type", "invalidtype",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("type must be 'digest' if specified"))
+				helper.ExpectErrorWithMessage(err, "type must be 'digest' if specified")
 
 				By("Edit the single mirror to multiple mirrors")
 				updatedMirrorVal1 := "11/22"
@@ -218,69 +213,60 @@ var _ = Describe("Image Mirror", labels.Feature.ImageMirror, func() {
 					"--id", imageMirrorID,
 					"--mirrors", tMirror,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("required flag(s) \"cluster\" not set"))
+				helper.ExpectErrorWithMessage(err, "required flag(s) \"cluster\" not set")
 
 				output, err = imageMirrorService.EditImageMirror(
 					"-c", clusterID,
 					"--id", imageMirrorID,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("required flag(s) \"mirrors\" not set"))
+				helper.ExpectErrorWithMessage(err, "required flag(s) \"mirrors\" not set")
 
 				output, err = imageMirrorService.EditImageMirror(
 					"-c", clusterID,
 					"--mirrors", tMirror,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Image mirror ID is required"))
+				helper.ExpectErrorWithMessage(err, "image mirror id is required")
 
 				output, err = imageMirrorService.EditImageMirror(
 					"-c", clusterID,
 					"--id", "notexistedid",
 					"--mirrors", tMirror,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("not found"))
+				helper.ExpectErrorWithMessage(err, "not found")
 
 				output, err = imageMirrorService.EditImageMirror(
 					"-c", "notexistcid",
 					"--id", imageMirrorID,
 					"--mirrors", tMirror,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("There is no cluster with identifier or name"))
+				helper.ExpectErrorWithMessage(err, "there is no cluster with identifier or name")
 
 				By("Validation for deleting image mirror")
 				output, err = imageMirrorService.DeleteImageMirror(
 					"--id", imageMirrorID,
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("required flag(s) \"cluster\" not set"))
+				helper.ExpectErrorWithMessage(err, "required flag(s) \"cluster\" not set")
 
 				output, err = imageMirrorService.DeleteImageMirror(
 					"-c", clusterID,
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("Image mirror ID is required"))
+				helper.ExpectErrorWithMessage(err, "image mirror id is required")
 
 				output, err = imageMirrorService.DeleteImageMirror(
 					"-c", clusterID,
 					"--id", "notexistedid",
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("not found"))
+				helper.ExpectErrorWithMessage(err, "not found")
 
 				output, err = imageMirrorService.DeleteImageMirror(
 					"-c", "notexistcid",
 					"--id", imageMirrorID,
 					"-y",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("There is no cluster with identifier or name"))
+				helper.ExpectErrorWithMessage(err, "there is no cluster with identifier or name")
 
 				By("Delete the mirrors")
 				Eventually(

@@ -145,57 +145,44 @@ var _ = Describe("Edit OIDC config",
 				Expect(foundOIDCConfig.ID).To(Equal(managedOIDCConfigID))
 
 				By("Validate the invalid mode")
-				output, err = ocmResourceService.CreateOIDCConfig("--mode", "invalidmode", "-y")
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-
-				Expect(textData).To(ContainSubstring("Invalid mode. Allowed values are [auto manual]"))
+				_, err = ocmResourceService.CreateOIDCConfig("--mode", "invalidmode", "-y")
+				helper.ExpectErrorWithMessage(err, "invalid mode. allowed values are [auto manual]")
 
 				By("Validate the prefix length")
-				output, err = ocmResourceService.CreateOIDCConfig(
+				_, err = ocmResourceService.CreateOIDCConfig(
 					"--mode", "auto",
 					"--prefix", longPrefix,
 					"--managed=false",
 					"-y")
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("length of prefix is limited to 15 characters"))
+				helper.ExpectErrorWithMessage(err, "length of prefix is limited to 15 characters")
 
 				By("Validate the prefix and managed at the same time")
-				output, err = ocmResourceService.CreateOIDCConfig(
+				_, err = ocmResourceService.CreateOIDCConfig(
 					"--mode", "auto",
 					"--prefix", oidcConfigPrefix,
 					"-y")
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("prefix param is not supported for managed OIDC config"))
+				helper.ExpectErrorWithMessage(err, "prefix param is not supported for managed oidc config")
 
 				By("Validation the installer-role-arn and managed at the same time")
-				output, err = ocmResourceService.CreateOIDCConfig(
+				_, err = ocmResourceService.CreateOIDCConfig(
 					"--mode", "auto",
 					"--installer-role-arn", installerRoleArn,
 					"-y")
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("role-arn param is not supported for managed OIDC config"))
+				helper.ExpectErrorWithMessage(err, "role-arn param is not supported for managed oidc config")
 
 				By("Validation the raw-files and managed at the same time")
-				output, err = ocmResourceService.CreateOIDCConfig(
+				_, err = ocmResourceService.CreateOIDCConfig(
 					"--mode", "auto",
 					"--raw-files",
 					"-y")
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("--raw-files param is not supported alongside --mode param"))
+				helper.ExpectErrorWithMessage(err, "--raw-files param is not supported alongside --mode param")
 
 				By("Validate the oidc-config deletion with no-existed oidc config id in auto mode")
-				output, err = ocmResourceService.DeleteOIDCConfig(
+				_, err = ocmResourceService.DeleteOIDCConfig(
 					"--mode", "auto",
 					"--oidc-config-id", notExistedOODCConfigID,
 					"-y")
-				Expect(err).NotTo(BeNil())
-				textData = rosaClient.Parser.TextData.Input(output).Parse().Tip()
-				Expect(textData).To(ContainSubstring("not found"))
+				helper.ExpectErrorWithMessage(err, "not found")
 			})
 	})
 var _ = Describe("Register ummanaged oidc config testing",

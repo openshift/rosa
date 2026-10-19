@@ -174,32 +174,25 @@ var _ = Describe("Network verifier",
 				if !isBYOVPC {
 					By("Run network verifier with non BYO VPC cluster")
 					output, err = networkService.CreateNetworkVerifierWithCluster(clusterID)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).
-						To(ContainSubstring(
-							"ERR: Running the network verifier is only supported for BYO VPC clusters"))
+					helper.ExpectErrorWithMessage(err, "running the network verifier is only supported for byo vpc clusters")
 					return
 				}
 				By("Run network verifier without clusterID")
-				output, err = networkService.CreateNetworkVerifierWithCluster("non-existing")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(ContainSubstring(
-						"ERR: Failed to get cluster 'non-existing': There is no cluster with identifier or name 'non-existing'"))
+				_, err = networkService.CreateNetworkVerifierWithCluster("non-existing")
+				helper.ExpectErrorWithMessage(err,
+					"failed to get cluster 'non-existing': there is no cluster "+
+						"with identifier or name 'non-existing'")
 
 				By("Run network verifier with --hosted-cp")
-				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID, "--hosted-cp")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(ContainSubstring("ERR: '--hosted-cp' flag is not required when running the network verifier with cluster"))
+				_, err = networkService.CreateNetworkVerifierWithCluster(clusterID, "--hosted-cp")
+				helper.ExpectErrorWithMessage(err,
+					"'--hosted-cp' flag is not required when "+
+						"running the network verifier with cluster")
 
 				By("Check the network for cluster with invalid tags")
-				output, err = networkService.CreateNetworkVerifierWithCluster(clusterID,
+				_, err = networkService.CreateNetworkVerifierWithCluster(clusterID,
 					"--tags", "t1=v1")
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).
-					To(ContainSubstring(
-						"ERR: invalid tag format for tag '[t1=v1]'. Expected tag format: 'key value'"))
+				helper.ExpectErrorWithMessage(err, "invalid tag format for tag '[t1=v1]'. expected tag format: 'key value'")
 
 				By("Run the network verified without role")
 				output, err = networkService.CreateNetworkVerifierWithSubnets(
@@ -207,8 +200,7 @@ var _ = Describe("Network verifier",
 					"--subnet-ids", subnets,
 					"--hosted-cp",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).To(ContainSubstring("ERR: role-arn is required"))
+				helper.ExpectErrorWithMessage(err, "role-arn is required")
 			})
 
 		It("verify that network will be failed if it can't reach to cluster subnet via the rosa cli - [id:70370]",
@@ -226,11 +218,8 @@ var _ = Describe("Network verifier",
 				Expect(err).To(BeNil())
 				if !isBYOVPC {
 					By("Run network verifier with non BYO VPC cluster")
-					output, err := networkService.CreateNetworkVerifierWithCluster(clusterID)
-					Expect(err).To(HaveOccurred())
-					Expect(output.String()).
-						To(ContainSubstring(
-							"ERR: Running the network verifier is only supported for BYO VPC clusters"))
+					_, err := networkService.CreateNetworkVerifierWithCluster(clusterID)
+					helper.ExpectErrorWithMessage(err, "running the network verifier is only supported for byo vpc clusters")
 					return
 				}
 				By("Edit the VPC to make the subnets network can't work well")
