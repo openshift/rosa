@@ -9,6 +9,9 @@ When editing CLI code, tests, docs, examples, or logs:
 - MUST NOT: Hard code secrets, API keys, tokens, kubeconfigs, AWS credentials, or customer identifiers.
 - MUST NOT: Log or print credentials, tokens, or other secrets.
 - DEFAULT: Prefer placeholders and variables in examples and test fixtures.
+- When changing authentication, token storage, keyrings, credentials, STS,
+  IAM, OIDC, or break-glass flows, seek human direction as described in
+  [change review](change-review.md).
 
 ## Gitleaks (secret scanning)
 
