@@ -21,6 +21,7 @@ import (
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	queue "github.com/openshift/rosa/pkg/spotterminationqueue"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func TestSpotTerminationQueueCommand(t *testing.T) {
@@ -88,8 +89,7 @@ var _ = Describe("CreateSpotTerminationQueueRunner", func() {
 
 			runner := CreateSpotTerminationQueueRunner(options)
 			err := runner(context.Background(), runtime, NewCreateSpotTerminationQueueCommand(), []string{})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("--nodepool-management-role-arn"))
+			helper.ExpectErrorWithMessage(err, "--nodepool-management-role-arn")
 			Expect(fakeService.invocations).To(Equal(0))
 		})
 
@@ -102,8 +102,7 @@ var _ = Describe("CreateSpotTerminationQueueRunner", func() {
 
 			runner := CreateSpotTerminationQueueRunner(options)
 			err := runner(context.Background(), runtime, NewCreateSpotTerminationQueueCommand(), []string{})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("valid value for nodepool-management-role-arn"))
+			helper.ExpectErrorWithMessage(err, "valid value for nodepool-management-role-arn")
 			Expect(fakeService.invocations).To(Equal(0))
 		})
 	})

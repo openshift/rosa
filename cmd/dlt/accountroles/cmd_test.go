@@ -19,6 +19,7 @@ import (
 	awsClient "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Delete account roles", func() {
@@ -62,8 +63,7 @@ var _ = Describe("runWithRuntime", func() {
 	It("returns error when GetMode fails", func() {
 		interactive.SetModeKey("invalid-mode")
 		err := runWithRuntime(t.RosaRuntime, Cmd)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Invalid mode"))
+		helper.ExpectErrorWithMessage(err, "Invalid mode")
 	})
 
 	Context("with mode set to manual and valid env", func() {
@@ -83,8 +83,7 @@ var _ = Describe("runWithRuntime", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 				`{"kind":"ClusterList","items":[],"total":0}`))
 			err := runWithRuntime(t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a prefix with no more than 32 characters"))
+			helper.ExpectErrorWithMessage(err, "expected a prefix with no more than 32 characters")
 		})
 
 		It("returns error when prefix has invalid characters", func() {
@@ -93,8 +92,7 @@ var _ = Describe("runWithRuntime", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
 				`{"kind":"ClusterList","items":[],"total":0}`))
 			err := runWithRuntime(t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid role prefix matching"))
+			helper.ExpectErrorWithMessage(err, "expected a valid role prefix matching")
 		})
 
 		It("warns when no classic roles found for prefix", func() {

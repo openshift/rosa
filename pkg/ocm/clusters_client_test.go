@@ -18,6 +18,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func buildTestOCMClient(apiServerURL string) *Client {
@@ -317,8 +318,7 @@ var _ = Describe("Cluster API client behavior", func() {
 		)
 
 		err := ocmClient.HibernateCluster("cluster-1")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("capability.organization.hibernate_cluster"))
+		helper.ExpectErrorWithMessage(err, "capability.organization.hibernate_cluster")
 	})
 
 	It("resumes a cluster when org capability is enabled", func() {
@@ -367,8 +367,7 @@ var _ = Describe("Cluster API client behavior", func() {
 		)
 
 		err := ocmClient.ResumeCluster("cluster-1")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("capability.organization.hibernate_cluster"))
+		helper.ExpectErrorWithMessage(err, "capability.organization.hibernate_cluster")
 	})
 
 	It("detects clusters using a matching oidc endpoint url", func() {

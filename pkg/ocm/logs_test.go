@@ -11,6 +11,8 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Cluster logs API client behavior", func() {
@@ -61,8 +63,7 @@ var _ = Describe("Cluster logs API client behavior", func() {
 		)
 
 		_, err := ocmClient.GetInstallLogs("cluster-404", 5)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Failed to get logs for cluster 'cluster-404'"))
+		helper.ExpectErrorWithMessage(err, "Failed to get logs for cluster 'cluster-404'")
 	})
 
 	It("passes the requested tail value when retrieving uninstall logs", func() {
@@ -97,8 +98,7 @@ var _ = Describe("Cluster logs API client behavior", func() {
 		)
 
 		_, err := ocmClient.GetUninstallLogs("cluster-404", 5)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Failed to get logs for cluster 'cluster-404'"))
+		helper.ExpectErrorWithMessage(err, "Failed to get logs for cluster 'cluster-404'")
 	})
 
 	It("uses fixed polling parameters and returns install logs", func() {
@@ -145,8 +145,7 @@ var _ = Describe("Cluster logs API client behavior", func() {
 			return true
 		}
 		_, err := ocmClient.PollInstallLogs("cluster-404", callback)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Failed to poll logs for cluster 'cluster-404'"))
+		helper.ExpectErrorWithMessage(err, "Failed to poll logs for cluster 'cluster-404'")
 	})
 
 	It("translates uninstall poll 404 responses into user-facing not-found errors", func() {
@@ -167,8 +166,7 @@ var _ = Describe("Cluster logs API client behavior", func() {
 			return true
 		}
 		_, err := ocmClient.PollUninstallLogs("cluster-404", callback)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Failed to poll logs for cluster 'cluster-404'"))
+		helper.ExpectErrorWithMessage(err, "Failed to poll logs for cluster 'cluster-404'")
 	})
 
 	It("wraps polling errors for uninstall logs", func() {
@@ -189,7 +187,6 @@ var _ = Describe("Cluster logs API client behavior", func() {
 			return true
 		}
 		_, err := ocmClient.PollUninstallLogs("cluster-1", callback)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Failed to poll logs for cluster 'cluster-1'"))
+		helper.ExpectErrorWithMessage(err, "Failed to poll logs for cluster 'cluster-1'")
 	})
 })

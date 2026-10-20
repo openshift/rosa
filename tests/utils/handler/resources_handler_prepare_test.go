@@ -10,6 +10,8 @@ import (
 	"github.com/aws/smithy-go"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("waitForSubnetsVisible", func() {
@@ -50,8 +52,7 @@ var _ = Describe("waitForSubnetsVisible", func() {
 			return 0, &smithy.GenericAPIError{Code: "InternalError", Message: "service unavailable"}
 		}
 		err := waitForSubnetsVisible(context.TODO(), []string{"subnet-aaa"}, checker)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("describing shared subnets"))
+		helper.ExpectErrorWithMessage(err, "describing shared subnets")
 	})
 
 	It("respects context cancellation", func() {

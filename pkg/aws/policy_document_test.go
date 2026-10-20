@@ -17,6 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("PolicyDocument", func() {
@@ -394,8 +395,7 @@ var _ = Describe("PolicyDocument", func() {
 
 			result, err := doc.checkPermissionsUsingQueryClient(client,
 				"arn:aws:iam::123456789012:user/TestUser", nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("ec2:RunInstances"))
+			helper.ExpectErrorWithMessage(err, "ec2:RunInstances")
 			Expect(result).To(BeFalse())
 		})
 
@@ -411,8 +411,7 @@ var _ = Describe("PolicyDocument", func() {
 
 			result, err := doc.checkPermissionsUsingQueryClient(client,
 				"arn:aws:iam::123456789012:user/TestUser", nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("error simulating policy"))
+			helper.ExpectErrorWithMessage(err, "error simulating policy")
 			Expect(result).To(BeFalse())
 		})
 

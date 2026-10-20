@@ -34,6 +34,7 @@ import (
 	ocmerrors "github.com/openshift-online/ocm-sdk-go/errors"
 
 	mock "github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Error Handler", func() {
@@ -831,8 +832,7 @@ var _ = Describe("ValidateHTTPProxy", func() {
 
 	It("rejects proxy without scheme", func() {
 		err := ValidateHTTPProxy("proxy.example.com:8080")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("URL is missing scheme"))
+		helper.ExpectErrorWithMessage(err, "URL is missing scheme")
 	})
 
 	It("rejects proxy without host", func() {
@@ -928,8 +928,7 @@ var _ = Describe("ValidateHTTPSProxy", func() {
 
 	It("rejects proxy without scheme", func() {
 		err := ValidateHTTPSProxy("proxy.example.com:8080")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("URL is missing scheme"))
+		helper.ExpectErrorWithMessage(err, "URL is missing scheme")
 	})
 
 	It("rejects proxy without host", func() {

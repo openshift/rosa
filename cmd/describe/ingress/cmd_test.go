@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	. "github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Describe ingress", func() {
@@ -125,8 +126,7 @@ var _ = Describe("Describe ingress", func() {
 			err := t.StdOutReader.Record()
 			Expect(err).ToNot(HaveOccurred())
 			err = runner(context.Background(), t.RosaRuntime, NewDescribeIngressCommand(), []string{})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("you need to specify an ingress ID/alias"))
+			helper.ExpectErrorWithMessage(err, "you need to specify an ingress ID/alias")
 		})
 
 		It("Fails if ingress ID/alias is invalid", func() {

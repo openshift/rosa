@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("ListOperatorRoles", func() {
@@ -923,8 +924,7 @@ var _ = Describe("validateManagedPolicy", func() {
 		if expectedErr == "" {
 			Expect(err).To(BeNil())
 		} else {
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring(expectedErr))
+			helper.ExpectErrorWithMessage(err, expectedErr)
 		}
 	},
 		Entry("fails if ECR policy does not exist", map[string]*cmv1.AWSSTSPolicy{
@@ -1147,8 +1147,7 @@ var _ = Describe("FindRoleARNs", func() {
 				nil, fmt.Errorf("access denied"))
 
 			arns, err := client.FindRoleARNs(InstallerAccountRole, "4.14")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("access denied"))
+			helper.ExpectErrorWithMessage(err, "access denied")
 			Expect(arns).To(BeEmpty())
 		})
 	})
@@ -1449,8 +1448,7 @@ var _ = Describe("FindPolicyARN", func() {
 
 			_, err := client.FindPolicyARN(
 				Operator{Namespace: "openshift-ingress", Name: "cloud-credentials"}, "4.14")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("list error"))
+			helper.ExpectErrorWithMessage(err, "list error")
 		})
 	})
 })
@@ -1618,8 +1616,7 @@ var _ = Describe("UpdateTag", func() {
 				nil, fmt.Errorf("role not found"))
 
 			err := client.UpdateTag("test-role", "4.15")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("role not found"))
+			helper.ExpectErrorWithMessage(err, "role not found")
 		})
 	})
 })
@@ -1669,8 +1666,7 @@ var _ = Describe("AddRoleTag", func() {
 				nil, fmt.Errorf("tagging failed"))
 
 			err := client.AddRoleTag("test-role", "my-key", "my-value")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("tagging failed"))
+			helper.ExpectErrorWithMessage(err, "tagging failed")
 		})
 	})
 })
@@ -1785,8 +1781,7 @@ var _ = Describe("IsAdminRole", func() {
 				nil, fmt.Errorf("IAM error"))
 
 			isAdmin, err := client.IsAdminRole("test-role")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("IAM error"))
+			helper.ExpectErrorWithMessage(err, "IAM error")
 			Expect(isAdmin).To(BeFalse())
 		})
 	})
@@ -1859,8 +1854,7 @@ var _ = Describe("IsPolicyCompatible", func() {
 		mockIamAPI.EXPECT().ListPolicyTags(gomock.Any(), gomock.Any()).Return(
 			nil, fmt.Errorf("access denied"))
 		_, err := client.IsPolicyCompatible("arn:aws:iam::123456789:policy/test", "4.14.0")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("access denied"))
+		helper.ExpectErrorWithMessage(err, "access denied")
 	})
 })
 
@@ -1934,8 +1928,7 @@ var _ = Describe("EnsureRole", func() {
 
 			_, err := client.EnsureRole(rep, "test-role", testPolicy, "",
 				"", map[string]string{}, "", false)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Role with same name but different path exists"))
+			helper.ExpectErrorWithMessage(err, "Role with same name but different path exists")
 		})
 	})
 
@@ -1952,8 +1945,7 @@ var _ = Describe("EnsureRole", func() {
 
 			_, err := client.EnsureRole(rep, "test-role", testPolicy, "",
 				"", map[string]string{}, "", true)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("unmanaged policies already exists"))
+			helper.ExpectErrorWithMessage(err, "unmanaged policies already exists")
 		})
 	})
 
@@ -2075,8 +2067,7 @@ var _ = Describe("EnsurePolicy", func() {
 
 			_, err := client.EnsurePolicy(testPolicyArn, testDocument,
 				"4.14.0", map[string]string{}, "")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("access denied"))
+			helper.ExpectErrorWithMessage(err, "access denied")
 		})
 	})
 
@@ -2241,8 +2232,7 @@ var _ = Describe("ValidateRoleNameAvailable", func() {
 				}, nil)
 
 			err := client.ValidateRoleNameAvailable("existing-role")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("already exists"))
+			helper.ExpectErrorWithMessage(err, "already exists")
 		})
 	})
 
@@ -2252,8 +2242,7 @@ var _ = Describe("ValidateRoleNameAvailable", func() {
 				nil, fmt.Errorf("access denied"))
 
 			err := client.ValidateRoleNameAvailable("some-role")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Error validating role name"))
+			helper.ExpectErrorWithMessage(err, "Error validating role name")
 			Expect(err.Error()).To(ContainSubstring("access denied"))
 		})
 	})
@@ -2292,8 +2281,7 @@ var _ = Describe("PutRolePolicy", func() {
 				nil, fmt.Errorf("put role policy failed"))
 
 			err := client.PutRolePolicy("my-role", "my-policy", `{"Version":"2012-10-17"}`)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("put role policy failed"))
+			helper.ExpectErrorWithMessage(err, "put role policy failed")
 		})
 	})
 })
@@ -2335,8 +2323,7 @@ var _ = Describe("AttachRolePolicy", func() {
 
 			err := client.AttachRolePolicy(rep, "my-role",
 				"arn:aws:iam::123456789012:policy/my-policy")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("attach failed"))
+			helper.ExpectErrorWithMessage(err, "attach failed")
 		})
 	})
 })
@@ -2388,8 +2375,7 @@ var _ = Describe("DeleteInlineRolePolicies", func() {
 				nil, fmt.Errorf("list error"))
 
 			err := client.DeleteInlineRolePolicies("my-role")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("list error"))
+			helper.ExpectErrorWithMessage(err, "list error")
 		})
 	})
 
@@ -2403,8 +2389,7 @@ var _ = Describe("DeleteInlineRolePolicies", func() {
 				nil, fmt.Errorf("delete error"))
 
 			err := client.DeleteInlineRolePolicies("my-role")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("delete error"))
+			helper.ExpectErrorWithMessage(err, "delete error")
 		})
 	})
 })
@@ -2450,8 +2435,7 @@ var _ = Describe("ValidateIfRosaOperatorRole", func() {
 				nil, fmt.Errorf("throttled"))
 
 			isValid, err := client.ValidateIfRosaOperatorRole(role, credRequest)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("throttled"))
+			helper.ExpectErrorWithMessage(err, "throttled")
 			Expect(isValid).To(BeFalse())
 		})
 	})
@@ -2535,8 +2519,7 @@ var _ = Describe("GetOperatorRolesFromAccountByClusterID", func() {
 			}).Return(nil, fmt.Errorf("throttled"))
 
 			roleList, err := client.GetOperatorRolesFromAccountByClusterID("cluster-123", credRequest)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("throttled"))
+			helper.ExpectErrorWithMessage(err, "throttled")
 			Expect(roleList).To(BeEmpty())
 		})
 	})

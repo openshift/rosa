@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const cmdTestExternalID = "223B9588-36A5-ECA4-BE8D-7C673B77CEC1"
@@ -142,8 +143,7 @@ var _ = Describe("runWithRuntime", func() {
 	It("returns error when GetMode fails", func() {
 		interactive.SetModeKey("invalid-mode")
 		err := runWithRuntime(t.RosaRuntime, Cmd)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Invalid mode"))
+		helper.ExpectErrorWithMessage(err, "Invalid mode")
 	})
 
 	It("returns error when GetEnv fails", func() {
@@ -154,8 +154,7 @@ var _ = Describe("runWithRuntime", func() {
 
 		args.classic = true
 		err := runWithRuntime(t.RosaRuntime, Cmd)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("failed to determine OCM environment"))
+		helper.ExpectErrorWithMessage(err, "failed to determine OCM environment")
 	})
 
 	Context("with valid env", func() {
@@ -172,8 +171,7 @@ var _ = Describe("runWithRuntime", func() {
 			args.managed = true
 			args.forcePolicyCreation = true
 			err := runWithRuntime(t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("forcing creation of policies only works for unmanaged policies"))
+			helper.ExpectErrorWithMessage(err, "forcing creation of policies only works for unmanaged policies")
 		})
 
 		It("returns shared VPC flag validation errors", func() {
@@ -517,8 +515,7 @@ var _ = Describe("runWithRuntime", func() {
 			)
 
 			err := runWithRuntime(t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("error getting version"))
+			helper.ExpectErrorWithMessage(err, "error getting version")
 		})
 
 		It("returns error when retrieving account role policies fails", func() {
@@ -555,8 +552,7 @@ var _ = Describe("runWithRuntime", func() {
 			})
 
 			err := runWithRuntime(t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a prefix with no more than 32 characters"))
+			helper.ExpectErrorWithMessage(err, "expected a prefix with no more than 32 characters")
 		})
 
 		It("returns error when prefix has invalid characters", func() {
@@ -573,8 +569,7 @@ var _ = Describe("runWithRuntime", func() {
 			})
 
 			err := runWithRuntime(t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid role prefix matching"))
+			helper.ExpectErrorWithMessage(err, "expected a valid role prefix matching")
 		})
 
 		It("returns error when non-HCP prefix ends with -HCP", func() {
@@ -596,8 +591,7 @@ var _ = Describe("runWithRuntime", func() {
 			)
 
 			err := runWithRuntime(t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("the '-HCP' suffix is reserved for hosted CP managed policies"))
+			helper.ExpectErrorWithMessage(err, "the '-HCP' suffix is reserved for hosted CP managed policies")
 		})
 	})
 })

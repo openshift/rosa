@@ -9,6 +9,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Mode Test", func() {
@@ -33,8 +35,7 @@ var _ = Describe("Mode Test", func() {
 		It("should return an error for an invalid mode", func() {
 			SetModeKey("invalid_mode")
 			_, err := GetMode()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Invalid mode. Allowed values are %v", Modes)))
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf("Invalid mode. Allowed values are %v", Modes))
 		})
 	})
 
@@ -42,8 +43,7 @@ var _ = Describe("Mode Test", func() {
 		It("should return an error for an invalid mode", func() {
 			cmd.Flags().Parse([]string{"--mode=invalid_mode"})
 			_, err := GetOptionMode(cmd, mode, "Question")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid mode"))
+			helper.ExpectErrorWithMessage(err, "invalid mode")
 		})
 	})
 })

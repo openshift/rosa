@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Create dns domain", func() {
@@ -108,8 +109,7 @@ var _ = Describe("validateIngressOperatorPolicyOverride", func() {
 			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).
 				Return("", fmt.Errorf("access denied"))
 			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("access denied"))
+			helper.ExpectErrorWithMessage(err, "access denied")
 		})
 
 		It("returns error when policy document is invalid JSON", func() {
@@ -149,8 +149,7 @@ var _ = Describe("validateIngressOperatorPolicyOverride", func() {
 			}`, differentArn)
 			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).Return(doc, nil)
 			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("unexpected shared VPC role ARN"))
+			helper.ExpectErrorWithMessage(err, "unexpected shared VPC role ARN")
 		})
 
 		It("returns error when policy has different shared VPC role ARN", func() {
@@ -165,8 +164,7 @@ var _ = Describe("validateIngressOperatorPolicyOverride", func() {
 			}`, differentArn)
 			mockClient.EXPECT().GetDefaultPolicyDocument(testPolicyArn).Return(doc, nil)
 			err := validateIngressOperatorPolicyOverride(runtime, testPolicyArn, testSharedVpcArn, testInstallerPfx)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("unexpected shared VPC role ARN"))
+			helper.ExpectErrorWithMessage(err, "unexpected shared VPC role ARN")
 		})
 
 		It("returns nil when policy has no sts:AssumeRole statement", func() {

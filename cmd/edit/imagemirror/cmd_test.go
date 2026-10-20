@@ -13,6 +13,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -62,8 +63,7 @@ var _ = Describe("Edit image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Image mirror ID is required. Specify it as an argument or use the --id flag"))
+				helper.ExpectErrorWithMessage(err, "Image mirror ID is required. Specify it as an argument or use the --id flag")
 			})
 
 			It("Returns error when no mirrors are provided", func() {
@@ -76,8 +76,7 @@ var _ = Describe("Edit image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("At least one mirror registry must be specified"))
+				helper.ExpectErrorWithMessage(err, "At least one mirror registry must be specified")
 			})
 
 			It("Uses positional argument for image mirror ID", func() {
@@ -194,8 +193,7 @@ var _ = Describe("Edit image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("is not ready. Image mirrors can only be edited on ready clusters"))
+				helper.ExpectErrorWithMessage(err, "is not ready. Image mirrors can only be edited on ready clusters")
 			})
 
 			It("Returns error when cluster is not Hosted Control Plane", func() {
@@ -208,8 +206,7 @@ var _ = Describe("Edit image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Image mirrors are only supported on Hosted Control Plane clusters"))
+				helper.ExpectErrorWithMessage(err, "Image mirrors are only supported on Hosted Control Plane clusters")
 			})
 		})
 
@@ -269,8 +266,7 @@ var _ = Describe("Edit image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("At least one mirror registry must be specified"))
+				helper.ExpectErrorWithMessage(err, "At least one mirror registry must be specified")
 			})
 		})
 

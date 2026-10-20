@@ -17,6 +17,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	"github.com/openshift/rosa/pkg/aws/tags"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("OIDC Provider", func() {
@@ -114,8 +115,7 @@ var _ = Describe("OIDC Provider", func() {
 				Return(nil, fmt.Errorf("iam api error"))
 
 			arn, err := client.CreateOpenIDConnectProvider(providerURL, thumbprint, "cluster-1")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("iam api error"))
+			helper.ExpectErrorWithMessage(err, "iam api error")
 			Expect(arn).To(BeEmpty())
 		})
 	})
@@ -170,8 +170,7 @@ var _ = Describe("OIDC Provider", func() {
 				Return(nil, fmt.Errorf("access denied"))
 
 			exists, err := client.HasOpenIDConnectProvider(issuerURL, partition, accountID)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("access denied"))
+			helper.ExpectErrorWithMessage(err, "access denied")
 			Expect(exists).To(BeFalse())
 		})
 
@@ -182,8 +181,7 @@ var _ = Describe("OIDC Provider", func() {
 				}, nil)
 
 			exists, err := client.HasOpenIDConnectProvider(issuerURL, partition, accountID)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("misconfigured"))
+			helper.ExpectErrorWithMessage(err, "misconfigured")
 			Expect(exists).To(BeFalse())
 		})
 	})
@@ -212,9 +210,7 @@ var _ = Describe("OIDC Provider", func() {
 				Return(nil, &iamtypes.NoSuchEntityException{Message: awsSdk.String("not found")})
 
 			err := client.DeleteOpenIDConnectProvider(oidcProviderARN)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(
-				fmt.Sprintf("the OIDC provider '%s' does not exist", oidcProviderARN)))
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf("the OIDC provider '%s' does not exist", oidcProviderARN))
 		})
 
 		It("Returns the raw error for other IAM failures", func() {
@@ -222,8 +218,7 @@ var _ = Describe("OIDC Provider", func() {
 				Return(nil, fmt.Errorf("service unavailable"))
 
 			err := client.DeleteOpenIDConnectProvider(oidcProviderARN)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("service unavailable"))
+			helper.ExpectErrorWithMessage(err, "service unavailable")
 		})
 	})
 })

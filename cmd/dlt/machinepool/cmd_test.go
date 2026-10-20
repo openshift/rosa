@@ -16,6 +16,7 @@ import (
 
 	. "github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -57,8 +58,7 @@ var _ = Describe("Delete machine pool", func() {
 		It("Fails if we are not specifying a machine pool name", func() {
 			runner := DeleteMachinePoolRunner(NewDeleteMachinepoolUserOptions())
 			err := runner(context.Background(), t.RosaRuntime, NewDeleteMachinePoolCommand(), []string{})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("you need to specify a machine pool name"))
+			helper.ExpectErrorWithMessage(err, "you need to specify a machine pool name")
 		})
 		Context("Hypershift", func() {
 			It("Works without passing `--machinepool`", func() {
@@ -98,9 +98,8 @@ var _ = Describe("Delete machine pool", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd,
 					[]string{"--machinepool", nodePoolName, "-y"})
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Error deleting machinepool: machine pool "+
-					"'%s' does not exist for hosted cluster '%s'", nodePoolName, clusterId)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("Error deleting machinepool: machine pool "+
+					"'%s' does not exist for hosted cluster '%s'", nodePoolName, clusterId))
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(""))
@@ -164,10 +163,9 @@ var _ = Describe("Delete machine pool", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd,
 					[]string{"--machinepool", nodePoolName, "-y"})
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Error deleting machinepool: failed to "+
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("Error deleting machinepool: failed to "+
 					"get machine pool '%s' for cluster '%s'", nodePoolName,
-					clusterId)))
+					clusterId))
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(""))

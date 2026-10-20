@@ -15,6 +15,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const noUpgradeOutput = "There are no available upgrades for machine pool 'nodepool85'"
@@ -125,8 +126,7 @@ var _ = Describe("List upgrade", func() {
 			args.nodePool = nodePoolName
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterNotReady))
 			err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("Cluster 'cluster1' is not yet ready"))
+			helper.ExpectErrorWithMessage(err, "Cluster 'cluster1' is not yet ready")
 		})
 
 		It("Cluster is ready and node pool no upgrade available", func() {

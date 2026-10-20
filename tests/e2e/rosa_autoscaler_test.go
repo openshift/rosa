@@ -153,9 +153,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 					"--replicas", replicas,
 					"--enable-autoscaling=false",
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(
-					"exceeds the maximum allowed '500'"))
+				helper.ExpectErrorWithMessage(err, "exceeds the maximum allowed '500'")
 				By("Check the validation of maximum allowed nodes by minReplicas")
 				minReplicas = "500"
 				maxReplicas = "500"
@@ -165,9 +163,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 					"--min-replicas", minReplicas,
 					"--max-replicas", maxReplicas,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(
-					"exceeds the maximum allowed '500'"))
+				helper.ExpectErrorWithMessage(err, "exceeds the maximum allowed '500'")
 			})
 
 		It("Edit/describe hosted-cp cluster autoscaler and validations for autoscaler operations - [id:79846]",
@@ -189,8 +185,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"--max-node-provision-time", mnpt,
 						"--max-pod-grace-period", strconv.Itoa(oldAutoscaler.MaxPodGracePeriod),
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring(expectedMsg))
+					helper.ExpectErrorWithMessage(err, expectedMsg)
 				}
 				By("Check Validation for pod-priority-threshold")
 				pptValidationMap := map[string]string{
@@ -204,8 +199,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"--max-node-provision-time", oldAutoscaler.MaxNodeProvisionTime,
 						"--max-pod-grace-period", strconv.Itoa(oldAutoscaler.MaxPodGracePeriod),
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring(expectedMsg))
+					helper.ExpectErrorWithMessage(err, expectedMsg)
 				}
 
 				By("Check Validation for max-pod-grace-period")
@@ -221,8 +215,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"--max-node-provision-time", oldAutoscaler.MaxNodeProvisionTime,
 						"--max-pod-grace-period", mpgp,
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring(expectedMsg))
+					helper.ExpectErrorWithMessage(err, expectedMsg)
 				}
 
 				By("Check Validation for max-nodes-total")
@@ -237,8 +230,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"--max-node-provision-time", oldAutoscaler.MaxNodeProvisionTime,
 						"--max-pod-grace-period", strconv.Itoa(oldAutoscaler.MaxPodGracePeriod),
 					)
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring(expectedMsg))
+					helper.ExpectErrorWithMessage(err, expectedMsg)
 				}
 				By("Check Validation for unsupported flags")
 				_, err = rosaClient.AutoScaler.EditAutoScaler(clusterID,
@@ -248,8 +240,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 					"--max-pod-grace-period", strconv.Itoa(oldAutoscaler.MaxPodGracePeriod),
 					"--max-nodes-total", strconv.Itoa(oldAutoscaler.ResourcesLimits.MaxNodesTotal),
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Unable to use flag"))
+				helper.ExpectErrorWithMessage(err, "Unable to use flag")
 				Expect(err.Error()).To(ContainSubstring("Supported flags are:"))
 				Expect(err.Error()).To(ContainSubstring("'max-nodes-total',"))
 				Expect(err.Error()).To(ContainSubstring("'max-pod-grace-period',"))

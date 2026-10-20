@@ -15,6 +15,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Idps", Ordered, func() {
@@ -53,9 +54,7 @@ var _ = Describe("Idps", Ordered, func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusInternalServerError, ""))
 			existingIdp, err := FindClusterAdminIDP(cluster, testRuntime.RosaRuntime)
 			Expect(existingIdp).To(BeNil())
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring(
-				fmt.Sprintf("failed to get identity providers for cluster '%s'", clusterKey)))
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf("failed to get identity providers for cluster '%s'", clusterKey))
 		})
 	})
 
@@ -88,9 +87,7 @@ var _ = Describe("Idps", Ordered, func() {
 			existingIdp, userList, err := FindIDPWithAdmin(cluster, testRuntime.RosaRuntime)
 			Expect(existingIdp).To(BeNil())
 			Expect(userList).To(BeNil())
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring(
-				fmt.Sprintf("failed to get identity providers for cluster '%s'", clusterKey)))
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf("failed to get identity providers for cluster '%s'", clusterKey))
 		})
 	})
 })

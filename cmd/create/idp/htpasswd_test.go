@@ -23,6 +23,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("IDP Tests", func() {
@@ -110,14 +112,12 @@ var _ = Describe("IDP Tests", func() {
 
 		It("rejects a username containing a colon", func() {
 			err := validateHtUsernameAndPassword("bad:user", "SecureP@ssword123")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("username must not contain"))
+			helper.ExpectErrorWithMessage(err, "username must not contain")
 		})
 
 		It("rejects the reserved cluster-admin username", func() {
 			err := validateHtUsernameAndPassword("cluster-admin", "SecureP@ssword123")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cluster-admin"))
+			helper.ExpectErrorWithMessage(err, "cluster-admin")
 		})
 	})
 })

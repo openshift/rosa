@@ -22,6 +22,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("IAM Service Account Helpers", func() {
@@ -112,8 +114,7 @@ var _ = Describe("IAM Service Account Helpers", func() {
 		It("should reject names that are too long", func() {
 			longName := "a" + string(make([]byte, 253)) // 254 characters
 			err := ValidateServiceAccountName(longName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cannot be longer than 253 characters"))
+			helper.ExpectErrorWithMessage(err, "cannot be longer than 253 characters")
 		})
 	})
 
@@ -169,8 +170,7 @@ var _ = Describe("IAM Service Account Helpers", func() {
 		It("should reject names that are too long", func() {
 			longName := strings.Repeat("a", 64) // 64 characters
 			err := ValidateNamespaceName(longName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cannot be longer than 63 characters"))
+			helper.ExpectErrorWithMessage(err, "cannot be longer than 63 characters")
 		})
 	})
 

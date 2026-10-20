@@ -16,6 +16,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/config"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("OCM Client", Ordered, func() {
@@ -88,15 +89,13 @@ var _ = Describe("OCM Client", Ordered, func() {
 			ssoServer.UnhandledRequestStatusCode = http.StatusInternalServerError
 			ocmClient = NewClientWithConnection(connection)
 			err = ocmClient.KeepTokensAlive()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Can't get new tokens"))
+			helper.ExpectErrorWithMessage(err, "Can't get new tokens")
 		})
 
 		It("Fails without a valid connection", func() {
 			ocmClient = NewClientWithConnection(nil)
 			err = ocmClient.KeepTokensAlive()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Connection is nil"))
+			helper.ExpectErrorWithMessage(err, "Connection is nil")
 		})
 
 		It("Persists updated tokens", func() {

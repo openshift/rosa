@@ -16,6 +16,7 @@ import (
 
 	. "github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -137,8 +138,7 @@ var _ = Describe("List image mirrors", func() {
 				err := cmd.Flag("cluster").Value.Set("nonexistent-cluster")
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("status is 404"))
+				helper.ExpectErrorWithMessage(err, "status is 404")
 			})
 
 			It("Returns error when ListImageMirrors API call fails", func() {
@@ -149,8 +149,7 @@ var _ = Describe("List image mirrors", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to list image mirrors"))
+				helper.ExpectErrorWithMessage(err, "failed to list image mirrors")
 			})
 		})
 

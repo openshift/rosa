@@ -16,6 +16,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/fedramp"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var (
@@ -224,14 +225,12 @@ var _ = Describe("UserTagValidator", func() {
 
 		It("should reject ambiguous unquoted colon-before-space siblings in a mixed list", func() {
 			_, err := ParseUserTags([]string{`"env":prod`, "key:value with spaces"}, hcpTagOpts)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("ambiguous unquoted tag"))
+			helper.ExpectErrorWithMessage(err, "ambiguous unquoted tag")
 		})
 
 		It("should reject legacy key-with-colon space form in a mixed list", func() {
 			_, err := ParseUserTags([]string{`"env":prod`, "tag:2 value2"}, hcpTagOpts)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("ambiguous unquoted tag"))
+			helper.ExpectErrorWithMessage(err, "ambiguous unquoted tag")
 		})
 
 		It("should accept quoted keys that contain colons in a mixed list", func() {
@@ -245,8 +244,7 @@ var _ = Describe("UserTagValidator", func() {
 
 		It("should reject unbalanced quotes", func() {
 			_, err := ParseUserTags([]string{`"Cost Center:Finance`}, hcpTagOpts)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid tag format"))
+			helper.ExpectErrorWithMessage(err, "invalid tag format")
 		})
 	})
 
@@ -268,8 +266,7 @@ var _ = Describe("UserTagValidator", func() {
 
 		It("should reject aws: space-delimited keys in a mixed quoted list as ambiguous", func() {
 			_, err := ParseUserTags([]string{`"Cost Center":finance`, "aws:key value"}, hcpTagOpts)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("ambiguous unquoted tag"))
+			helper.ExpectErrorWithMessage(err, "ambiguous unquoted tag")
 		})
 
 		It("should reject quoted aws: keys in a mixed list", func() {
@@ -693,28 +690,24 @@ var _ = Describe("ARNValidator", func() {
 	When("input is not a valid ARN", func() {
 		It("should return an error for a random string", func() {
 			err := ARNValidator("not-an-arn")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid ARN"))
+			helper.ExpectErrorWithMessage(err, "invalid ARN")
 		})
 
 		It("should return an error for a malformed ARN", func() {
 			err := ARNValidator("arn:aws:iam:role/MyRole")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid ARN"))
+			helper.ExpectErrorWithMessage(err, "invalid ARN")
 		})
 	})
 
 	When("input is not a string", func() {
 		It("should return an error for an integer", func() {
 			err := ARNValidator(42)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+			helper.ExpectErrorWithMessage(err, "can only validate strings")
 		})
 
 		It("should return an error for a slice", func() {
 			err := ARNValidator([]string{"arn:aws:iam::123456789012:role/MyRole"})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+			helper.ExpectErrorWithMessage(err, "can only validate strings")
 		})
 	})
 })
@@ -737,30 +730,26 @@ var _ = Describe("SecretManagerArnValidator", func() {
 	When("input is not a valid ARN", func() {
 		It("should return an error", func() {
 			err := SecretManagerArnValidator("not-an-arn")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("is not a valid ARN"))
+			helper.ExpectErrorWithMessage(err, "is not a valid ARN")
 		})
 	})
 
 	When("input is an ARN for a different service", func() {
 		It("should return an error for an IAM ARN", func() {
 			err := SecretManagerArnValidator("arn:aws:iam::123456789012:role/MyRole")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("is not a valid secrets manager ARN"))
+			helper.ExpectErrorWithMessage(err, "is not a valid secrets manager ARN")
 		})
 
 		It("should return an error for an S3 ARN", func() {
 			err := SecretManagerArnValidator("arn:aws:s3:::my-bucket")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("is not a valid secrets manager ARN"))
+			helper.ExpectErrorWithMessage(err, "is not a valid secrets manager ARN")
 		})
 	})
 
 	When("input is not a string", func() {
 		It("should return an error", func() {
 			err := SecretManagerArnValidator(42)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+			helper.ExpectErrorWithMessage(err, "can only validate strings")
 		})
 	})
 })
@@ -816,16 +805,14 @@ var _ = Describe("GetResourceIdFromARN", func() {
 	When("the ARN is invalid", func() {
 		It("should return an error", func() {
 			_, err := GetResourceIdFromARN("not-an-arn")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("couldn't parse arn"))
+			helper.ExpectErrorWithMessage(err, "couldn't parse arn")
 		})
 	})
 
 	When("the resource has no slash separator", func() {
 		It("should return an error", func() {
 			_, err := GetResourceIdFromARN("arn:aws:s3:::my-bucket")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can't find resource-id"))
+			helper.ExpectErrorWithMessage(err, "can't find resource-id")
 		})
 	})
 })
@@ -850,16 +837,14 @@ var _ = Describe("GetResourceIdFromOidcProviderARN", func() {
 	When("the ARN is invalid", func() {
 		It("should return an error", func() {
 			_, err := GetResourceIdFromOidcProviderARN("not-an-arn")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("couldn't parse arn"))
+			helper.ExpectErrorWithMessage(err, "couldn't parse arn")
 		})
 	})
 
 	When("the resource has no slash separator", func() {
 		It("should return an error", func() {
 			_, err := GetResourceIdFromOidcProviderARN("arn:aws:s3:::my-bucket")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can't find resource-id"))
+			helper.ExpectErrorWithMessage(err, "can't find resource-id")
 		})
 	})
 })
@@ -1052,16 +1037,14 @@ var _ = Describe("ARNPathValidator", func() {
 	When("input is an invalid path", func() {
 		It("should return an error for a path without slashes", func() {
 			err := ARNPathValidator("noslash")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("must begin and end with /"))
+			helper.ExpectErrorWithMessage(err, "must begin and end with /")
 		})
 	})
 
 	When("input is not a string", func() {
 		It("should return an error", func() {
 			err := ARNPathValidator(42)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+			helper.ExpectErrorWithMessage(err, "can only validate strings")
 		})
 	})
 })
@@ -1098,8 +1081,7 @@ var _ = Describe("UserNoProxyValidator", func() {
 	When("input is invalid", func() {
 		It("should return an error", func() {
 			err := UserNoProxyValidator("not a valid proxy")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid user no-proxy value"))
+			helper.ExpectErrorWithMessage(err, "expected a valid user no-proxy value")
 		})
 	})
 
@@ -1113,16 +1095,14 @@ var _ = Describe("UserNoProxyValidator", func() {
 	When("input has one invalid value in comma-separated list", func() {
 		It("should return an error", func() {
 			err := UserNoProxyValidator("10.0.0.1,not valid")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid user no-proxy value"))
+			helper.ExpectErrorWithMessage(err, "expected a valid user no-proxy value")
 		})
 	})
 
 	When("input is not a string", func() {
 		It("should return an error", func() {
 			err := UserNoProxyValidator(42)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+			helper.ExpectErrorWithMessage(err, "can only validate strings")
 		})
 	})
 })
@@ -1138,8 +1118,7 @@ var _ = Describe("UserNoProxyDuplicateValidator", func() {
 	When("values have duplicates", func() {
 		It("should return an error", func() {
 			err := UserNoProxyDuplicateValidator("a.com,b.com,a.com")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("duplicate key"))
+			helper.ExpectErrorWithMessage(err, "duplicate key")
 		})
 	})
 
@@ -1153,8 +1132,7 @@ var _ = Describe("UserNoProxyDuplicateValidator", func() {
 	When("input is not a string", func() {
 		It("should return an error", func() {
 			err := UserNoProxyDuplicateValidator(42)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings"))
+			helper.ExpectErrorWithMessage(err, "can only validate strings")
 		})
 	})
 })
@@ -1282,8 +1260,7 @@ var _ = Describe("resolveSTSRole", func() {
 				Resource:  "assumed-role/MyRole",
 			}
 			_, err := resolveSTSRole(malformedARN)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("doesn't appear to have"))
+			helper.ExpectErrorWithMessage(err, "doesn't appear to have")
 		})
 	})
 })

@@ -18,6 +18,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("CloudFormation", func() {
@@ -159,8 +160,7 @@ var _ = Describe("CloudFormation", func() {
 				nil, fmt.Errorf("access denied"))
 
 			ready, status, err := client.CheckStackReadyOrNotExisting(stackName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("access denied"))
+			helper.ExpectErrorWithMessage(err, "access denied")
 			Expect(ready).To(BeFalse())
 			Expect(status).To(BeNil())
 		})
@@ -192,8 +192,7 @@ var _ = Describe("CloudFormation", func() {
 				})
 
 			err := client.DeleteOsdCcsAdminUser(stackName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("internal server error"))
+			helper.ExpectErrorWithMessage(err, "internal server error")
 		})
 	})
 
@@ -230,8 +229,7 @@ var _ = Describe("CloudFormation", func() {
 
 			awsC := client.(*awsClient)
 			err := awsC.UpdateStack(templateBody, stackName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Template format error"))
+			helper.ExpectErrorWithMessage(err, "Template format error")
 		})
 
 		It("Returns error for non-ValidationError API error", func() {
@@ -243,8 +241,7 @@ var _ = Describe("CloudFormation", func() {
 
 			awsC := client.(*awsClient)
 			err := awsC.UpdateStack(templateBody, stackName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("throttling exception"))
+			helper.ExpectErrorWithMessage(err, "throttling exception")
 		})
 	})
 
@@ -334,8 +331,7 @@ var _ = Describe("CloudFormation", func() {
 				Return(nil, fmt.Errorf("throttling exception"))
 
 			result, err := client.GetCFStack(context.Background(), stackName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("throttling exception"))
+			helper.ExpectErrorWithMessage(err, "throttling exception")
 			Expect(result).To(BeNil())
 		})
 
@@ -346,8 +342,7 @@ var _ = Describe("CloudFormation", func() {
 				}, nil)
 
 			result, err := client.GetCFStack(context.Background(), stackName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("No CF stacks with name"))
+			helper.ExpectErrorWithMessage(err, "No CF stacks with name")
 			Expect(result).To(BeNil())
 		})
 	})
@@ -391,8 +386,7 @@ var _ = Describe("CloudFormation", func() {
 				Return(nil, fmt.Errorf("stack not found"))
 
 			result, err := client.DescribeCFStackResources(context.Background(), stackName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("stack not found"))
+			helper.ExpectErrorWithMessage(err, "stack not found")
 			Expect(result).To(BeNil())
 		})
 	})

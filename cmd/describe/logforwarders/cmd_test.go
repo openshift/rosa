@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	. "github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Describe log forwarding", func() {
@@ -83,8 +84,7 @@ Groups:                              (applications,v0)
 			err := t.StdOutReader.Record()
 			Expect(err).ToNot(HaveOccurred())
 			err = runner(context.Background(), t.RosaRuntime, NewDescribeLogForwarderCommand(), []string{})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("you need to specify a log forwarder ID"))
+			helper.ExpectErrorWithMessage(err, "you need to specify a log forwarder ID")
 		})
 
 		It("Fails if log forwarder ID is invalid", func() {
@@ -126,8 +126,7 @@ Groups:                              (applications,v0)
 			cmd.Flag("log-forwarder").Value.Set("2n4b8f8ai80cs6kmjmdgqlqplh73r411")
 			cmd.Flag("cluster").Value.Set(mockReadyCluster.ID())
 			err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("failed to get log forwarder"))
+			helper.ExpectErrorWithMessage(err, "failed to get log forwarder")
 		})
 
 		It("S3 Log forwarder found", func() {

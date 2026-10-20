@@ -15,6 +15,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/output"
 	. "github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("list logforwarders", func() {
@@ -51,8 +52,7 @@ var _ = Describe("list logforwarders", func() {
 
 			runner := ListLogForwardersRunner()
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("There is no cluster with identifier or name 'cluster'"))
+			helper.ExpectErrorWithMessage(err, "There is no cluster with identifier or name 'cluster'")
 		})
 
 		It("Returns an error if the cluster is not ready", func() {
@@ -65,8 +65,7 @@ var _ = Describe("list logforwarders", func() {
 
 			runner := ListLogForwardersRunner()
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cluster 'cluster' is not yet ready"))
+			helper.ExpectErrorWithMessage(err, "cluster 'cluster' is not yet ready")
 		})
 
 		It("Returns an error if OCM API fails to list log forwarders", func() {
@@ -83,8 +82,7 @@ var _ = Describe("list logforwarders", func() {
 
 			runner := ListLogForwardersRunner()
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to get log forwarders for cluster 'cluster'"))
+			helper.ExpectErrorWithMessage(err, "failed to get log forwarders for cluster 'cluster'")
 		})
 	})
 })

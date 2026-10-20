@@ -16,6 +16,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/output"
 	. "github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func TestDescribeAutoscaler(t *testing.T) {
@@ -81,8 +82,7 @@ var _ = Describe("rosa describe autoscaler", func() {
 			runner := DescribeAutoscalerRunner()
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
 
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring(" is not yet ready"))
+			helper.ExpectErrorWithMessage(err, " is not yet ready")
 		})
 
 		It("Returns an error if OCM API fails to return autoscaler", func() {
@@ -100,8 +100,7 @@ var _ = Describe("rosa describe autoscaler", func() {
 			runner := DescribeAutoscalerRunner()
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
 
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("status is 500"))
+			helper.ExpectErrorWithMessage(err, "status is 500")
 
 		})
 
@@ -117,8 +116,7 @@ var _ = Describe("rosa describe autoscaler", func() {
 			runner := DescribeAutoscalerRunner()
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
 
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("No autoscaler exists for cluster 'cluster'"))
+			helper.ExpectErrorWithMessage(err, "No autoscaler exists for cluster 'cluster'")
 
 		})
 

@@ -17,6 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Quota", func() {
@@ -48,14 +49,12 @@ var _ = Describe("Quota", func() {
 			}
 
 			_, err := GetServiceQuota(quotas, "L-NOTFOUND")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Unable to find quota with service code"))
+			helper.ExpectErrorWithMessage(err, "Unable to find quota with service code")
 		})
 
 		It("Returns error for an empty slice", func() {
 			_, err := GetServiceQuota([]servicequotastypes.ServiceQuota{}, "L-12345678")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Unable to find quota with service code"))
+			helper.ExpectErrorWithMessage(err, "Unable to find quota with service code")
 		})
 
 		It("Finds the correct quota among multiple entries", func() {
@@ -154,8 +153,7 @@ var _ = Describe("Quota", func() {
 			).Return(nil, fmt.Errorf("access denied"))
 
 			result, err := client.GetIAMServiceQuota(quotaCode)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("access denied"))
+			helper.ExpectErrorWithMessage(err, "access denied")
 			Expect(result).To(BeNil())
 		})
 	})

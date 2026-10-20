@@ -13,6 +13,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -61,8 +62,7 @@ var _ = Describe("Delete image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Image mirror ID is required. Specify it as an argument or use the --id flag"))
+				helper.ExpectErrorWithMessage(err, "Image mirror ID is required. Specify it as an argument or use the --id flag")
 			})
 
 			It("Uses positional argument for image mirror ID", func() {
@@ -156,8 +156,7 @@ var _ = Describe("Delete image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("is not ready. Image mirrors can only be deleted on ready clusters"))
+				helper.ExpectErrorWithMessage(err, "is not ready. Image mirrors can only be deleted on ready clusters")
 			})
 
 			It("Returns error when cluster is not Hosted Control Plane", func() {
@@ -170,8 +169,7 @@ var _ = Describe("Delete image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Image mirrors are only supported on Hosted Control Plane clusters"))
+				helper.ExpectErrorWithMessage(err, "Image mirrors are only supported on Hosted Control Plane clusters")
 			})
 
 			It("Returns error when cluster fetch fails", func() {
@@ -184,8 +182,7 @@ var _ = Describe("Delete image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set("nonexistent-cluster")
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("status is 404"))
+				helper.ExpectErrorWithMessage(err, "status is 404")
 			})
 
 			It("Returns error when image mirror does not exist", func() {
@@ -199,8 +196,7 @@ var _ = Describe("Delete image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Failed to get image mirror 'nonexistent-mirror'"))
+				helper.ExpectErrorWithMessage(err, "Failed to get image mirror 'nonexistent-mirror'")
 			})
 
 			It("Returns error when delete API call fails", func() {
@@ -215,8 +211,7 @@ var _ = Describe("Delete image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Failed to delete image mirror"))
+				helper.ExpectErrorWithMessage(err, "Failed to delete image mirror")
 			})
 		})
 

@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/rosa/pkg/logforwarding"
 	"github.com/openshift/rosa/pkg/output"
 	. "github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("create LogForwarder", func() {
@@ -55,8 +56,7 @@ var _ = Describe("create LogForwarder", func() {
 
 			runner := CreateLogForwarderRunner(userOptions)
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("There is no cluster with identifier or name 'cluster'"))
+			helper.ExpectErrorWithMessage(err, "There is no cluster with identifier or name 'cluster'")
 		})
 
 		It("Returns an error if the cluster is not an HCP cluster", func() {
@@ -93,8 +93,7 @@ var _ = Describe("create LogForwarder", func() {
 
 			runner := CreateLogForwarderRunner(userOptions)
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cluster 'cluster' is not yet ready"))
+			helper.ExpectErrorWithMessage(err, "cluster 'cluster' is not yet ready")
 		})
 	})
 })

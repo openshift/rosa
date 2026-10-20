@@ -30,6 +30,7 @@ import (
 
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func TestRolesHelper(t *testing.T) {
@@ -66,9 +67,7 @@ var _ = Describe("Roles Helper", func() {
 				"foobar",
 			}
 			err := ValidateAdditionalAllowedPrincipals(aapARNs)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(
-				"Expected valid ARNs for additional allowed principals list"))
+			helper.ExpectErrorWithMessage(err, "Expected valid ARNs for additional allowed principals list")
 		})
 
 	})

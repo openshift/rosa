@@ -4,6 +4,7 @@
 package gendocs_test
 
 import (
+	"github.com/openshift/rosa/tests/utils/helper"
 	"os"
 	"path/filepath"
 	"strings"
@@ -220,8 +221,7 @@ var _ = Describe("Gendocs", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				err = GenDocs(rootCmd, outputPath)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to read template file"))
+				helper.ExpectErrorWithMessage(err, "failed to read template file")
 			})
 
 			It("returns error when template is invalid", func() {
@@ -252,8 +252,7 @@ var _ = Describe("Gendocs", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				err = GenDocs(rootCmd, outputPath)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to parse template"))
+				helper.ExpectErrorWithMessage(err, "failed to parse template")
 			})
 
 			It("trims whitespace from examples", func() {

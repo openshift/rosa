@@ -18,6 +18,7 @@ import (
 	awsmock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("resolvePolicyVersionForUpgrade", func() {
@@ -30,8 +31,7 @@ var _ = Describe("resolvePolicyVersionForUpgrade", func() {
 
 	It("returns an error for a malformed cluster upgrade version", func() {
 		_, _, err := resolvePolicyVersionForUpgrade("", "not-a-version")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("error parsing cluster upgrade version"))
+		helper.ExpectErrorWithMessage(err, "error parsing cluster upgrade version")
 	})
 
 	It("preserves explicit policy version even when cluster version differs", func() {

@@ -33,6 +33,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/mocks"
 	rosaTags "github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/test/matchers"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Client", func() {
@@ -206,9 +207,7 @@ var _ = Describe("Client", func() {
 					stackCreated, err := client.EnsureOsdCcsAdminUser(stackName, adminUserName, DefaultRegion)
 
 					Expect(stackCreated).To(BeFalse())
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring(
-						"exists with status ROLLBACK_COMPLETE. Expected status is CREATE_COMPLETE"))
+					helper.ExpectErrorWithMessage(err, "exists with status ROLLBACK_COMPLETE. Expected status is CREATE_COMPLETE")
 				})
 			})
 		})
@@ -268,8 +267,7 @@ var _ = Describe("Client", func() {
 			It("returns an error", func() {
 				err := client.CheckAdminUserNotExisting(adminUserName)
 
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("error creating user: IAM user"))
+				helper.ExpectErrorWithMessage(err, "error creating user: IAM user")
 			})
 		})
 		Context("When admin user does not exist", func() {
@@ -897,8 +895,7 @@ var _ = Describe("Client", func() {
 
 			roles, err := client.ListServiceAccountRoles(clusterName)
 
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("aws error"))
+			helper.ExpectErrorWithMessage(err, "aws error")
 			Expect(roles).To(BeNil())
 		})
 
@@ -969,8 +966,7 @@ var _ = Describe("Client", func() {
 				Return(&s3.HeadBucketOutput{}, nil)
 
 			err := client.CreateS3Bucket(bucketName, DefaultRegion)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("already exists"))
+			helper.ExpectErrorWithMessage(err, "already exists")
 		})
 
 		It("Creates bucket in default region without LocationConstraint", func() {
@@ -1035,8 +1031,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("bucket creation failed"))
 
 			err := client.CreateS3Bucket(bucketName, DefaultRegion)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("bucket creation failed"))
+			helper.ExpectErrorWithMessage(err, "bucket creation failed")
 		})
 
 		It("Returns error when PutPublicAccessBlock fails", func() {
@@ -1050,8 +1045,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("access block error"))
 
 			err := client.CreateS3Bucket(bucketName, DefaultRegion)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("access block error"))
+			helper.ExpectErrorWithMessage(err, "access block error")
 		})
 
 		It("Returns error when PutBucketPolicy fails", func() {
@@ -1068,8 +1062,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("policy error"))
 
 			err := client.CreateS3Bucket(bucketName, DefaultRegion)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("policy error"))
+			helper.ExpectErrorWithMessage(err, "policy error")
 		})
 
 		It("Returns error when PutBucketTagging fails", func() {
@@ -1089,8 +1082,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("tagging error"))
 
 			err := client.CreateS3Bucket(bucketName, DefaultRegion)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("tagging error"))
+			helper.ExpectErrorWithMessage(err, "tagging error")
 		})
 	})
 
@@ -1135,8 +1127,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("list objects error"))
 
 			err := client.DeleteS3Bucket(bucketName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("list objects error"))
+			helper.ExpectErrorWithMessage(err, "list objects error")
 		})
 
 		It("Returns error when DeleteObject fails and does not delete the bucket", func() {
@@ -1154,8 +1145,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("delete object error"))
 
 			err := client.DeleteS3Bucket(bucketName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("delete object error"))
+			helper.ExpectErrorWithMessage(err, "delete object error")
 		})
 
 		It("Returns error when DeleteBucket fails", func() {
@@ -1169,8 +1159,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("delete bucket error"))
 
 			err := client.DeleteS3Bucket(bucketName)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("delete bucket error"))
+			helper.ExpectErrorWithMessage(err, "delete bucket error")
 		})
 	})
 
@@ -1198,8 +1187,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("permission denied"))
 
 			arn, err := client.CreateSecretInSecretsManager("my-secret", "secret-value")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("permission denied"))
+			helper.ExpectErrorWithMessage(err, "permission denied")
 			Expect(arn).To(BeEmpty())
 		})
 	})
@@ -1266,8 +1254,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("internal service error"))
 
 			err := client.DeleteSecretInSecretsManager(secretArn)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("internal service error"))
+			helper.ExpectErrorWithMessage(err, "internal service error")
 		})
 	})
 
@@ -1293,8 +1280,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("ec2 error"))
 
 			zones, err := client.DescribeAvailabilityZones()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("ec2 error"))
+			helper.ExpectErrorWithMessage(err, "ec2 error")
 			Expect(zones).To(BeNil())
 		})
 	})
@@ -1337,8 +1323,7 @@ var _ = Describe("Client", func() {
 				}, nil)
 
 			_, err := client.IsLocalAvailabilityZone("nonexistent-zone")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to find availability zone"))
+			helper.ExpectErrorWithMessage(err, "failed to find availability zone")
 		})
 
 		It("Propagates API error", func() {
@@ -1346,8 +1331,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("api failure"))
 
 			_, err := client.IsLocalAvailabilityZone("us-east-1a")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("api failure"))
+			helper.ExpectErrorWithMessage(err, "api failure")
 		})
 	})
 
@@ -1378,8 +1362,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("subnet error"))
 
 			_, err := client.GetSubnetAvailabilityZone("subnet-12345")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("subnet error"))
+			helper.ExpectErrorWithMessage(err, "subnet error")
 		})
 	})
 
@@ -1421,8 +1404,7 @@ var _ = Describe("Client", func() {
 				Return(nil, fmt.Errorf("describe subnets error"))
 
 			subnets, err := client.GetVPCSubnets("subnet-aaa")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("describe subnets error"))
+			helper.ExpectErrorWithMessage(err, "describe subnets error")
 			Expect(subnets).To(BeNil())
 		})
 	})
@@ -1463,8 +1445,7 @@ var _ = Describe("Client", func() {
 					nil, fmt.Errorf("access denied"))
 
 				exists, roleArn, err := client.CheckRoleExists("my-role")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("access denied"))
+				helper.ExpectErrorWithMessage(err, "access denied")
 				Expect(exists).To(BeFalse())
 				Expect(roleArn).To(BeEmpty())
 			})
@@ -1493,8 +1474,7 @@ var _ = Describe("Client", func() {
 		When("given an invalid ARN string", func() {
 			It("returns an error", func() {
 				role, err := client.GetRoleByARN("not-a-valid-arn")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("valid IAM role ARN"))
+				helper.ExpectErrorWithMessage(err, "valid IAM role ARN")
 				Expect(role).To(Equal(iamtypes.Role{}))
 			})
 		})
@@ -1502,8 +1482,7 @@ var _ = Describe("Client", func() {
 		When("the ARN is not for a role resource", func() {
 			It("returns an error", func() {
 				role, err := client.GetRoleByARN("arn:aws:iam::123456789012:user/my-user")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("IAM role resource"))
+				helper.ExpectErrorWithMessage(err, "IAM role resource")
 				Expect(role).To(Equal(iamtypes.Role{}))
 			})
 		})
@@ -1514,8 +1493,7 @@ var _ = Describe("Client", func() {
 					nil, fmt.Errorf("iam service error"))
 
 				role, err := client.GetRoleByARN("arn:aws:iam::123456789012:role/missing-role")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("iam service error"))
+				helper.ExpectErrorWithMessage(err, "iam service error")
 				Expect(role).To(Equal(iamtypes.Role{}))
 			})
 		})
@@ -1544,8 +1522,7 @@ var _ = Describe("Client", func() {
 					nil, fmt.Errorf("role not found"))
 
 				role, err := client.GetRoleByName("missing-role")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("role not found"))
+				helper.ExpectErrorWithMessage(err, "role not found")
 				Expect(role).To(Equal(iamtypes.Role{}))
 			})
 		})

@@ -18,6 +18,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws/mocks"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("STS", func() {
@@ -79,8 +80,7 @@ var _ = Describe("STS", func() {
 			err := client.ValidateRoleARNAccountIDMatchCallerAccountID(
 				"arn:aws:iam::999999999999:role/OtherRole",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("doesn't match the user's account ID"))
+			helper.ExpectErrorWithMessage(err, "doesn't match the user's account ID")
 			Expect(err.Error()).To(ContainSubstring("999999999999"))
 			Expect(err.Error()).To(ContainSubstring("123456789012"))
 		})
@@ -94,8 +94,7 @@ var _ = Describe("STS", func() {
 			)
 
 			err := client.ValidateRoleARNAccountIDMatchCallerAccountID("not-a-valid-arn")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid prefix"))
+			helper.ExpectErrorWithMessage(err, "invalid prefix")
 		})
 
 		It("returns error when GetCreator (GetCallerIdentity) fails", func() {
@@ -106,8 +105,7 @@ var _ = Describe("STS", func() {
 			err := client.ValidateRoleARNAccountIDMatchCallerAccountID(
 				"arn:aws:iam::123456789012:role/MyRole",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to get AWS creator"))
+			helper.ExpectErrorWithMessage(err, "failed to get AWS creator")
 			Expect(err.Error()).To(ContainSubstring("STS service unavailable"))
 		})
 
@@ -136,8 +134,7 @@ var _ = Describe("STS", func() {
 			err := client.ValidateRoleARNAccountIDMatchCallerAccountID(
 				"arn:aws-us-gov:iam::555666777888:role/OtherGovRole",
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("doesn't match the user's account ID"))
+			helper.ExpectErrorWithMessage(err, "doesn't match the user's account ID")
 		})
 	})
 
@@ -286,8 +283,7 @@ var _ = Describe("STS", func() {
 			)
 
 			err := client.DeleteUserRole("test-role")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("list policies failed"))
+			helper.ExpectErrorWithMessage(err, "list policies failed")
 		})
 
 		It("returns error when DetachRolePolicy fails", func() {
@@ -303,8 +299,7 @@ var _ = Describe("STS", func() {
 			)
 
 			err := client.DeleteUserRole("test-role")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("detach failed"))
+			helper.ExpectErrorWithMessage(err, "detach failed")
 		})
 
 		It("returns error when DeleteRole fails", func() {
@@ -322,8 +317,7 @@ var _ = Describe("STS", func() {
 				})
 
 			err := client.DeleteUserRole("test-role")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("delete role failed"))
+			helper.ExpectErrorWithMessage(err, "delete role failed")
 		})
 	})
 
@@ -362,8 +356,7 @@ var _ = Describe("STS", func() {
 				nil, fmt.Errorf("GetRole error"))
 
 			hasBoundary, err := client.HasPermissionsBoundary("test-role")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("GetRole error"))
+			helper.ExpectErrorWithMessage(err, "GetRole error")
 			Expect(hasBoundary).To(BeFalse())
 		})
 	})
@@ -441,8 +434,7 @@ var _ = Describe("STS", func() {
 			)
 
 			err := client.DeleteOCMRole("ocm-role", false)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("access denied"))
+			helper.ExpectErrorWithMessage(err, "access denied")
 		})
 
 		It("returns error when ListAttachedRolePolicies fails", func() {
@@ -451,8 +443,7 @@ var _ = Describe("STS", func() {
 			)
 
 			err := client.DeleteOCMRole("ocm-role", true)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("list attached policies failed"))
+			helper.ExpectErrorWithMessage(err, "list attached policies failed")
 		})
 	})
 })

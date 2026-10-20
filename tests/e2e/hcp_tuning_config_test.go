@@ -155,8 +155,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 				clusterID,
 				tcName,
 				string(tcSpecJSON))
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("A tuning config with name '%s'", tcName)))
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf("A tuning config with name '%s'", tcName))
 			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("already exists for cluster '%s'", clusterID)))
 
 			By("Create tuning config with no name")
@@ -164,16 +163,14 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 				clusterID,
 				"",
 				string(tcSpecJSON))
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected a valid name"))
+			helper.ExpectErrorWithMessage(err, "Expected a valid name")
 
 			By("Create tuning config with no spec")
 			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
 				clusterID,
 				helper.GenerateRandomName("c63169", 2),
 				"")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Attribute 'spec' must be set"))
+			helper.ExpectErrorWithMessage(err, "Attribute 'spec' must be set")
 
 			By("Create tuning config with invalid name")
 			_, err = tuningConfigService.CreateTuningConfigFromSpecContent(
@@ -200,8 +197,7 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 				clusterID,
 				helper.GenerateRandomName("c63169", 2),
 				"Spec%^")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected a valid TuneD spec file: error unmarshaling"))
+			helper.ExpectErrorWithMessage(err, "Expected a valid TuneD spec file: error unmarshaling")
 
 			By("Create more than 100 tuning configs")
 			tcs, err := tuningConfigService.ListTuningConfigsAndReflect(clusterID)
@@ -249,20 +245,17 @@ var _ = Describe("Tuning Config(s)", labels.Feature.TuningConfigs, func() {
 
 			By("Update tuning config with incorrect name")
 			_, err = tuningConfigService.EditTuningConfig(clusterID, "wrong_name")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Tuning config 'wrong_name' does not exist"))
+			helper.ExpectErrorWithMessage(err, "Tuning config 'wrong_name' does not exist")
 
 			By("Update tuning config with incorrect spec file")
 			_, err = tuningConfigService.EditTuningConfig(clusterID, tcName, "--spec-path", "wrong_file")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected a valid spec file: open wrong_file: no such file or directory"))
+			helper.ExpectErrorWithMessage(err, "Expected a valid spec file: open wrong_file: no such file or directory")
 
 			By("Update tuning config with incorrect spec content")
 			specPath, err := helper.CreateTempFileWithContent("Spec%^")
 			defer os.Remove(specPath)
 			Expect(err).ToNot(HaveOccurred())
 			_, err = tuningConfigService.EditTuningConfig(clusterID, tcName, "--spec-path", specPath)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Expected a valid spec file: error unmarshaling"))
+			helper.ExpectErrorWithMessage(err, "Expected a valid spec file: error unmarshaling")
 		})
 })

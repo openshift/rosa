@@ -13,6 +13,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -74,9 +75,7 @@ var _ = Describe("External authentication provider", func() {
 		It("Fails if we are not specifying an external auth provider name", func() {
 			args.name = ""
 			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring(
-				"you need to specify an external authentication provider name with '--name' parameter"))
+			helper.ExpectErrorWithMessage(err, "you need to specify an external authentication provider name with '--name' parameter")
 		})
 
 		It("Pass an external auth provider name through parameter but it is not found", func() {
@@ -85,9 +84,7 @@ var _ = Describe("External authentication provider", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring(
-				fmt.Sprintf("external authentication provider '%s' not found", externalAuthName)))
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf("external authentication provider '%s' not found", externalAuthName))
 			Expect(stdout).To(BeEmpty())
 			Expect(stderr).To(BeEmpty())
 		})
@@ -99,9 +96,7 @@ var _ = Describe("External authentication provider", func() {
 			testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNotFound, ""))
 			stdout, stderr, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime,
 				Cmd, &[]string{})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring(
-				fmt.Sprintf("external authentication provider '%s' not found", externalAuthName)))
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf("external authentication provider '%s' not found", externalAuthName))
 			Expect(stdout).To(BeEmpty())
 			Expect(stderr).To(BeEmpty())
 		})

@@ -9,6 +9,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func TestAutoNode(t *testing.T) {
@@ -47,21 +49,18 @@ var _ = Describe("ValidateRoleARN", func() {
 
 		It("returns error when ARN format is invalid - missing parts", func() {
 			err := ValidateRoleARN("arn:aws:iam::123456789012")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid IAM role ARN format"))
+			helper.ExpectErrorWithMessage(err, "invalid IAM role ARN format")
 			Expect(err.Error()).To(ContainSubstring("expected format: arn:aws:iam::<account-id>:role/<role-name>"))
 		})
 
 		It("returns error when ARN format is invalid - not a role", func() {
 			err := ValidateRoleARN("arn:aws:iam::123456789012:user/MyUser")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid IAM role ARN format"))
+			helper.ExpectErrorWithMessage(err, "invalid IAM role ARN format")
 		})
 
 		It("returns error when ARN has invalid account ID", func() {
 			err := ValidateRoleARN("arn:aws:iam::abc:role/MyRole")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid IAM role ARN format"))
+			helper.ExpectErrorWithMessage(err, "invalid IAM role ARN format")
 		})
 	})
 

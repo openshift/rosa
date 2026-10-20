@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -112,8 +113,7 @@ var _ = Describe("initialize command", func() {
 			deps := newDeps(fmt.Errorf("login failed"), true)
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, []string{}, deps)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("login failed"))
+			helper.ExpectErrorWithMessage(err, "login failed")
 		})
 
 		It("Returns an error for an unsupported region", func() {
@@ -123,8 +123,7 @@ var _ = Describe("initialize command", func() {
 			deps := newDeps(nil, true)
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, []string{}, deps)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("unsupported region"))
+			helper.ExpectErrorWithMessage(err, "unsupported region")
 		})
 
 		It("Returns the supported-region retrieval error immediately", func() {
@@ -134,8 +133,7 @@ var _ = Describe("initialize command", func() {
 			deps := newDeps(nil, true)
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, []string{}, deps)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("retrieving supported regions"))
+			helper.ExpectErrorWithMessage(err, "retrieving supported regions")
 		})
 
 		It("Returns an error when ValidateCredentials fails", func() {
@@ -149,8 +147,7 @@ var _ = Describe("initialize command", func() {
 			}
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, []string{}, deps)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("credentials invalid"))
+			helper.ExpectErrorWithMessage(err, "credentials invalid")
 		})
 
 		It("Returns an error when ValidateCredentials returns false", func() {
@@ -164,8 +161,7 @@ var _ = Describe("initialize command", func() {
 			}
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, []string{}, deps)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("AWS credentials are invalid"))
+			helper.ExpectErrorWithMessage(err, "AWS credentials are invalid")
 		})
 
 		It("Returns exit-zero sentinel when delete confirmation is declined", func() {
@@ -201,8 +197,7 @@ var _ = Describe("initialize command", func() {
 			}
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, []string{}, deps)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("delete failed"))
+			helper.ExpectErrorWithMessage(err, "delete failed")
 		})
 
 		It("Returns exit-zero sentinel when delete mode succeeds", func() {
@@ -292,8 +287,7 @@ var _ = Describe("initialize command", func() {
 			}
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, []string{}, deps)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("ensure failed"))
+			helper.ExpectErrorWithMessage(err, "ensure failed")
 		})
 
 		It("Returns an error when admin SCP validation fails", func() {
@@ -313,8 +307,7 @@ var _ = Describe("initialize command", func() {
 			}
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, []string{}, deps)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("scp blocked"))
+			helper.ExpectErrorWithMessage(err, "scp blocked")
 		})
 
 		It("Returns an error when ValidateSCP returns true with an error", func() {
@@ -334,8 +327,7 @@ var _ = Describe("initialize command", func() {
 			}
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, []string{}, deps)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("scp API error"))
+			helper.ExpectErrorWithMessage(err, "scp API error")
 		})
 
 		It("Continues with a warning when simulateCluster fails", func() {
@@ -394,8 +386,7 @@ var _ = Describe("initialize command", func() {
 			mockAWS.EXPECT().GetCreator().Return(nil, fmt.Errorf("STS error"))
 
 			err := deleteStack(mockAWS, ocmClient)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to get AWS creator"))
+			helper.ExpectErrorWithMessage(err, "failed to get AWS creator")
 		})
 
 		It("Returns error when HasClusters fails", func() {
@@ -409,8 +400,7 @@ var _ = Describe("initialize command", func() {
 			)
 
 			err := deleteStack(mockAWS, ocmClient)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to check for clusters"))
+			helper.ExpectErrorWithMessage(err, "failed to check for clusters")
 		})
 
 		It("Returns error when user still has clusters", func() {
@@ -424,8 +414,7 @@ var _ = Describe("initialize command", func() {
 			)
 
 			err := deleteStack(mockAWS, ocmClient)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("user still has clusters"))
+			helper.ExpectErrorWithMessage(err, "user still has clusters")
 		})
 
 		It("Returns error when DeleteOsdCcsAdminUser fails", func() {
@@ -442,8 +431,7 @@ var _ = Describe("initialize command", func() {
 				Return(fmt.Errorf("stack delete failed"))
 
 			err := deleteStack(mockAWS, ocmClient)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to delete user"))
+			helper.ExpectErrorWithMessage(err, "failed to delete user")
 		})
 
 		It("Succeeds when no clusters exist and delete works", func() {
@@ -486,8 +474,7 @@ var _ = Describe("initialize command", func() {
 			mockAWS.EXPECT().GetCreator().Return(nil, fmt.Errorf("caller identity error"))
 
 			err := simulateCluster(mockAWS, ocmClient, "us-east-1")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to get AWS creator"))
+			helper.ExpectErrorWithMessage(err, "failed to get AWS creator")
 		})
 
 		It("Returns error when GetLocalAWSAccessKeys fails", func() {
@@ -498,8 +485,7 @@ var _ = Describe("initialize command", func() {
 			mockAWS.EXPECT().GetLocalAWSAccessKeys().Return(nil, fmt.Errorf("no keys"))
 
 			err := simulateCluster(mockAWS, ocmClient, "us-east-1")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to get AWS access key"))
+			helper.ExpectErrorWithMessage(err, "failed to get AWS access key")
 		})
 
 		It("Returns error when CreateCluster dry run fails", func() {

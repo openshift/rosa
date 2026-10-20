@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -51,9 +52,7 @@ var _ = Describe("Edit cluster", func() {
 					"--channel-group", "eus",
 				})
 				err := cmd.Execute()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(
-					"if any flags in the group [channel channel-group] are set none of the others can be"))
+				helper.ExpectErrorWithMessage(err, "if any flags in the group [channel channel-group] are set none of the others can be")
 			})
 		})
 		It("should expose the spot-termination-queue-url flag", func() {

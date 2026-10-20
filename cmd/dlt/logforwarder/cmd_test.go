@@ -14,6 +14,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/output"
 	. "github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("delete logforwarder", func() {
@@ -54,8 +55,7 @@ var _ = Describe("delete logforwarder", func() {
 
 			runner := DeleteLogForwarderRunner(userOptions)
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("There is no cluster with identifier or name 'cluster'"))
+			helper.ExpectErrorWithMessage(err, "There is no cluster with identifier or name 'cluster'")
 		})
 
 		It("Returns an error if the cluster is not ready", func() {
@@ -71,8 +71,7 @@ var _ = Describe("delete logforwarder", func() {
 
 			runner := DeleteLogForwarderRunner(userOptions)
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cluster 'cluster' is not yet ready"))
+			helper.ExpectErrorWithMessage(err, "cluster 'cluster' is not yet ready")
 		})
 
 		It("Returns an error if log forwarder ID is not provided", func() {
@@ -104,9 +103,8 @@ var _ = Describe("delete logforwarder", func() {
 
 			runner := DeleteLogForwarderRunner(userOptions)
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("log forwarder ID 'Invalid-ID' is not valid: it must " +
-				"contain only lowercase letters and digits"))
+			helper.ExpectErrorWithMessage(err, "log forwarder ID 'Invalid-ID' is not valid: it must "+
+				"contain only lowercase letters and digits")
 		})
 	})
 })

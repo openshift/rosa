@@ -8,6 +8,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("IDP Validators", func() {
@@ -19,26 +21,22 @@ var _ = Describe("IDP Validators", func() {
 
 		It("rejects a non-HTTPS URL", func() {
 			err := validateGitlabHostURL("http://gitlab.example.com")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("https://"))
+			helper.ExpectErrorWithMessage(err, "https://")
 		})
 
 		It("rejects a URL with query parameters", func() {
 			err := validateGitlabHostURL("https://gitlab.example.com?foo=bar")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("query parameters"))
+			helper.ExpectErrorWithMessage(err, "query parameters")
 		})
 
 		It("rejects an invalid URL", func() {
 			err := validateGitlabHostURL("not-a-url")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("valid GitLab provider URL"))
+			helper.ExpectErrorWithMessage(err, "valid GitLab provider URL")
 		})
 
 		It("rejects a URL with a fragment", func() {
 			err := validateGitlabHostURL("https://gitlab.example.com#section")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("valid GitLab provider URL"))
+			helper.ExpectErrorWithMessage(err, "valid GitLab provider URL")
 		})
 	})
 
@@ -91,8 +89,7 @@ var _ = Describe("IDP Validators", func() {
 
 		It("rejects an invalid domain", func() {
 			err := validateGoogleHostedDomain("not a domain")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("not valid"))
+			helper.ExpectErrorWithMessage(err, "not valid")
 		})
 	})
 
@@ -109,14 +106,12 @@ var _ = Describe("IDP Validators", func() {
 
 		It("rejects a non-LDAP scheme", func() {
 			err := validateLdapURL("https://ldap.example.com")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("ldap://"))
+			helper.ExpectErrorWithMessage(err, "ldap://")
 		})
 
 		It("rejects a bare URL with no scheme", func() {
 			err := validateLdapURL("ldap.com")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid LDAP URL"))
+			helper.ExpectErrorWithMessage(err, "expected a valid LDAP URL")
 		})
 	})
 
@@ -128,26 +123,22 @@ var _ = Describe("IDP Validators", func() {
 
 		It("rejects a non-HTTPS URL", func() {
 			err := validateOpenidIssuerURL("http://accounts.google.com")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("https://"))
+			helper.ExpectErrorWithMessage(err, "https://")
 		})
 
 		It("rejects a URL with query parameters", func() {
 			err := validateOpenidIssuerURL("https://accounts.google.com?foo=bar")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("query parameters"))
+			helper.ExpectErrorWithMessage(err, "query parameters")
 		})
 
 		It("rejects an invalid URL", func() {
 			err := validateOpenidIssuerURL("not-a-url")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("valid OpenID issuer URL"))
+			helper.ExpectErrorWithMessage(err, "valid OpenID issuer URL")
 		})
 
 		It("rejects a URL with a fragment", func() {
 			err := validateOpenidIssuerURL("https://accounts.google.com#section")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("valid OpenID issuer URL"))
+			helper.ExpectErrorWithMessage(err, "valid OpenID issuer URL")
 		})
 	})
 })

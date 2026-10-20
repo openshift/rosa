@@ -19,6 +19,7 @@ import (
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Upgrade operator-roles", func() {
@@ -63,8 +64,7 @@ var _ = Describe("Upgrade operator-roles", func() {
 			))
 
 			_, _, err = test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("doesn't have any operator roles"))
+			helper.ExpectErrorWithMessage(err, "doesn't have any operator roles")
 		})
 
 		It("returns error when account roles need upgrade first", func() {
@@ -104,8 +104,7 @@ var _ = Describe("Upgrade operator-roles", func() {
 				Return(true, nil)
 
 			_, _, err = test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("need to be upgraded before operator roles"))
+			helper.ExpectErrorWithMessage(err, "need to be upgraded before operator roles")
 			Expect(err.Error()).To(ContainSubstring("rosa upgrade account-roles --prefix"))
 		})
 
@@ -186,8 +185,7 @@ var _ = Describe("Upgrade operator-roles", func() {
 			args.upgradeVersion = "9.99.99"
 
 			_, _, err = test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid version"))
+			helper.ExpectErrorWithMessage(err, "expected a valid version")
 		})
 
 		It("returns error when GetLatestVersion fails", func() {
@@ -213,8 +211,7 @@ var _ = Describe("Upgrade operator-roles", func() {
 				`{"kind":"Error","id":"500","href":"/api/clusters_mgmt/v1/errors/500","code":"CLUSTERS-MGMT-500","reason":"internal error"}`))
 
 			_, _, err := test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("error getting latest version"))
+			helper.ExpectErrorWithMessage(err, "error getting latest version")
 		})
 	})
 

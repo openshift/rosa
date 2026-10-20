@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func captureRun(fn func() error) (string, string, error) {
@@ -404,8 +405,7 @@ var _ = Describe("Delete cluster", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusInternalServerError, ""))
 
 			err := handleClusterDelete(t.RosaRuntime, clusterReady, clusterId, false)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected response content type"))
+			helper.ExpectErrorWithMessage(err, "expected response content type")
 		})
 
 		It("returns an error when DeleteCluster fails", func() {
@@ -431,8 +431,7 @@ var _ = Describe("Delete cluster", func() {
 			}`))
 
 			err := handleClusterDelete(t.RosaRuntime, clusterReady, clusterId, false)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("forbidden"))
+			helper.ExpectErrorWithMessage(err, "forbidden")
 		})
 	})
 
@@ -444,8 +443,7 @@ var _ = Describe("Delete cluster", func() {
 			})
 
 			err := ensureDeleteProtectionDisabled(cluster, clusterId)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("delete protection is active on cluster"))
+			helper.ExpectErrorWithMessage(err, "delete protection is active on cluster")
 			Expect(err.Error()).To(ContainSubstring("--enable-delete-protection=false"))
 		})
 

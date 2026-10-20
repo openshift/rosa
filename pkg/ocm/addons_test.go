@@ -13,6 +13,8 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const expectedRetryAttempts = 3
@@ -47,8 +49,7 @@ var _ = Describe("Addons API client behavior", func() {
 			BillingModel:     "invalid-model",
 			BillingAccountID: "123456789012",
 		})
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("not an valid billing model"))
+		helper.ExpectErrorWithMessage(err, "not an valid billing model")
 	})
 
 	It("sends add-on billing and parameter payload during installation", func() {

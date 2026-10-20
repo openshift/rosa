@@ -11,6 +11,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Edit Log Forwarder", func() {
@@ -42,8 +43,7 @@ var _ = Describe("Edit Log Forwarder", func() {
 			Expect(cmd.Flag("log-fwd-config").Value.Set("testdata/valid-config.yaml")).To(Succeed())
 
 			err := EditLogForwarderRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected exactly one argument"))
+			helper.ExpectErrorWithMessage(err, "expected exactly one argument")
 		})
 
 		It("Should fail when multiple log forwarder IDs are provided", func() {
@@ -53,8 +53,7 @@ var _ = Describe("Edit Log Forwarder", func() {
 			Expect(cmd.Flag("log-fwd-config").Value.Set("testdata/valid-config.yaml")).To(Succeed())
 
 			err := EditLogForwarderRunner(context.Background(), t.RosaRuntime, cmd, []string{logForwarderId, "extra-id"})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected exactly one argument"))
+			helper.ExpectErrorWithMessage(err, "expected exactly one argument")
 		})
 	})
 })
