@@ -5,6 +5,7 @@ package cluster
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -16,10 +17,12 @@ import (
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+	"github.com/spf13/pflag"
 
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/test"
+	upgradecheck "github.com/openshift/rosa/pkg/upgrade"
 )
 
 var _ = Describe("Upgrade", Ordered, func() {
@@ -73,9 +76,118 @@ var _ = Describe("Upgrade", Ordered, func() {
 
 	var classicCluster = test.FormatClusterList([]*cmv1.Cluster{mockClassicCluster})
 
+	mockClassicClusterWithUpgrades := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+		c.AWS(cmv1.NewAWS().SubnetIDs("subnet-0b761d44d3d9a4663", "subnet-0f87f640e56934cbc"))
+		c.Region(cmv1.NewCloudRegion().ID("us-east-1"))
+		c.State(cmv1.ClusterStateReady)
+		c.Hypershift(cmv1.NewHypershift().Enabled(false))
+		c.Version(version4130WithUpgrades)
+	})
+	classicClusterWithUpgrades := test.FormatClusterList([]*cmv1.Cluster{mockClassicClusterWithUpgrades})
+
 	BeforeEach(func() {
 		testRuntime.InitRuntime()
 		args.dryRun = false
+		args.checkPDBs = false
+		interactive.SetEnabled(false)
+		Cmd.Flags().VisitAll(func(flag *pflag.Flag) { flag.Changed = false })
+		runPotentialPDBBlockerCheck = func(context.Context, string) ([]upgradecheck.PDBBlocker, error) {
+			return nil, nil
+		}
+	})
+
+	It("runs the standalone PDB check without version selection or upgrade requests", func() {
+		args.checkPDBs = true
+		checkCalled := false
+		runPotentialPDBBlockerCheck = func(_ context.Context, apiURL string) ([]upgradecheck.PDBBlocker, error) {
+			checkCalled = true
+			Expect(apiURL).To(BeEmpty())
+			return nil, nil
+		}
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicCluster))
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(checkCalled).To(BeTrue())
+		Expect(stdout).To(ContainSubstring("PDB check for cluster"))
+		Expect(stdout).To(ContainSubstring("completed with no current blockers"))
+		Expect(stderr).To(BeEmpty())
+		requests := testRuntime.ApiServer.ReceivedRequests()
+		Expect(requests).To(HaveLen(1))
+		Expect(requests[0].URL.Path).To(ContainSubstring("/clusters"))
+	})
+
+	It("runs the standalone PDB check even when an upgrade is already scheduled", func() {
+		args.checkPDBs = true
+		checkCalled := false
+		runPotentialPDBBlockerCheck = func(context.Context, string) ([]upgradecheck.PDBBlocker, error) {
+			checkCalled = true
+			return nil, nil
+		}
+		// The only configured response is the cluster lookup. A scheduled-upgrade request would fail this test.
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicCluster))
+
+		_, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(checkCalled).To(BeTrue())
+		Expect(testRuntime.ApiServer.ReceivedRequests()).To(HaveLen(1))
+	})
+
+	It("reports PDB findings as a successful standalone check", func() {
+		args.checkPDBs = true
+		runPotentialPDBBlockerCheck = func(context.Context, string) ([]upgradecheck.PDBBlocker, error) {
+			return []upgradecheck.PDBBlocker{{
+				Namespace: "payments", Name: "api", DisruptionsAllowed: 0,
+				Reasons:      []string{"the PDB currently allows zero disruptions"},
+				MatchingPods: []string{"payments/api-0"}, Nodes: []string{"node-a"},
+			}}, nil
+		}
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicCluster))
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(stderr).To(ContainSubstring("oc -n payments get pdb api -o yaml"))
+		Expect(stderr).To(ContainSubstring("oc -n payments edit pdb api"))
+		Expect(stderr).To(ContainSubstring("Rerun 'rosa upgrade cluster --check-pdbs' after changes."))
+		Expect(stdout).To(ContainSubstring("completed with 1 potential blocker(s)"))
+		Expect(stdout).NotTo(ContainSubstring("upgrade pre-checks"))
+	})
+
+	It("fails an inconclusive standalone PDB check without reporting a clean result", func() {
+		args.checkPDBs = true
+		runPotentialPDBBlockerCheck = func(context.Context, string) ([]upgradecheck.PDBBlocker, error) {
+			return []upgradecheck.PDBBlocker{{Namespace: "payments", Name: "api"}}, fmt.Errorf("list pods forbidden")
+		}
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicCluster))
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).To(MatchError(ContainSubstring("PDB check was inconclusive")))
+		Expect(stderr).To(ContainSubstring("PDB preflight for cluster"))
+		Expect(stderr).To(ContainSubstring("payments/api"))
+		Expect(stdout).NotTo(ContainSubstring("no current blockers"))
+	})
+
+	It("rejects standalone PDB checking on Hosted Control Plane clusters", func() {
+		args.checkPDBs = true
+		checkCalled := false
+		runPotentialPDBBlockerCheck = func(context.Context, string) ([]upgradecheck.PDBBlocker, error) {
+			checkCalled = true
+			return nil, nil
+		}
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+
+		_, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).To(MatchError(ContainSubstring("supported only for Classic clusters")))
+		Expect(checkCalled).To(BeFalse())
+	})
+
+	It("rejects upgrade flags with standalone PDB checking before making OCM requests", func() {
+		args.checkPDBs = true
+		Expect(Cmd.Flags().Set("dry-run", "false")).To(Succeed())
+
+		_, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).To(MatchError(ContainSubstring("cannot be combined with '--dry-run'")))
+		Expect(testRuntime.ApiServer.ReceivedRequests()).To(BeEmpty())
 	})
 
 	It("Fails if cluster is not hypershift and we are using hypershift specific flags", func() {
@@ -225,6 +337,11 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.scheduleTime = ""
 		args.version = ""
 		args.dryRun = true
+		pdbCheckCalled := false
+		runPotentialPDBBlockerCheck = func(context.Context, string) ([]upgradecheck.PDBBlocker, error) {
+			pdbCheckCalled = true
+			return nil, fmt.Errorf("PDB check must not run for a hosted control plane upgrade")
+		}
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReadyWithUpdates))
 		// No existing policy upgrade
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
@@ -242,10 +359,57 @@ var _ = Describe("Upgrade", Ordered, func() {
 		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
 		Expect(err).To(BeNil())
 		Expect(stdout).To(ContainSubstring("INFO: Running in dry-run mode. Will not perform cluster upgrade"))
-		Expect(stdout).To(ContainSubstring("INFO: Upgrading cluster '24vf9iitg3p6tlml88iml6j6mu095mh8' should succeed. " +
+		Expect(stdout).To(ContainSubstring("INFO: ROSA upgrade pre-checks for cluster '24vf9iitg3p6tlml88iml6j6mu095mh8' completed. " +
 			"Please wait 1 to 2 minutes, then rerun this command without the '--dry-run' flag, to allow time for the " +
 			"acknowledged agreements to be reflected.\n"))
+		Expect(stdout).To(ContainSubstring("PDB drain check is not applicable to hosted control plane upgrades"))
+		Expect(pdbCheckCalled).To(BeFalse())
 		Expect(stderr).To(BeEmpty())
+	})
+	It("Warns and completes Classic dry-run for a PDB at its limit", func() {
+		args.schedule = ""
+		args.scheduleDate = ""
+		args.scheduleTime = ""
+		args.version = "4.13.1"
+		args.dryRun = true
+		runPotentialPDBBlockerCheck = func(context.Context, string) ([]upgradecheck.PDBBlocker, error) {
+			return []upgradecheck.PDBBlocker{{
+				Namespace: "payments", Name: "api", ExpectedPods: 2, CurrentHealthy: 2, DesiredHealthy: 2,
+				Budget: "minAvailable=100%", Reasons: []string{"the PDB currently allows zero disruptions"},
+			}}, nil
+		}
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterWithUpgrades))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			`{"kind":"UpgradePolicyList","page":1,"size":0,"total":0,"items":[]}`))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(ContainSubstring("oc -n payments get pdb api -o yaml"))
+		Expect(stderr).To(ContainSubstring("oc -n payments edit pdb api"))
+		Expect(stderr).To(ContainSubstring("A PDB blocker may delay node draining"))
+		Expect(stderr).To(ContainSubstring("may be forcibly evicted"))
+		Expect(stdout).To(ContainSubstring("completed with potential PDB blockers"))
+		Expect(stdout).NotTo(ContainSubstring("rerun this command without the '--dry-run' flag"))
+	})
+	It("Completes Classic dry-run with an inconclusive PDB warning when the scan cannot run", func() {
+		args.schedule = ""
+		args.scheduleDate = ""
+		args.scheduleTime = ""
+		args.version = "4.13.1"
+		args.dryRun = true
+		runPotentialPDBBlockerCheck = func(context.Context, string) ([]upgradecheck.PDBBlocker, error) {
+			return nil, fmt.Errorf("Kubernetes API access is unavailable")
+		}
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, classicClusterWithUpgrades))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK,
+			`{"kind":"UpgradePolicyList","page":1,"size":0,"total":0,"items":[]}`))
+		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusNoContent, ""))
+
+		stdout, stderr, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
+		Expect(err).To(BeNil())
+		Expect(stderr).To(ContainSubstring("PDB preflight for cluster"))
+		Expect(stdout).To(ContainSubstring("PDB check was inconclusive"))
 	})
 	It("Cluster is ready and with manual scheduling and available upgrades but a wrong version in input", func() {
 		args.schedule = ""

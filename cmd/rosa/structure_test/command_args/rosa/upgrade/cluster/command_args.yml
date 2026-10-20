@@ -12,3 +12,4 @@
 - name: profile
 - name: region
 - name: dry-run
+- name: check-pdbs
