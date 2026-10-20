@@ -18,6 +18,7 @@ package output
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -26,6 +27,12 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 )
+
+// nodePoolMessageBulletRegexp matches a leading "* " style bullet in a node
+// pool status message, capturing any leading whitespace so callers can tell
+// a top-level bullet (e.g. "* Machine foo:") from a nested one
+// (e.g. "    * NodeHealthy: ...").
+var nodePoolMessageBulletRegexp = regexp.MustCompile(`^(\s*)\*\s*`)
 
 func PrintNodePoolAutoscaling(autoscaling *cmv1.NodePoolAutoscaling) string {
 	if autoscaling != nil {
@@ -106,11 +113,59 @@ func PrintNodePoolReplicasShort(currentReplicas, desiredReplicas string) string 
 	return fmt.Sprintf("%s/%s", currentReplicas, desiredReplicas)
 }
 
+// PrintNodePoolMessage renders a node pool's free-form status message, if
+// any, as a YAML-style list, preserving whatever bullet nesting the service
+// actually sends: each bullet more indented than the one before it becomes
+// one level deeper (e.g. "  - Machine foo:" with "    - NodeHealthy: ..."
+// nested beneath it), using 2 spaces per level. Nesting depth is relative,
+// not tied to an exact column width, so it isn't capped at any fixed depth.
+// A line that isn't itself a bullet (e.g. a wrapped continuation of the
+// previous condition's text) is appended to the preceding list item rather
+// than becoming a new one, and blank/whitespace-only lines are skipped
+// entirely.
 func PrintNodePoolMessage(status *cmv1.NodePoolStatus) string {
-	if status != nil {
-		return status.Message()
+	if status == nil {
+		return ""
 	}
-	return ""
+
+	message := status.Message()
+	if strings.TrimSpace(message) == "" {
+		return ""
+	}
+
+	var items []string
+	var indentStack []int
+	for _, line := range strings.Split(message, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		loc := nodePoolMessageBulletRegexp.FindStringSubmatchIndex(line)
+		if loc == nil {
+			if len(items) == 0 {
+				items = append(items, "  - "+strings.TrimSpace(line))
+			} else {
+				items[len(items)-1] += " " + strings.TrimSpace(line)
+			}
+			continue
+		}
+
+		bulletIndent := loc[3] - loc[2]
+		for len(indentStack) > 0 && indentStack[len(indentStack)-1] > bulletIndent {
+			indentStack = indentStack[:len(indentStack)-1]
+		}
+		if len(indentStack) == 0 || indentStack[len(indentStack)-1] < bulletIndent {
+			indentStack = append(indentStack, bulletIndent)
+		}
+
+		indent := strings.Repeat("  ", len(indentStack)) + "- "
+		items = append(items, indent+line[loc[1]:])
+	}
+	if len(items) == 0 {
+		return ""
+	}
+
+	return "\n" + strings.Join(items, "\n")
 }
 
 func PrintNodePoolVersion(version *cmv1.Version) string {
