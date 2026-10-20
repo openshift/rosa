@@ -1115,7 +1115,7 @@ var _ = Describe("Edit nodepool",
 				}
 
 				By("Create a machinepool with quoted tags containing spaces - [id:67145]")
-				machinePoolName_spaces := helper.GenerateRandomName("mp-73492-spaces", 2)
+				machinePoolName_spaces := helper.GenerateRandomName("mp-73492-sp", 2)
 				quotedTagsReq := `"Cost Center":"Finance Team",mp67145env:prod`
 				quotedTagsMap := map[string]interface{}{
 					"Cost Center": "Finance Team",
@@ -1170,7 +1170,7 @@ var _ = Describe("Edit nodepool",
 				By("Create machinepool with empty tag value is rejected for HCP")
 				output, err = machinePoolService.CreateMachinePool(
 					clusterID,
-					helper.GenerateRandomName("mp-73492-empty", 2),
+					helper.GenerateRandomName("mp-73492-em", 2),
 					"--replicas", "3",
 					"--tags", "owner:")
 				Expect(err).To(HaveOccurred())
