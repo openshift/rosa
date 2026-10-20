@@ -34,6 +34,16 @@ const (
 	DNSReservationPhaseReady   DNSReservationPhase = "Ready"
 )
 
+// EC2InstanceMetadataHttpTokens controls which EC2 instance metadata protocol
+// versions are accepted by worker instances.
+// +kubebuilder:validation:Enum=required;optional
+type EC2InstanceMetadataHttpTokens string
+
+const (
+	EC2InstanceMetadataHttpTokensRequired EC2InstanceMetadataHttpTokens = "required"
+	EC2InstanceMetadataHttpTokensOptional EC2InstanceMetadataHttpTokens = "optional"
+)
+
 // ManifestPhase represents the lifecycle phase of a Manifest.
 // +kubebuilder:validation:Enum=Syncing;Applied;Deleting
 type ManifestPhase string

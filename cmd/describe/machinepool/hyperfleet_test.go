@@ -85,7 +85,16 @@ var _ = Describe("hfNodePoolToMap", func() {
 		Expect(m["instanceType"]).To(Equal("m5.xlarge"))
 		Expect(m["disk_size"]).To(Equal("75 GiB"))
 		Expect(m["version"]).To(Equal("v4.17.0-ec.2"))
+		Expect(m["ec2_metadata_http_tokens"]).To(Equal("required"))
 		Expect(m["created_at"]).To(Equal("2026-06-15T10:30:00Z"))
+	})
+
+	It("maps an explicitly optional EC2 metadata token requirement", func() {
+		np := buildTestNodePool()
+		np.Spec.EC2InstanceMetadataHttpTokens = v1alpha1.EC2InstanceMetadataHttpTokensOptional
+
+		m := hfNodePoolToMap(np, "my-cluster")
+		Expect(m["ec2_metadata_http_tokens"]).To(Equal("optional"))
 	})
 
 	It("maps conditions", func() {
@@ -196,6 +205,7 @@ var _ = Describe("hfNodePoolToString", func() {
 		Expect(s).To(ContainSubstring("m5.xlarge"))
 		Expect(s).To(ContainSubstring("Disk Size:                             75 GiB"))
 		Expect(s).To(ContainSubstring("v4.17.0-ec.2"))
+		Expect(s).To(ContainSubstring("EC2 Metadata Http Tokens:              required"))
 		Expect(s).To(ContainSubstring("2026-06-15"))
 	})
 

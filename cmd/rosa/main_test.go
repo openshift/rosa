@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -41,7 +42,9 @@ var _ = Describe("ROSA Commands", func() {
 			Validates all command flags are in command_args.yml for each command. New flags should
 			be added to the correct command_args.yml file.
 		*/
-		assertCommandArgs(root)
+		mismatches := collectCommandArgMismatches(root)
+		sort.Strings(mismatches)
+		Expect(mismatches).To(BeEmpty(), "Command argument mismatches:\n - %s", strings.Join(mismatches, "\n - "))
 	})
 
 	XIt("Re-generates the command_arg directory structure and files", func() {
@@ -53,15 +56,17 @@ var _ = Describe("ROSA Commands", func() {
 	})
 })
 
-func assertCommandArgs(command *cobra.Command) {
+func collectCommandArgMismatches(command *cobra.Command) []string {
 	if len(command.Commands()) == 0 {
 		verifier := NewArgVerifier(structureTestDirectory, command)
-		verifier.AssertCommandArgs()
-	} else {
-		for _, c := range command.Commands() {
-			assertCommandArgs(c)
-		}
+		return verifier.CommandArgMismatches()
 	}
+
+	var mismatches []string
+	for _, c := range command.Commands() {
+		mismatches = append(mismatches, collectCommandArgMismatches(c)...)
+	}
+	return mismatches
 }
 
 func generateCommandArgsFiles(command *cobra.Command) {

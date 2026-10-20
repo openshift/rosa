@@ -19,6 +19,7 @@ import (
 type NodePoolCreateInput struct {
 	Name                          string `hfsdk:"metadata.name"`
 	AutoRepair                    *bool  `hfsdk:"spec.autoRepair"`
+	EC2InstanceMetadataHttpTokens string `hfsdk:"spec.ec2InstanceMetadataHttpTokens"`
 	Labels                        string `hfsdk:"spec.labels"`
 	MaxSurge                      string `hfsdk:"spec.maxSurge"`
 	MaxUnavailable                string `hfsdk:"spec.maxUnavailable"`
@@ -56,6 +57,7 @@ type NodePoolCreateInput struct {
 var NodePoolCreatePlatformAPIFlags = []string{
 	"name",
 	"auto-repair",
+	"ec2-metadata-http-tokens",
 	"labels",
 	"max-surge",
 	"max-unavailable",
@@ -85,6 +87,7 @@ func RegisterNodePoolCreateFlags(cmd *cobra.Command, input *NodePoolCreateInput)
 	f := cmd.Flags()
 	registerIfNew(f, "name", func() { f.StringVar(&input.Name, "name", "", "Name of the node pool.") })
 	registerIfNew(f, "auto-repair", func() { input.AutoRepair = new(bool); f.BoolVar(input.AutoRepair, "auto-repair", false, "") })
+	registerIfNew(f, "ec2-metadata-http-tokens", func() { f.StringVar(&input.EC2InstanceMetadataHttpTokens, "ec2-metadata-http-tokens", "", "") })
 	registerIfNew(f, "labels", func() { f.StringVar(&input.Labels, "labels", "", "") })
 	registerIfNew(f, "max-surge", func() { f.StringVar(&input.MaxSurge, "max-surge", "", "") })
 	registerIfNew(f, "max-unavailable", func() { f.StringVar(&input.MaxUnavailable, "max-unavailable", "", "") })

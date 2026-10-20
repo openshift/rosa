@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
 )
 
 var _ = Describe("Test helpers", func() {
@@ -35,5 +36,28 @@ var _ = Describe("Test helpers", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("close |1: file already closed"))
 		})
+	})
+})
+
+var _ = Describe("ArgVerifier", func() {
+	It("reports all missing expected and unexpected flags", func() {
+		cmd := &cobra.Command{Use: "example"}
+		cmd.Flags().String("present", "", "")
+		cmd.Flags().String("unexpected", "", "")
+
+		verifier := ArgVerifier{
+			Command: cmd,
+			Args: map[string]*rosaCommandArg{
+				"present":     {},
+				"missing-one": {},
+				"missing-two": {},
+			},
+		}
+
+		Expect(verifier.CommandArgMismatches()).To(Equal([]string{
+			"Command 'example': missing expected flag 'missing-one'",
+			"Command 'example': missing expected flag 'missing-two'",
+			"Command 'example': unexpected flag 'unexpected'",
+		}))
 	})
 })
