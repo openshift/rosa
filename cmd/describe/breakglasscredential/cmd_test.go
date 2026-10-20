@@ -12,6 +12,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -50,9 +51,7 @@ var _ = Describe("Break glass credential", func() {
 		It("Fails if we are not specifying a break glass credential id", func() {
 			args.id = ""
 			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring(
-				"you need to specify a break glass credential id with '--id' parameter"))
+			helper.ExpectErrorWithMessage(err, "you need to specify a break glass credential id with '--id' parameter")
 		})
 
 		It("Pass a break glass credential id through parameter and it is found", func() {

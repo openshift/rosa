@@ -13,6 +13,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -115,8 +116,7 @@ var _ = Describe("Create image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("is not ready. Image mirrors can only be created on ready clusters"))
+				helper.ExpectErrorWithMessage(err, "is not ready. Image mirrors can only be created on ready clusters")
 			})
 
 			It("Returns error when cluster is not Hosted Control Plane", func() {
@@ -129,8 +129,7 @@ var _ = Describe("Create image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Image mirrors are only supported on Hosted Control Plane clusters"))
+				helper.ExpectErrorWithMessage(err, "Image mirrors are only supported on Hosted Control Plane clusters")
 			})
 
 			It("Returns error when cluster fetch fails", func() {
@@ -143,8 +142,7 @@ var _ = Describe("Create image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set("nonexistent-cluster")
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("status is 404"))
+				helper.ExpectErrorWithMessage(err, "status is 404")
 			})
 
 			It("Returns error when CreateImageMirror API call fails", func() {
@@ -158,8 +156,7 @@ var _ = Describe("Create image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Failed to create image mirror"))
+				helper.ExpectErrorWithMessage(err, "Failed to create image mirror")
 			})
 		})
 
@@ -175,8 +172,7 @@ var _ = Describe("Create image mirror", func() {
 				err := cmd.Flag("cluster").Value.Set(clusterId)
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("At least one mirror registry must be specified"))
+				helper.ExpectErrorWithMessage(err, "At least one mirror registry must be specified")
 			})
 
 			It("Has default type as digest", func() {

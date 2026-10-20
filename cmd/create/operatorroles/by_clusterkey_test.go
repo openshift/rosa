@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const ebsCredRequestResponse = `{
@@ -79,8 +80,7 @@ var _ = Describe("create operator-roles by cluster key", func() {
 				))
 			})
 			missing, err := validateOperatorRoles(t.RosaRuntime, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("No Operator IAM roles found"))
+			helper.ExpectErrorWithMessage(err, "No Operator IAM roles found")
 			Expect(missing).To(BeEmpty())
 		})
 
@@ -167,8 +167,7 @@ var _ = Describe("create operator-roles by cluster key", func() {
 				Return(false, "", fmt.Errorf("AccessDenied: not authorized"))
 
 			missing, err := validateOperatorRoles(t.RosaRuntime, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("AccessDenied"))
+			helper.ExpectErrorWithMessage(err, "AccessDenied")
 			Expect(missing).To(BeEmpty())
 		})
 
@@ -221,8 +220,7 @@ var _ = Describe("create operator-roles by cluster key", func() {
 				Return(iamtypes.Role{}, fmt.Errorf("role not found"))
 
 			err := validateOperatorRolesMatchOidcProvider(t.RosaRuntime, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("role not found"))
+			helper.ExpectErrorWithMessage(err, "role not found")
 		})
 
 		It("returns error when operator role path does not match installer role path", func() {
@@ -255,8 +253,7 @@ var _ = Describe("create operator-roles by cluster key", func() {
 				}, nil)
 
 			err := validateOperatorRolesMatchOidcProvider(t.RosaRuntime, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("does not match the path from Installer Role"))
+			helper.ExpectErrorWithMessage(err, "does not match the path from Installer Role")
 		})
 
 		It("returns error when HasManagedPolicies fails", func() {
@@ -297,8 +294,7 @@ var _ = Describe("create operator-roles by cluster key", func() {
 				Return(false, fmt.Errorf("HasManagedPolicies failed"))
 
 			err := validateOperatorRolesMatchOidcProvider(t.RosaRuntime, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("HasManagedPolicies failed"))
+			helper.ExpectErrorWithMessage(err, "HasManagedPolicies failed")
 		})
 	})
 
@@ -449,8 +445,7 @@ var _ = Describe("create operator-roles by cluster key", func() {
 					t.RosaRuntime, "production", "", interactive.ModeAuto,
 					map[string]*cmv1.AWSSTSPolicy{}, "4.14.0", false,
 				)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("role not found in AWS"))
+				helper.ExpectErrorWithMessage(err, "role not found in AWS")
 			})
 
 			It("returns nil when reusable OIDC config validates successfully", func() {

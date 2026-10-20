@@ -4,6 +4,8 @@
 package interactive
 
 import (
+	"fmt"
+
 	"go.uber.org/mock/gomock"
 
 	"github.com/AlecAivazis/survey/v2/core"
@@ -12,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	mock "github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Validation", func() {
@@ -20,22 +23,19 @@ var _ = Describe("Validation", func() {
 			validator := MinValue(50)
 			err := validator("25")
 
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("'25' is less than the permitted minimum of '50'"))
+			helper.ExpectErrorWithMessage(err, "'25' is less than the permitted minimum of '50'")
 		})
 
 		It("Fails validation if the answer is not an integer", func() {
 			validator := MinValue(50)
 			err := validator("hello")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("please enter an integer value, you entered 'hello'"))
+			helper.ExpectErrorWithMessage(err, "please enter an integer value, you entered 'hello'")
 		})
 
 		It("Fails validation if the answer is not a string", func() {
 			validator := MinValue(50)
 			err := validator(45)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings, got 45"))
+			helper.ExpectErrorWithMessage(err, "can only validate strings, got 45")
 		})
 
 		It("Passes validation if the answer is greater than the min", func() {
@@ -56,22 +56,19 @@ var _ = Describe("Validation", func() {
 			validator := MaxValue(50)
 			err := validator("52")
 
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("'52' is greater than the permitted maximum of '50'"))
+			helper.ExpectErrorWithMessage(err, "'52' is greater than the permitted maximum of '50'")
 		})
 
 		It("Fails validation if the answer is not an integer", func() {
 			validator := MaxValue(50)
 			err := validator("hello")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("please enter an integer value, you entered 'hello'"))
+			helper.ExpectErrorWithMessage(err, "please enter an integer value, you entered 'hello'")
 		})
 
 		It("Fails validation if the answer is not a string", func() {
 			validator := MaxValue(50)
 			err := validator(45)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate strings, got 45"))
+			helper.ExpectErrorWithMessage(err, "can only validate strings, got 45")
 		})
 
 		It("Passes validation if the answer is less than the max", func() {
@@ -89,17 +86,11 @@ var _ = Describe("Validation", func() {
 	Context("GitHub Hostname", func() {
 		It("Fails validation if hostname is 'https://domain.customer.com'", func() {
 			err := IsValidHostname("https://domain.customer.com")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(
-				"'https://domain.customer.com' hostname must be a valid DNS subdomain or IP address"),
-			)
+			helper.ExpectErrorWithMessage(err, "'https://domain.customer.com' hostname must be a valid DNS subdomain or IP address")
 		})
 		It("Fails validation if hostname is 'github.com'", func() {
 			err := IsValidHostname("github.com")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(
-				"'github.com' hostname cannot be equal to [*.]github.com"),
-			)
+			helper.ExpectErrorWithMessage(err, "'github.com' hostname cannot be equal to [*.]github.com")
 		})
 		It("Passes validation if hostname is 'domain.customer.com'", func() {
 			err := IsValidHostname("domain.customer.com")
@@ -133,9 +124,8 @@ var _ = Describe("SubnetsValidator", func() {
 			}
 
 			err := validator(answers)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("the number of subnets for a public hosted " +
-				"cluster should be at least two"))
+			helper.ExpectErrorWithMessage(err, "the number of subnets for a public hosted "+
+				"cluster should be at least two")
 		})
 
 		It("Returns an error when the number of public subnets is not at least one", func() {
@@ -155,9 +145,8 @@ var _ = Describe("SubnetsValidator", func() {
 			}, nil)
 
 			err := validator(answers)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("must have at least one public subnet when not using both " +
-				"'private API' and 'private ingress'"))
+			helper.ExpectErrorWithMessage(err, "must have at least one public subnet when not using both "+
+				"'private API' and 'private ingress'")
 		})
 
 	})
@@ -171,8 +160,7 @@ var _ = Describe("SubnetsValidator", func() {
 			}
 
 			err := validator(answers)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("the number of subnets for a 'multi-AZ'"+
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf("the number of subnets for a 'multi-AZ'"+
 				" 'private link cluster' should be '3', instead received: '%d'", len(answers)))
 		})
 
@@ -192,8 +180,7 @@ var _ = Describe("SubnetsValidator", func() {
 	Context("When the input is invalid", func() {
 		It("Returns an error for invalid input", func() {
 			err := validator("invalid input")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can only validate a slice of string"))
+			helper.ExpectErrorWithMessage(err, "can only validate a slice of string")
 		})
 	})
 })

@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws"
 	mock "github.com/openshift/rosa/pkg/aws"
 	. "github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func TestListOCMRoles(t *testing.T) {
@@ -201,8 +202,7 @@ var _ = Describe("rosa list ocm-roles", func() {
 		It("Returns error when AWS ListOCMRoles fails", func() {
 			mockClient.EXPECT().ListOCMRoles().Return(nil, fmt.Errorf("aws error"))
 			roles, err := listOCMRoles(t.RosaRuntime)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("aws error"))
+			helper.ExpectErrorWithMessage(err, "aws error")
 			Expect(roles).To(BeNil())
 		})
 

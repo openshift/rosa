@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	rosaerrors "github.com/openshift/rosa/pkg/errors"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 // mockCreateIAMServiceAccountClient is a test double for CreateIAMServiceAccountClient
@@ -309,8 +310,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 		It("should reject request with no cluster name", func() {
 			req.ClusterName = ""
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cluster name is required"))
+			helper.ExpectErrorWithMessage(err, "cluster name is required")
 			Expect(soleValidationError(err).Field).To(Equal("ClusterName"))
 			expectNoClientCalls(client)
 		})
@@ -318,8 +318,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 		It("should reject request with no OIDC provider ARN", func() {
 			req.OIDCProviderARN = ""
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("OIDC provider ARN is required"))
+			helper.ExpectErrorWithMessage(err, "OIDC provider ARN is required")
 			Expect(soleValidationError(err).Field).To(Equal("OIDCProviderARN"))
 			expectNoClientCalls(client)
 		})
@@ -327,8 +326,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 		It("should reject request with no service accounts", func() {
 			req.ServiceAccounts = nil
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("at least one service account is required"))
+			helper.ExpectErrorWithMessage(err, "at least one service account is required")
 			Expect(soleValidationError(err).Field).To(Equal("ServiceAccounts"))
 			expectNoClientCalls(client)
 		})
@@ -337,8 +335,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			req.PolicyARNs = nil
 			req.InlinePolicy = nil
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("at least one policy ARN or inline policy is required"))
+			helper.ExpectErrorWithMessage(err, "at least one policy ARN or inline policy is required")
 			// This check spans two fields (PolicyARNs, InlinePolicy), so it
 			// intentionally carries no single Field.
 			Expect(soleValidationError(err).Field).To(BeEmpty())
@@ -351,8 +348,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			req.PolicyARNs = nil
 			req.InlinePolicy = nil
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cluster name is required"))
+			helper.ExpectErrorWithMessage(err, "cluster name is required")
 			Expect(err.Error()).To(ContainSubstring("OIDC provider ARN is required"))
 			Expect(err.Error()).To(ContainSubstring("at least one policy ARN or inline policy is required"))
 
@@ -364,8 +360,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 		It("should reject request with blank policy ARN", func() {
 			req.PolicyARNs = []string{"arn:aws:iam::123456789012:policy/valid", ""}
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("policy ARN at index 1 is empty"))
+			helper.ExpectErrorWithMessage(err, "policy ARN at index 1 is empty")
 			Expect(soleValidationError(err).Field).To(Equal("PolicyARNs"))
 			expectNoClientCalls(client)
 		})
@@ -374,8 +369,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			emptyPolicy := ""
 			req.InlinePolicy = &emptyPolicy
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("inline policy must not be empty when provided"))
+			helper.ExpectErrorWithMessage(err, "inline policy must not be empty when provided")
 			Expect(soleValidationError(err).Field).To(Equal("InlinePolicy"))
 			expectNoClientCalls(client)
 		})
@@ -383,8 +377,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 		It("should reject request with malformed policy ARN", func() {
 			req.PolicyARNs = []string{"not-an-arn"}
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is invalid"))
+			helper.ExpectErrorWithMessage(err, "policy ARN at index 0 is invalid")
 			validationErr := soleValidationError(err)
 			Expect(validationErr.Field).To(Equal("PolicyARNs"))
 			Expect(validationErr.Err).To(HaveOccurred(), "the arn.Parse cause must be preserved, not flattened into the message")
@@ -394,8 +387,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 		It("should reject request with a non-IAM-policy ARN", func() {
 			req.PolicyARNs = []string{"arn:aws:s3:::my-bucket"}
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is not an IAM policy ARN"))
+			helper.ExpectErrorWithMessage(err, "policy ARN at index 0 is not an IAM policy ARN")
 			Expect(soleValidationError(err).Field).To(Equal("PolicyARNs"))
 			expectNoClientCalls(client)
 		})
@@ -403,8 +395,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 		It("should reject a policy ARN with no policy name after 'policy/'", func() {
 			req.PolicyARNs = []string{"arn:aws:iam::123456789012:policy/"}
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is not an IAM policy ARN"))
+			helper.ExpectErrorWithMessage(err, "policy ARN at index 0 is not an IAM policy ARN")
 			Expect(soleValidationError(err).Field).To(Equal("PolicyARNs"))
 			expectNoClientCalls(client)
 		})
@@ -412,8 +403,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 		It("should reject a policy ARN with a trailing slash", func() {
 			req.PolicyARNs = []string{"arn:aws:iam::123456789012:policy/MyPolicy/"}
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is not an IAM policy ARN"))
+			helper.ExpectErrorWithMessage(err, "policy ARN at index 0 is not an IAM policy ARN")
 			Expect(soleValidationError(err).Field).To(Equal("PolicyARNs"))
 			expectNoClientCalls(client)
 		})
@@ -428,8 +418,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			invalidPolicy := `{"Version": "2012-10-17", "Statement": [`
 			req.InlinePolicy = &invalidPolicy
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("inline policy must be valid JSON"))
+			helper.ExpectErrorWithMessage(err, "inline policy must be valid JSON")
 			Expect(soleValidationError(err).Field).To(Equal("InlinePolicy"))
 			expectNoClientCalls(client)
 		})
@@ -439,8 +428,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 				{Name: "INVALID-NAME", Namespace: "default"},
 			}
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid service account name"))
+			helper.ExpectErrorWithMessage(err, "invalid service account name")
 			Expect(soleValidationError(err).Field).To(Equal("ServiceAccounts"))
 			expectNoClientCalls(client)
 		})
@@ -450,8 +438,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 				{Name: "my-app", Namespace: "INVALID-NS"},
 			}
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid namespace"))
+			helper.ExpectErrorWithMessage(err, "invalid namespace")
 			Expect(soleValidationError(err).Field).To(Equal("ServiceAccounts"))
 			expectNoClientCalls(client)
 		})
@@ -461,8 +448,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			req.AccountID = ""
 			req.Partition = "aws-us-gov"
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("account ID is required for GovCloud"))
+			helper.ExpectErrorWithMessage(err, "account ID is required for GovCloud")
 			Expect(soleValidationError(err).Field).To(Equal("AccountID"))
 			expectNoClientCalls(client)
 		})
@@ -472,8 +458,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			req.AccountID = "111222333444"
 			req.Partition = ""
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("partition is required for GovCloud"))
+			helper.ExpectErrorWithMessage(err, "partition is required for GovCloud")
 			Expect(soleValidationError(err).Field).To(Equal("Partition"))
 			expectNoClientCalls(client)
 		})
@@ -483,8 +468,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			req.AccountID = ""
 			req.Partition = ""
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("account ID is required for GovCloud"))
+			helper.ExpectErrorWithMessage(err, "account ID is required for GovCloud")
 			Expect(err.Error()).To(ContainSubstring("partition is required for GovCloud"))
 
 			leaves := flattenLeafErrors(err)
@@ -499,8 +483,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 				{Name: "app-two", Namespace: "default"},
 			}
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("role name is required when specifying multiple service accounts"))
+			helper.ExpectErrorWithMessage(err, "role name is required when specifying multiple service accounts")
 			Expect(soleValidationError(err).Field).To(Equal("RoleName"))
 			expectNoClientCalls(client)
 		})
@@ -509,8 +492,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			blankRoleName := "   "
 			req.RoleName = &blankRoleName
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("role name must not be blank when provided"))
+			helper.ExpectErrorWithMessage(err, "role name must not be blank when provided")
 			Expect(soleValidationError(err).Field).To(Equal("RoleName"))
 			expectNoClientCalls(client)
 		})
@@ -601,8 +583,7 @@ var _ = Describe("CreateIAMServiceAccount", func() {
 			}
 
 			_, err := service.CreateIAMServiceAccount(context.Background(), client, req)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("second policy failed"))
+			helper.ExpectErrorWithMessage(err, "second policy failed")
 
 			// Should have stopped after the second policy failed
 			Expect(client.attachRolePolicyCalls).To(HaveLen(2))

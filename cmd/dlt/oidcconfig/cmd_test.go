@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/pkg/interactive"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Delete OIDC Config", func() {
@@ -40,8 +41,7 @@ var _ = Describe("Delete OIDC Config", func() {
 			input := OidcConfigInput{Managed: false}
 
 			_, err := getOidcConfigStrategy("invalid", input)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Invalid mode"))
+			helper.ExpectErrorWithMessage(err, "Invalid mode")
 		})
 	})
 })

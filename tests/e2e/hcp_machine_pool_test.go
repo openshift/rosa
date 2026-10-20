@@ -514,8 +514,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 		It("creation - [id:56786]", labels.Medium, labels.Runtime.Day2, func() {
 			By("with negative replicas number")
 			_, err := machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "-9")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("replicas must be a non-negative integer"))
+			helper.ExpectErrorWithMessage(err, "replicas must be a non-negative integer")
 
 			By("with replicas > the maximum")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "501")
@@ -526,8 +525,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			By("with invalid name")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything%^#@", "--replicas", "2")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("expected a valid name for the machine pool"))
+			helper.ExpectErrorWithMessage(err, "expected a valid name for the machine pool")
 
 			By("with replicas and enable-autoscaling at the same time")
 			_, err = machinePoolService.CreateMachinePool(
@@ -537,8 +535,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--enable-autoscaling",
 				"--min-replicas", "3",
 				"--max-replicas", "3")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("replicas can't be set when autoscaling is enabled"))
+			helper.ExpectErrorWithMessage(err, "replicas can't be set when autoscaling is enabled")
 
 			By("with min-replicas larger than max-replicas")
 			_, err = machinePoolService.CreateMachinePool(
@@ -558,8 +555,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"anything",
 				"--min-replicas", "3",
 				"--max-replicas", "3")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("autoscaling must be enabled in order to set min and max replicas"))
+			helper.ExpectErrorWithMessage(err, "autoscaling must be enabled in order to set min and max replicas")
 
 			By("with max-replicas > the maximum")
 			_, err = machinePoolService.CreateMachinePool(
@@ -575,13 +571,11 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			By("with wrong instance-type")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--instance-type", "wrong")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("is not supported in availability zone"))
+			helper.ExpectErrorWithMessage(err, "is not supported in availability zone")
 
 			By("with non existing subnet")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--subnet", "subnet-xxx")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("The subnet ID 'subnet-xxx' does not exist"))
+			helper.ExpectErrorWithMessage(err, "The subnet ID 'subnet-xxx' does not exist")
 
 			By("with subnet not in VPC")
 			vpcPrefix := helper.TrimNameByLength("c56786", 20)
@@ -598,38 +592,31 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			subnet, err := vpc.CreateSubnet(zones[0])
 			Expect(err).ToNot(HaveOccurred())
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--subnet", subnet.ID)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("found but expected on VPC"))
+			helper.ExpectErrorWithMessage(err, "found but expected on VPC")
 
 			By("with label no key")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--labels", "v")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("expected key=value format for labels"))
+			helper.ExpectErrorWithMessage(err, "expected key=value format for labels")
 
 			By("with taint no key")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--taints", "v")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("expected key=value:scheduleType format for taints. Got 'v'"))
+			helper.ExpectErrorWithMessage(err, "expected key=value:scheduleType format for taints. Got 'v'")
 
 			By("with taint no schedule type")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--taints", "k=v")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("expected key=value:scheduleType format for taints. Got 'k=v'"))
+			helper.ExpectErrorWithMessage(err, "expected key=value:scheduleType format for taints. Got 'k=v'")
 
 			By("with taint empty schedule type")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--taints", "k=v:")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("expected a not empty effect"))
+			helper.ExpectErrorWithMessage(err, "expected a not empty effect")
 
 			By("with auto-repair wrong value")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--autorepair=v")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("strconv.ParseBool: parsing \"v\": invalid syntax"))
+			helper.ExpectErrorWithMessage(err, "strconv.ParseBool: parsing \"v\": invalid syntax")
 
 			By("with unsupported version")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--version", "4.12.1")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("expected a valid OpenShift version"))
+			helper.ExpectErrorWithMessage(err, "expected a valid OpenShift version")
 
 			By("with unsupported flag")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--multi-availability-zone")
@@ -742,8 +729,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				clusterConfig.Version.RawID,
 				"",
 				"")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid identifier for the machine pool"))
+			helper.ExpectErrorWithMessage(err, "expected a valid identifier for the machine pool")
 
 			By("with wrong machinepool")
 			_, err = machinePoolUpgradeService.CreateManualUpgrade(
@@ -774,8 +760,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 					clusterConfig.Version.RawID,
 					"",
 					"")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("cluster '%s' is not yet ready", notReadyClusterID)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("cluster '%s' is not yet ready", notReadyClusterID))
 			} else {
 				Logger.Info("No cluster found in state not-ready. Skipping this step")
 			}
@@ -803,8 +788,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				clusterID,
 				nodePoolAutoName,
 				"anything")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Schedule 'anything' is not a valid cron expression"))
+			helper.ExpectErrorWithMessage(err, "Schedule 'anything' is not a valid cron expression")
 
 			By("with wrong schedule-time value")
 			_, err = machinePoolUpgradeService.CreateManualUpgrade(
@@ -813,8 +797,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				clusterConfig.Version.RawID,
 				"2154-12-31",
 				"wrong")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("schedule date should use the format 'yyyy-mm-dd'"))
+			helper.ExpectErrorWithMessage(err, "schedule date should use the format 'yyyy-mm-dd'")
 
 			By("with wrong schedule-date value")
 			_, err = machinePoolUpgradeService.CreateManualUpgrade(
@@ -823,8 +806,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				clusterConfig.Version.RawID,
 				"wrong",
 				"10:34")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Schedule time should use the format 'HH:mm'"))
+			helper.ExpectErrorWithMessage(err, "Schedule time should use the format 'HH:mm'")
 
 			By("with wrong version value")
 			_, err = machinePoolUpgradeService.CreateManualUpgrade(
@@ -833,8 +815,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"wrong",
 				"",
 				"")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid machine pool version"))
+			helper.ExpectErrorWithMessage(err, "expected a valid machine pool version")
 
 			By("with schedule and version")
 			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
@@ -842,8 +823,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				nodePoolAutoName,
 				"2 5 * * *",
 				"--version", clusterConfig.Version.RawID)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("the '--schedule' option is mutually exclusive with '--version'"))
+			helper.ExpectErrorWithMessage(err, "the '--schedule' option is mutually exclusive with '--version'")
 
 			By("with schedule and schedule-date")
 			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(

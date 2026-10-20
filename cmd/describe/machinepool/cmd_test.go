@@ -18,6 +18,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm/output"
 	. "github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -273,8 +274,7 @@ var _ = Describe("Upgrade machine pool", func() {
 		It("Fails if we are not specifying a machine pool name", func() {
 			runner := DescribeMachinePoolRunner(NewDescribeMachinepoolUserOptions())
 			err := runner(context.Background(), t.RosaRuntime, NewDescribeMachinePoolCommand(), []string{})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("you need to specify a machine pool name"))
+			helper.ExpectErrorWithMessage(err, "you need to specify a machine pool name")
 		})
 		Context("Hypershift", func() {
 			It("Works without passing `--machinepool`", func() {
@@ -312,8 +312,7 @@ var _ = Describe("Upgrade machine pool", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd,
 					[]string{"--machinepool", nodePoolName})
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("Machine pool '%s' not found", nodePoolName))
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(""))
@@ -462,8 +461,7 @@ var _ = Describe("Upgrade machine pool", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd,
 					[]string{"--machinepool", nodePoolName})
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("Machine pool '%s' not found", nodePoolName))
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(""))
@@ -481,8 +479,7 @@ var _ = Describe("Upgrade machine pool", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = runner(context.Background(), t.RosaRuntime, cmd,
 					[]string{"--machinepool", nodePoolName})
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Machine pool '%s' not found", nodePoolName)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf("Machine pool '%s' not found", nodePoolName))
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(""))

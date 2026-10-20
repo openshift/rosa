@@ -8,6 +8,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Test validation functions", func() {
@@ -23,44 +25,36 @@ var _ = Describe("Test validation functions", func() {
 			})
 			It("KO: Invalid Route53 ARN", func() {
 				err := validateHcpSharedVpcArgs(invalidTestArn, validTestArn, "123", "123", false)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(isNotValidArnErrorMsg, route53RoleArnFlag)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf(isNotValidArnErrorMsg, route53RoleArnFlag))
 			})
 			It("KO: invalid VPC Endpoint ARN", func() {
 				err := validateHcpSharedVpcArgs(validTestArn, invalidTestArn, "123", "123", false)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(isNotValidArnErrorMsg, vpcEndpointRoleArnFlag)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf(isNotValidArnErrorMsg, vpcEndpointRoleArnFlag))
 			})
 			It("KO: Route53 ARN flag not populated", func() {
 				err := validateHcpSharedVpcArgs("", validTestArn, "123", "123", false)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(hcpSharedVpcFlagNotFilledErrorMsg,
-					route53RoleArnFlag)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf(hcpSharedVpcFlagNotFilledErrorMsg,
+					route53RoleArnFlag))
 			})
 			It("KO: VPC Endpoint ARN flag not populated", func() {
 				err := validateHcpSharedVpcArgs(validTestArn, "", "123", "123", false)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(hcpSharedVpcFlagNotFilledErrorMsg,
-					vpcEndpointRoleArnFlag)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf(hcpSharedVpcFlagNotFilledErrorMsg,
+					vpcEndpointRoleArnFlag))
 			})
 			It("KO: Ingress Private Hosted Zone ID flag not populated", func() {
 				err := validateHcpSharedVpcArgs(validTestArn, validTestArn, "", "123", false)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(hcpSharedVpcFlagNotFilledErrorMsg,
-					ingressPrivateHostedZoneIdFlag)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf(hcpSharedVpcFlagNotFilledErrorMsg,
+					ingressPrivateHostedZoneIdFlag))
 			})
 			It("KO: HCP Internal Communication Hosted Zone ID flag not populated", func() {
 				err := validateHcpSharedVpcArgs(validTestArn, validTestArn, "123", "", false)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(hcpSharedVpcFlagNotFilledErrorMsg,
-					hcpInternalCommunicationHostedZoneIdFlag)))
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf(hcpSharedVpcFlagNotFilledErrorMsg,
+					hcpInternalCommunicationHostedZoneIdFlag))
 			})
 			It("KO: HCP Shared VPC cluster fails to validate on govcloud/fedramp", func() {
 				err := validateHcpSharedVpcArgs(validTestArn, validTestArn, "123", "123", true)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(isNotGovcloudFeature,
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf(isNotGovcloudFeature,
 					fmt.Sprintf(pleaseRemoveFlags, ""),
-				),
 				))
 				// Must be `ContainSubstring` because for some reason `strings.Join()` puts strings in a random order
 				Expect(err.Error()).To(ContainSubstring("'" + route53RoleArnFlag + "'"))

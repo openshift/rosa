@@ -14,6 +14,7 @@ import (
 	. "github.com/openshift-online/ocm-sdk-go/testing"
 
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Version Helpers", Ordered, func() {
@@ -190,8 +191,7 @@ var _ = Describe("GetVersionList", func() {
 			test.FormatVersionList([]*v1.Version{})))
 		_, vs, err := GetVersionList(testRuntime.RosaRuntime, "stable",
 			true, true, true, false)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("could not find versions for the provided channel-group"))
+		helper.ExpectErrorWithMessage(err, "could not find versions for the provided channel-group")
 		Expect(len(vs)).To(Equal(0))
 	})
 

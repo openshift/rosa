@@ -22,6 +22,7 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 
 	"github.com/openshift/rosa/pkg/logforwarding"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("BuildLogForwarder", func() {
@@ -200,9 +201,7 @@ var _ = Describe("EditLogForwarder", func() {
 			client := Client{}
 			emptyConfig := logforwarding.LogForwarderYaml{}
 			err := client.EditLogForwarder("cluster-123", "log-fwd-123", emptyConfig, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(
-				"log forwarding config provided contained no valid log forwarders"))
+			helper.ExpectErrorWithMessage(err, "log forwarding config provided contained no valid log forwarders")
 		})
 	})
 })

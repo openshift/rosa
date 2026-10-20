@@ -19,6 +19,7 @@ import (
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/version"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("RosaVersionOptions", func() {
@@ -75,8 +76,7 @@ var _ = Describe("RosaVersionOptions", func() {
 		It("should return error if verify fails and clientOnly is false", func() {
 			mockVerify.EXPECT().Verify().Return(fmt.Errorf("dummy error")).Times(1)
 			err := opts.Version()
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("failed to verify rosa"))
+			helper.ExpectErrorWithMessage(err, "failed to verify rosa")
 		})
 	})
 

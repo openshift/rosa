@@ -35,6 +35,7 @@ import (
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var policyBuilder cmv1.NodePoolUpgradePolicyBuilder
@@ -1150,8 +1151,7 @@ var _ = Describe("MachinePools", func() {
 			})
 
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("there was a problem checking version compatibility:"))
+			helper.ExpectErrorWithMessage(err, "there was a problem checking version compatibility:")
 		})
 
 		It("should error when setting flag that is only allowed for BYOVPC clusters", func() {
@@ -1168,11 +1168,10 @@ var _ = Describe("MachinePools", func() {
 				[]string{}, "comma-separated list of security group IDs")
 			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
-			Expect(err).To(HaveOccurred())
-
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf(
 				"setting the `%s` flag is only allowed for BYOVPC clusters",
-				securitygroups.MachinePoolSecurityGroupFlag)))
+				securitygroups.MachinePoolSecurityGroupFlag))
+
 		})
 
 		It("should error when the security group IDs flag is set for clusters with incompatible versions", func() {
@@ -1194,10 +1193,9 @@ var _ = Describe("MachinePools", func() {
 				[]string{}, "comma-separated list of security group IDs")
 			cmd.Flags().Set("additional-security-group-ids", "sg-12345")
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
-			Expect(err).To(HaveOccurred())
+			helper.ExpectErrorWithMessage(err, fmt.Sprintf(
+				"parameter '%s' is not supported prior to version ", securitygroups.MachinePoolSecurityGroupFlag))
 
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
-				"parameter '%s' is not supported prior to version ", securitygroups.MachinePoolSecurityGroupFlag)))
 		})
 
 		It("should error when both 'subnet' and 'availability-zone' flags are set", func() {
@@ -1401,8 +1399,7 @@ var _ = Describe("MachinePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
 			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid machine pool root disk size value"))
+			helper.ExpectErrorWithMessage(err, "expected a valid machine pool root disk size value")
 		})
 		It("should fail when there is an invalid root disk size set", func() {
 			machinePool := &machinePool{}
@@ -1433,9 +1430,8 @@ var _ = Describe("MachinePools", func() {
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatQuotaCostList([]*amsv1.QuotaCost{qc})))
 			mockClient.EXPECT().IsLocalAvailabilityZone(region).Return(false, nil)
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
-			Expect(err).To(HaveOccurred())
+			helper.ExpectErrorWithMessage(err, "Invalid root disk size")
 			//nolint:staticcheck
-			Expect(err.Error()).To(ContainSubstring("Invalid root disk size"))
 		})
 		It("Fails to add a machine pool to cluster", func() {
 			machinePool := &machinePool{}
@@ -1469,8 +1465,7 @@ var _ = Describe("MachinePools", func() {
 				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/machine_pools", cluster.ID()),
 				RespondWithJSON(http.StatusBadRequest, missingOIDCProviderErrorResponse))
 			err = machinePool.CreateMachinePool(t.RosaRuntime, cmd, clusterKey, cluster, &args)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to add machine pool to cluster"))
+			helper.ExpectErrorWithMessage(err, "failed to add machine pool to cluster")
 			Expect(err.Error()).To(ContainSubstring(missingOIDCProviderErrorReason))
 			Expect(err.Error()).To(ContainSubstring(
 				"rosa create oidc-provider --cluster test-cluster-key"))
@@ -1598,8 +1593,7 @@ var _ = Describe("NodePools", func() {
 
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, test.FormatVersionList([]*cmv1.Version{versionObj})))
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a valid OpenShift version"))
+			helper.ExpectErrorWithMessage(err, "expected a valid OpenShift version")
 		})
 		It("should fail when not providing a valid instance type", func() {
 			machinePool := &machinePool{}
@@ -1857,8 +1851,7 @@ var _ = Describe("NodePools", func() {
 				fmt.Sprintf("/api/clusters_mgmt/v1/clusters/%s/node_pools", cluster.ID()),
 				RespondWithJSON(http.StatusBadRequest, missingOIDCProviderErrorResponse))
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to add machine pool to hosted cluster"))
+			helper.ExpectErrorWithMessage(err, "failed to add machine pool to hosted cluster")
 			Expect(err.Error()).To(ContainSubstring(missingOIDCProviderErrorReason))
 			Expect(err.Error()).To(ContainSubstring(
 				"rosa create oidc-provider --cluster test-cluster-key"))
@@ -2417,9 +2410,8 @@ var _ = Describe("NodePools", func() {
 			Expect(err).ToNot(HaveOccurred())
 			t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, FormatResources(nodePoolObj)))
 			err = machinePool.CreateNodePools(t.RosaRuntime, cmd, clusterKey, cluster, nil, &args)
-			Expect(err).To(HaveOccurred())
+			helper.ExpectErrorWithMessage(err, "expected a valid node pool root disk size value")
 
-			Expect(err.Error()).To(ContainSubstring("expected a valid node pool root disk size value"))
 		})
 	})
 
@@ -2566,8 +2558,7 @@ var _ = Describe("ManageReplicas", func() {
 			cmd.Flags().Int32("replicas", 1, "Replicas of the machine pool")
 			cmd.Flags().Set("replicas", "1")
 			_, _, _, autoscaling, err := manageReplicas(cmd, args, replicaSizeValidation)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("replicas can't be set when autoscaling is enabled"))
+			helper.ExpectErrorWithMessage(err, "replicas can't be set when autoscaling is enabled")
 			Expect(autoscaling).To(BeTrue())
 		})
 		It("should pass successfully", func() {
@@ -2593,8 +2584,7 @@ var _ = Describe("ManageReplicas", func() {
 			args.MinReplicas = 1
 			args.MaxReplicas = 3
 			_, _, _, autoscaling, err := manageReplicas(cmd, args, replicaSizeValidation)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("autoscaling must be enabled in order to set min and max replicas"))
+			helper.ExpectErrorWithMessage(err, "autoscaling must be enabled in order to set min and max replicas")
 			Expect(autoscaling).To(BeFalse())
 		})
 		It("should pass successfully", func() {

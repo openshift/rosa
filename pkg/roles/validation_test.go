@@ -4,12 +4,15 @@
 package roles
 
 import (
+	"fmt"
+
 	"go.uber.org/mock/gomock"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/openshift/rosa/pkg/arguments"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Validate Shared VPC Inputs", func() {
@@ -43,21 +46,17 @@ var _ = Describe("Validate Shared VPC Inputs", func() {
 				usingSharedVpc, err := ValidateSharedVpcInputs("123", "",
 					vpcEndpointRoleArnFlag, route53RoleArnFlag)
 				Expect(usingSharedVpc).To(BeFalse())
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(arguments.MustUseBothFlagsErrorMessage,
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf(arguments.MustUseBothFlagsErrorMessage,
 					route53RoleArnFlag,
-					vpcEndpointRoleArnFlag,
-				))
+					vpcEndpointRoleArnFlag))
 			})
 			It("KO: Should error when using the second flag but not the first (return false)", func() {
 				usingSharedVpc, err := ValidateSharedVpcInputs("", "123",
 					vpcEndpointRoleArnFlag, route53RoleArnFlag)
 				Expect(usingSharedVpc).To(BeFalse())
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(arguments.MustUseBothFlagsErrorMessage,
+				helper.ExpectErrorWithMessage(err, fmt.Sprintf(arguments.MustUseBothFlagsErrorMessage,
 					vpcEndpointRoleArnFlag,
-					route53RoleArnFlag,
-				))
+					route53RoleArnFlag))
 			})
 		})
 	})

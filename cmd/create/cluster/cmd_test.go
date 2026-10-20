@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Validate build command", func() {
@@ -460,8 +461,7 @@ var _ = Describe("resolveSTSMode", func() {
 		Expect(cmd.Flags().Set("sts", "true")).To(Succeed())
 		args.nonSts = true
 		_, _, err := resolveSTSMode(cmd, false)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("can't use both STS and mint mode"))
+		helper.ExpectErrorWithMessage(err, "can't use both STS and mint mode")
 	})
 
 	It("selects IAM when --sts=false is explicitly passed", func() {

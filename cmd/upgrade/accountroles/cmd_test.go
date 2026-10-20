@@ -18,6 +18,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Upgrade account-roles", func() {
@@ -45,8 +46,7 @@ var _ = Describe("Upgrade account-roles", func() {
 				`{"kind":"Error","id":"500","href":"/api/clusters_mgmt/v1/errors/500","code":"CLUSTERS-MGMT-500","reason":"internal error"}`))
 
 			_, _, err := test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("error getting version"))
+			helper.ExpectErrorWithMessage(err, "error getting version")
 		})
 
 		It("returns error when GetAccountRoleARN fails for classic roles", func() {
@@ -64,8 +64,7 @@ var _ = Describe("Upgrade account-roles", func() {
 				Return("", fmt.Errorf("role not found"))
 
 			_, _, err = test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to get classic account roles ARN"))
+			helper.ExpectErrorWithMessage(err, "failed to get classic account roles ARN")
 			Expect(err.Error()).To(ContainSubstring("'--hosted-cp' flag"))
 		})
 
@@ -88,8 +87,7 @@ var _ = Describe("Upgrade account-roles", func() {
 				Return("", fmt.Errorf("role not found"))
 
 			_, _, err = test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to get hosted CP account roles ARN"))
+			helper.ExpectErrorWithMessage(err, "failed to get hosted CP account roles ARN")
 			Expect(err.Error()).To(ContainSubstring("without the '--hosted-cp' flag"))
 		})
 
@@ -141,8 +139,7 @@ var _ = Describe("Upgrade account-roles", func() {
 			mockClient.EXPECT().HasHostedCPPolicies(roleARN).Return(true, nil)
 
 			_, _, err = test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("has hosted CP managed policies"))
+			helper.ExpectErrorWithMessage(err, "has hosted CP managed policies")
 			Expect(err.Error()).To(ContainSubstring("'--hosted-cp'"))
 		})
 
@@ -196,8 +193,7 @@ var _ = Describe("Upgrade account-roles", func() {
 				Return(false, fmt.Errorf("Throttling: rate exceeded"))
 
 			_, _, err = test.RunWithOutputCapture(runWithRuntime, t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Throttling"))
+			helper.ExpectErrorWithMessage(err, "Throttling")
 		})
 	})
 

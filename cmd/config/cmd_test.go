@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/rosa/cmd/config/set"
 	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func TestConfigCommand(t *testing.T) {
@@ -100,8 +101,7 @@ var _ = Describe("Run Command", Ordered, func() {
 
 			insecure = "Incorrect"
 			err = set.SaveConfig("insecure", insecure)
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("Failed to set insecure"))
+			helper.ExpectErrorWithMessage(err, "Failed to set insecure")
 
 			randomField := "random value"
 			err = set.SaveConfig("random_field", randomField)

@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
 	. "github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Machine pool helper", func() {
@@ -441,9 +442,7 @@ var _ = Describe("getSubnetOptions", func() {
 
 		It("returns an error instead of panicking", func() {
 			subnetOptions, err := getSubnetOptions(r, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(
-				"no private subnets available after excluding local zone and wavelength zone subnets"))
+			helper.ExpectErrorWithMessage(err, "no private subnets available after excluding local zone and wavelength zone subnets")
 			Expect(subnetOptions).To(BeNil())
 		})
 	})
@@ -528,8 +527,7 @@ var _ = Describe("getSecurityGroupsOption", func() {
 		It("should return an error if unable to retrieve subnets", func() {
 			mockAWS.EXPECT().GetVPCSubnets(gomock.Any()).Return(nil, fmt.Errorf("failed to retrieve subnets"))
 			_, err := getSecurityGroupsOption(runtime, cmd, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to retrieve available subnets: failed to retrieve subnets"))
+			helper.ExpectErrorWithMessage(err, "failed to retrieve available subnets: failed to retrieve subnets")
 		})
 
 		It("should return an error VPC ID is empty", func() {

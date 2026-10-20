@@ -17,6 +17,7 @@ import (
 	awsClient "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("runWithRuntime", func() {
@@ -35,15 +36,13 @@ var _ = Describe("runWithRuntime", func() {
 	It("returns error when GetMode fails", func() {
 		interactive.SetModeKey("invalid-mode")
 		err := runWithRuntime(t.RosaRuntime, Cmd)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Invalid mode"))
+		helper.ExpectErrorWithMessage(err, "Invalid mode")
 	})
 
 	It("returns error when neither cluster nor prefix is provided", func() {
 		interactive.SetModeKey("auto")
 		err := runWithRuntime(t.RosaRuntime, Cmd)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("either a cluster key or a prefix must be specified"))
+		helper.ExpectErrorWithMessage(err, "either a cluster key or a prefix must be specified")
 	})
 
 	It("returns interactive mode errors", func() {
@@ -224,8 +223,7 @@ var _ = Describe("runWithRuntime", func() {
 			)
 
 			err := runWithRuntime(t.RosaRuntime, Cmd)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("there are clusters using Operator Roles Prefix"))
+			helper.ExpectErrorWithMessage(err, "there are clusters using Operator Roles Prefix")
 		})
 
 		It("returns prefix usage lookup errors", func() {

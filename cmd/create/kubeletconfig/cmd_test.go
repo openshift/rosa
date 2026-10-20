@@ -16,6 +16,7 @@ import (
 	. "github.com/openshift/rosa/pkg/kubeletconfig"
 	"github.com/openshift/rosa/pkg/output"
 	. "github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("create kubeletconfig", func() {
@@ -188,8 +189,7 @@ var _ = Describe("create kubeletconfig", func() {
 			runner := CreateKubeletConfigRunner(options)
 
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed creating KubeletConfig for cluster 'cluster':"))
+			helper.ExpectErrorWithMessage(err, "Failed creating KubeletConfig for cluster 'cluster':")
 		})
 	})
 })

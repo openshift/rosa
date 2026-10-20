@@ -15,6 +15,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/output"
 	. "github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var tabularOutput = `ID   NAME      POD PIDS LIMIT
@@ -83,8 +84,7 @@ var _ = Describe("List KubeletConfig Command", func() {
 			runner := ListKubeletConfigRunner()
 			err := runner(context.Background(), t.RosaRuntime, nil, nil)
 
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("status is 500"))
+			helper.ExpectErrorWithMessage(err, "status is 500")
 		})
 
 		It("Prints message if there are no KubeletConfigs for the cluster", func() {

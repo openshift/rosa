@@ -13,6 +13,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Create OIDC Config", func() {
@@ -55,8 +56,7 @@ var _ = Describe("Create OIDC Config", func() {
 
 		It("returns error for invalid mode", func() {
 			_, err := getOidcConfigStrategy("invalid", input)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Invalid mode"))
+			helper.ExpectErrorWithMessage(err, "Invalid mode")
 		})
 	})
 
@@ -96,8 +96,7 @@ var _ = Describe("Create OIDC Config", func() {
 			strategy := &CreateManagedOidcConfigAutoStrategy{oidcConfigInput: input}
 
 			_, err := strategy.executeNoExit(t.RosaRuntime)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("managed OIDC Configuration"))
+			helper.ExpectErrorWithMessage(err, "managed OIDC Configuration")
 		})
 	})
 })

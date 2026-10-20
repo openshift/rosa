@@ -20,6 +20,7 @@ import (
 	mock "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Upgrade", Ordered, func() {
@@ -91,18 +92,16 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.allowMinorVersionUpdates = true
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("the '--allow-minor-version-updates' " +
-			"option needs to be used with --schedule"))
+		helper.ExpectErrorWithMessage(err, "the '--allow-minor-version-updates' "+
+			"option needs to be used with --schedule")
 	})
 	It("Fails if we are mixing scheduling type flags", func() {
 		args.schedule = cronSchedule
 		args.scheduleDate = "31 Jan"
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("the '--schedule-date' and '--schedule-time' " +
-			"options are mutually exclusive with '--schedule'"))
+		helper.ExpectErrorWithMessage(err, "the '--schedule-date' and '--schedule-time' "+
+			"options are mutually exclusive with '--schedule'")
 	})
 	It("Fails if we are mixing automatic scheduling and version flags", func() {
 		args.schedule = cronSchedule
@@ -110,9 +109,8 @@ var _ = Describe("Upgrade", Ordered, func() {
 		args.version = "4.13.0"
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("the '--schedule' " +
-			"option is mutually exclusive with '--version'"))
+		helper.ExpectErrorWithMessage(err, "the '--schedule' "+
+			"option is mutually exclusive with '--version'")
 	})
 	It("Fails if cluster is not ready", func() {
 		args.allowMinorVersionUpdates = false
@@ -126,8 +124,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 			),
 		)
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("cluster 'cluster1' is not yet ready"))
+		helper.ExpectErrorWithMessage(err, "cluster 'cluster1' is not yet ready")
 	})
 	It("Cluster is ready but existing upgrade scheduled", func() {
 		args.schedule = cronSchedule
@@ -157,8 +154,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 			formatControlPlaneUpgradePolicyList([]*cmv1.ControlPlaneUpgradePolicy{})))
 
 		_, _, err := test.RunWithOutputCapture(runWithRuntime, testRuntime.RosaRuntime, Cmd)
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("Schedule '* a' is not a valid cron expression"))
+		helper.ExpectErrorWithMessage(err, "Schedule '* a' is not a valid cron expression")
 	})
 
 	It("Cluster is ready and with manual scheduling but bad format", func() {
@@ -173,9 +169,9 @@ var _ = Describe("Upgrade", Ordered, func() {
 
 		err := runWithRuntime(testRuntime.RosaRuntime, Cmd)
 		Expect(err).ToNot(BeNil())
-		// Missing the upgrade type
 		Expect(err.Error()).To(ContainSubstring(
 			"schedule date should use the format 'yyyy-mm-dd'\n   Schedule time should use the format 'HH:mm'"))
+		// Missing the upgrade type
 	})
 	It("Cluster is ready and with manual scheduling but no upgrades available", func() {
 		args.schedule = ""
@@ -285,8 +281,7 @@ var _ = Describe("Upgrade", Ordered, func() {
 		// return an empty list to indicate that no cluster is found
 		testRuntime.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, emptyClusterList))
 		err = runWithRuntime(testRuntime.RosaRuntime, Cmd)
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("There is no cluster with identifier or name"))
+		helper.ExpectErrorWithMessage(err, "There is no cluster with identifier or name")
 	})
 	It("Fails if node-drain-grace-period flag is specified for hypershift clusters", func() {
 		args.schedule = "20 5 * * *"

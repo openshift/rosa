@@ -17,6 +17,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 // nolint
@@ -527,8 +529,7 @@ var _ = Describe("OCMClient", func() {
 			)
 
 			_, err := ocmClient.GetLatestVersion(DefaultChannelGroup)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("there are no OpenShift versions available"))
+			helper.ExpectErrorWithMessage(err, "there are no OpenShift versions available")
 		})
 
 		It("passes product to GetVersionsWithProduct requests", func() {

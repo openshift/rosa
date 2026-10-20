@@ -12,6 +12,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/properties"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("logout command", func() {
@@ -78,8 +79,7 @@ var _ = Describe("logout command", func() {
 		}
 
 		err := runLogout()
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("keyring"))
+		helper.ExpectErrorWithMessage(err, "keyring")
 	})
 
 	It("Rejects extra arguments via cobra.NoArgs", func() {

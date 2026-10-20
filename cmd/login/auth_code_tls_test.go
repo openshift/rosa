@@ -51,6 +51,7 @@ import (
 	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/fedramp"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 func TestMain(m *testing.M) {
@@ -652,8 +653,7 @@ var _ = Describe("OAuth authorization code TLS options", Ordered, func() {
 
 	It("rejects an untrusted certificate by default for the later OCM connection", func() {
 		err := runLogin(untrustedServer.URL, false)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("failed to create OCM connection"))
+		helper.ExpectErrorWithMessage(err, "failed to create OCM connection")
 		Expect(err.Error()).To(Or(ContainSubstring("certificate"), ContainSubstring("x509")))
 	})
 

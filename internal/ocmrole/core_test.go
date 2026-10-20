@@ -17,6 +17,7 @@ limitations under the License.
 package ocmrole
 
 import (
+	"github.com/openshift/rosa/tests/utils/helper"
 	"fmt"
 	"testing"
 
@@ -401,8 +402,7 @@ var _ = Describe("CreateRolesInternal", func() {
 		_, err := CreateRolesInternal(r, "test-prefix", "test-role", "/", "",
 			"org-123", "production", ProfileStandard, policies, false)
 
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("role creation failed"))
+		helper.ExpectErrorWithMessage(err, "role creation failed")
 	})
 
 	It("should fail when policy creation fails", func() {
@@ -416,8 +416,7 @@ var _ = Describe("CreateRolesInternal", func() {
 		_, err := CreateRolesInternal(r, "test-prefix", "test-role", "/", "",
 			"org-123", "production", ProfileStandard, policies, false)
 
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("policy creation failed"))
+		helper.ExpectErrorWithMessage(err, "policy creation failed")
 	})
 
 	It("should fail when policy attachment fails", func() {
@@ -434,7 +433,6 @@ var _ = Describe("CreateRolesInternal", func() {
 		_, err := CreateRolesInternal(r, "test-prefix", "test-role", "/", "",
 			"org-123", "production", ProfileStandard, policies, false)
 
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("attachment failed"))
+		helper.ExpectErrorWithMessage(err, "attachment failed")
 	})
 })

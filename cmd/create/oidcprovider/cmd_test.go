@@ -15,6 +15,7 @@ import (
 
 	awsClient "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Create OIDC Provider", func() {
@@ -63,8 +64,7 @@ var _ = Describe("Create OIDC Provider", func() {
 			}`))
 
 			err := CreateOIDCProvider(t.RosaRuntime, "nonexistent", "", true)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("retrieving OIDC Config"))
+			helper.ExpectErrorWithMessage(err, "retrieving OIDC Config")
 		})
 
 		It("returns error when FetchOidcThumbprint fails", func() {
@@ -114,8 +114,7 @@ var _ = Describe("Create OIDC Provider", func() {
 			).Return("", fmt.Errorf("access denied"))
 
 			err := CreateOIDCProvider(t.RosaRuntime, oidcConfigId, "", true)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("access denied"))
+			helper.ExpectErrorWithMessage(err, "access denied")
 		})
 	})
 })

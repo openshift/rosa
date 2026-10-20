@@ -15,6 +15,8 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const subscriptionId = "sub123"
@@ -148,8 +150,7 @@ var _ = Describe("NotificationContacts", func() {
 			)
 
 			err := ocmClient.UpdateSubscriptionNotificationContacts(context.Background(), subscriptionId, []string{"user1"})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("can't read notification contacts"))
+			helper.ExpectErrorWithMessage(err, "can't read notification contacts")
 		})
 
 		It("returns an error when adding a contact fails", func() {
@@ -170,8 +171,7 @@ var _ = Describe("NotificationContacts", func() {
 			)
 
 			err := ocmClient.UpdateSubscriptionNotificationContacts(context.Background(), subscriptionId, []string{"bad_user"})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to add 1 of 1"))
+			helper.ExpectErrorWithMessage(err, "failed to add 1 of 1")
 		})
 
 		It("continues adding remaining contacts after one fails and reports summary", func() {
@@ -199,8 +199,7 @@ var _ = Describe("NotificationContacts", func() {
 
 			err := ocmClient.UpdateSubscriptionNotificationContacts(
 				context.Background(), subscriptionId, []string{"bad_user", "good_user"})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to add 1 of 2"))
+			helper.ExpectErrorWithMessage(err, "failed to add 1 of 2")
 			Expect(err.Error()).To(ContainSubstring("Successfully added: good_user"))
 			Expect(apiServer.ReceivedRequests()).To(HaveLen(3))
 		})
@@ -302,8 +301,7 @@ var _ = Describe("NotificationContacts", func() {
 
 			err := ocmClient.UpdateSubscriptionNotificationContacts(
 				context.Background(), subscriptionId, []string{"user1", "user1@example.com"})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to add 1 of 2"))
+			helper.ExpectErrorWithMessage(err, "failed to add 1 of 2")
 			Expect(err.Error()).To(ContainSubstring("user1@example.com"))
 			Expect(err.Error()).To(ContainSubstring("Successfully added: user1"))
 		})
@@ -333,8 +331,7 @@ var _ = Describe("NotificationContacts", func() {
 
 			err := ocmClient.UpdateSubscriptionNotificationContacts(
 				context.Background(), subscriptionId, []string{"new_user"})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to add 1 of 1"))
+			helper.ExpectErrorWithMessage(err, "failed to add 1 of 1")
 			Expect(apiServer.ReceivedRequests()).To(HaveLen(3))
 		})
 	})

@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	helper "github.com/openshift/rosa/pkg/helper/download"
+	assertHelper "github.com/openshift/rosa/tests/utils/helper"
 )
 
 func TestDownload(t *testing.T) {
@@ -83,8 +84,7 @@ var _ = Describe("Download", func() {
 				filename := filepath.Join(tmpDir, fmt.Sprintf("error-%d.txt", tc.statusCode))
 				err := helper.Download(server.URL, filename)
 
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(tc.errorMessage))
+				assertHelper.ExpectErrorWithMessage(err, tc.errorMessage)
 				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("HTTP %d", tc.statusCode)))
 
 				// Verify file was not created and temp files were cleaned up

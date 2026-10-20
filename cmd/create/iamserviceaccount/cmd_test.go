@@ -35,6 +35,7 @@ import (
 	rosaerrors "github.com/openshift/rosa/pkg/errors"
 	iamServiceAccountOpts "github.com/openshift/rosa/pkg/options/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("Create IAM Service Account", func() {
@@ -132,8 +133,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				testRunner := CreateIamServiceAccountRunner(options)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not an STS cluster"))
+				helper.ExpectErrorWithMessage(err, "not an STS cluster")
 			})
 
 			It("should fail when no policies are provided", func() {
@@ -163,8 +163,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				cmd.SetErr(&out)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("at least one policy ARN or inline policy must be specified"))
+				helper.ExpectErrorWithMessage(err, "at least one policy ARN or inline policy must be specified")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeTrue())
@@ -198,8 +197,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				cmd.SetErr(&out)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("at least one service account name is required"))
+				helper.ExpectErrorWithMessage(err, "at least one service account name is required")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeTrue())
@@ -237,8 +235,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				cmd.SetErr(&out)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is invalid"))
+				helper.ExpectErrorWithMessage(err, "policy ARN at index 0 is invalid")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeTrue())
@@ -271,8 +268,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				testRunner := CreateIamServiceAccountRunner(options)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is not an IAM policy ARN"))
+				helper.ExpectErrorWithMessage(err, "policy ARN at index 0 is not an IAM policy ARN")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeTrue())
@@ -305,8 +301,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				testRunner := CreateIamServiceAccountRunner(options)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is not an IAM policy ARN"))
+				helper.ExpectErrorWithMessage(err, "policy ARN at index 0 is not an IAM policy ARN")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeTrue())
@@ -339,8 +334,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				testRunner := CreateIamServiceAccountRunner(options)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("policy ARN at index 0 is not an IAM policy ARN"))
+				helper.ExpectErrorWithMessage(err, "policy ARN at index 0 is not an IAM policy ARN")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeTrue())
@@ -374,8 +368,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				testRunner := CreateIamServiceAccountRunner(options)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("inline policy must be valid JSON"))
+				helper.ExpectErrorWithMessage(err, "inline policy must be valid JSON")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeTrue())
@@ -412,8 +405,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				cmd.SetErr(&out)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("role name is required when specifying multiple service accounts"))
+				helper.ExpectErrorWithMessage(err, "role name is required when specifying multiple service accounts")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeTrue())
@@ -471,8 +463,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				cmd.SetErr(&out)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create role"))
+				helper.ExpectErrorWithMessage(err, "failed to create role")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeFalse())
@@ -565,8 +556,7 @@ var _ = Describe("Create IAM Service Account", func() {
 				testRunner := CreateIamServiceAccountRunner(options)
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("inline policy must not be empty when provided"))
+				helper.ExpectErrorWithMessage(err, "inline policy must not be empty when provided")
 
 				var validationErr *rosaerrors.ValidationError
 				Expect(errors.As(err, &validationErr)).To(BeTrue())
@@ -677,9 +667,8 @@ var _ = Describe("Create IAM Service Account", func() {
 				Return("", nil)
 
 			_, err := getOIDCProviderARN(t.RosaRuntime, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("no OIDC provider found for cluster with ID " +
-				"'test-cluster-id'"))
+			helper.ExpectErrorWithMessage(err, "no OIDC provider found for cluster with ID "+
+				"'test-cluster-id'")
 		})
 
 		It("should preserve the underlying AWS error when the provider lookup call fails", func() {
@@ -699,9 +688,8 @@ var _ = Describe("Create IAM Service Account", func() {
 				Return("", errors.New("access denied"))
 
 			_, err := getOIDCProviderARN(t.RosaRuntime, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to get OIDC provider for cluster with ID " +
-				"'test-cluster-id'"))
+			helper.ExpectErrorWithMessage(err, "failed to get OIDC provider for cluster with ID "+
+				"'test-cluster-id'")
 			Expect(errors.Unwrap(err)).To(MatchError("access denied"))
 		})
 	})

@@ -14,6 +14,7 @@ import (
 
 	awsClient "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("List clusters", func() {
@@ -86,8 +87,7 @@ var _ = Describe("List clusters", func() {
 				awsClient.Role{}, fmt.Errorf("role not found"))
 
 			_, err := listClustersUsingAccountRole(t.RosaRuntime.Creator, t.RosaRuntime)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("role not found"))
+			helper.ExpectErrorWithMessage(err, "role not found")
 		})
 
 		It("returns error when GetClustersUsingAccountRole fails", func() {
@@ -109,8 +109,7 @@ var _ = Describe("List clusters", func() {
 			}`))
 
 			_, err := listClustersUsingAccountRole(t.RosaRuntime.Creator, t.RosaRuntime)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected response content type"))
+			helper.ExpectErrorWithMessage(err, "expected response content type")
 		})
 	})
 })

@@ -15,6 +15,8 @@ import (
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	. "github.com/openshift-online/ocm-sdk-go/testing"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("DeleteProtection", func() {
@@ -82,8 +84,7 @@ var _ = Describe("DeleteProtection", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		err = ocmClient.UpdateClusterDeleteProtection(clusterId, deleteProtection)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("forbidden"))
+		helper.ExpectErrorWithMessage(err, "forbidden")
 	})
 })
 

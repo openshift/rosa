@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/test"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 const (
@@ -123,9 +124,7 @@ var _ = Describe("create operator-roles cmd", func() {
 	Context("runWithRuntime", func() {
 		It("returns an error when neither cluster nor prefix is specified", func() {
 			err := runWithRuntime(t.RosaRuntime, Cmd, false)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(
-				"either a cluster key for STS cluster or an operator roles prefix must be specified"))
+			helper.ExpectErrorWithMessage(err, "either a cluster key for STS cluster or an operator roles prefix must be specified")
 		})
 
 		It("dispatches to the prefix path when prefix is set", func() {
@@ -137,8 +136,7 @@ var _ = Describe("create operator-roles cmd", func() {
 			)
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, false)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(OidcConfigIdFlag))
+			helper.ExpectErrorWithMessage(err, OidcConfigIdFlag)
 			Expect(err.Error()).To(ContainSubstring(PrefixFlag))
 		})
 
@@ -199,8 +197,7 @@ var _ = Describe("create operator-roles cmd", func() {
 			)
 
 			err := runWithRuntime(t.RosaRuntime, Cmd, false)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("error fetching operator role policies"))
+			helper.ExpectErrorWithMessage(err, "error fetching operator role policies")
 		})
 	})
 })

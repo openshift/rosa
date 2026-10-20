@@ -9,6 +9,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("MachinePool", func() {
@@ -19,8 +21,7 @@ var _ = Describe("MachinePool", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(taints)).To(Equal(numberOfTaints))
 			} else {
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(expectedError))
+				helper.ExpectErrorWithMessage(err, expectedError)
 			}
 		},
 		Entry("Empty taints are parsed correctly",
@@ -69,8 +70,7 @@ var _ = Describe("MachinePool", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(labels)).To(Equal(numberOfLabels))
 		} else {
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(expectedError))
+			helper.ExpectErrorWithMessage(err, expectedError)
 		}
 	},
 		Entry("Empty Labels are parsed correctly",
@@ -106,8 +106,7 @@ var _ = Describe("Label validations", func() {
 		func(key string, value string, hasError bool) {
 			err := ValidateLabelKeyValuePair(key, value)
 			if hasError {
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("label"))
+				helper.ExpectErrorWithMessage(err, "label")
 			} else {
 				Expect(err).ToNot(HaveOccurred())
 			}
@@ -150,8 +149,7 @@ var _ = Describe("Taint validations", func() {
 		func(key string, value string, hasError bool) {
 			err := ValidateTaintKeyValuePair(key, value)
 			if hasError {
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("taint"))
+				helper.ExpectErrorWithMessage(err, "taint")
 			} else {
 				Expect(err).ToNot(HaveOccurred())
 			}
@@ -194,8 +192,7 @@ var _ = Describe("Create node drain grace period builder validations", func() {
 		func(period string, errMsg string) {
 			_, err := CreateNodeDrainGracePeriodBuilder(period)
 			if errMsg != "" {
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(errMsg))
+				helper.ExpectErrorWithMessage(err, errMsg)
 			} else {
 				Expect(err).ToNot(HaveOccurred())
 			}
@@ -228,8 +225,7 @@ var _ = Describe("Validate node drain grace period", func() {
 		func(period interface{}, errMsg string) {
 			err := ValidateNodeDrainGracePeriod(period)
 			if errMsg != "" {
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(errMsg))
+				helper.ExpectErrorWithMessage(err, errMsg)
 			} else {
 				Expect(err).ToNot(HaveOccurred())
 			}
@@ -307,8 +303,7 @@ var _ = Describe("Validate MaxSurge and MaxUnavailable", func() {
 		func(value interface{}, errMsg string) {
 			err := ValidateUpgradeMaxSurgeUnavailable(value)
 			if errMsg != "" {
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(errMsg))
+				helper.ExpectErrorWithMessage(err, errMsg)
 			} else {
 				Expect(err).ToNot(HaveOccurred())
 			}
@@ -374,24 +369,18 @@ var _ = Describe("Validate Capacity Reservation Preference", func() {
 	It("KO: Invalid values provided", func() {
 		invalidValue := "None!"
 		err := ValidateCapacityReservationPreference(invalidValue, "123")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring(
-			fmt.Sprintf("When specifying a capacity reservation id ('%s'), "+
-				"you may only provide the '%s' preference", "123", onlyValue)))
+		helper.ExpectErrorWithMessage(err, fmt.Sprintf("When specifying a capacity reservation id ('%s'), "+
+			"you may only provide the '%s' preference", "123", onlyValue))
 
 		err = ValidateCapacityReservationPreference(noneValue, "123")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring(
-			fmt.Sprintf("invalid Capacity Reservation Preference: '%s'. "+
-				"When specifying a capacity reservation id ('%s'), you may only provide the "+
-				"'%s' preference", noneValue, "123", onlyValue)))
+		helper.ExpectErrorWithMessage(err, fmt.Sprintf("invalid Capacity Reservation Preference: '%s'. "+
+			"When specifying a capacity reservation id ('%s'), you may only provide the "+
+			"'%s' preference", noneValue, "123", onlyValue))
 
 		err = ValidateCapacityReservationPreference(openValue, "123")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring(
-			fmt.Sprintf("invalid Capacity Reservation Preference: '%s'. "+
-				"When specifying a capacity reservation id ('%s'), you may only provide the "+
-				"'%s' preference", openValue, "123", onlyValue)))
+		helper.ExpectErrorWithMessage(err, fmt.Sprintf("invalid Capacity Reservation Preference: '%s'. "+
+			"When specifying a capacity reservation id ('%s'), you may only provide the "+
+			"'%s' preference", openValue, "123", onlyValue))
 
 	})
 })
