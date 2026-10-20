@@ -2,7 +2,10 @@
 
 package pathbind
 
-import "github.com/spf13/pflag"
+import (
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+)
 
 // registerIfNew calls register only when no flag named name is already defined on f.
 // This makes Register*Flags safe to call after OCM v1 flag registrations for any flag type.
@@ -10,4 +13,8 @@ func registerIfNew(f *pflag.FlagSet, name string, register func()) {
 	if f.Lookup(name) == nil {
 		register()
 	}
+}
+
+func flagChanged(cmd *cobra.Command, name string) bool {
+	return cmd != nil && cmd.Flags().Lookup(name) != nil && cmd.Flag(name).Changed
 }

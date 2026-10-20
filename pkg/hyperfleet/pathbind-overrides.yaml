@@ -21,6 +21,10 @@ resources:
         type: string
       - path: spec.hostedCluster.autoscaling.expanders
         type: string
+      - path: spec.hostedCluster.capabilities.disabled
+        type: string
+      - path: spec.hostedCluster.capabilities.enabled
+        type: string
       - path: spec.hostedCluster.configuration.kubelet.kubeReserved
         type: string
       - path: spec.hostedCluster.configuration.kubelet.systemReserved
@@ -236,6 +240,12 @@ resources:
         alias: instanceType
         flag: instance-type
         description: "AWS instance type for worker nodes."
+        operations: [create]
+
+      - path: spec.ec2InstanceMetadataHttpTokens
+        alias: ec2MetadataHttpTokens
+        goName: EC2InstanceMetadataHttpTokens
+        flag: ec2-metadata-http-tokens
         operations: [create]
 
       - path: spec.nodePool.platform.aws.subnet.id

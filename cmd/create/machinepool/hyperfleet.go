@@ -152,6 +152,16 @@ func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
 	if h.cmd != nil && h.cmd.Flags().Changed("version") && h.userOptions.Version == "" {
 		return fmt.Errorf("expected a valid OpenShift version: --version requires a non-empty value")
 	}
+	httpTokensFlagChanged := h.cmd != nil && h.cmd.Flags().Lookup("ec2-metadata-http-tokens") != nil &&
+		h.cmd.Flags().Changed("ec2-metadata-http-tokens")
+	if h.userOptions.EC2MetadataHttpTokens == "" && httpTokensFlagChanged {
+		return fmt.Errorf("expected a valid http tokens value : ec2-metadata-http-tokens value should be one of 'required', 'optional'")
+	}
+	if h.userOptions.EC2MetadataHttpTokens != "" {
+		if err := ocm.ValidateHttpTokensValue(h.userOptions.EC2MetadataHttpTokens); err != nil {
+			return fmt.Errorf("expected a valid http tokens value : %v", err)
+		}
+	}
 	name := h.userOptions.Name
 	if name == "" && len(h.argv) > 0 {
 		name = h.argv[0]
@@ -298,6 +308,7 @@ func (h *hyperfleetNodePoolCreate) PreRequest(
 	input.InstanceType = instanceType
 
 	input.SubnetID = h.userOptions.Subnet
+	input.EC2InstanceMetadataHttpTokens = h.userOptions.EC2MetadataHttpTokens
 
 	// Bridge: --max-surge and --max-unavailable share their names with the OCM
 	// registrations so registerIfNew skips them; read from userOptions. Remove
