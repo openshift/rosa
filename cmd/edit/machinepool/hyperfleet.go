@@ -92,6 +92,7 @@ type hyperfleetNodePoolUpdate struct {
 	cmd          *cobra.Command
 	labels       map[string]string
 	taints       []hypershiftv1beta1.Taint
+	imageType    string
 }
 
 func (h *hyperfleetNodePoolUpdate) PreRequest(
@@ -119,20 +120,22 @@ func (h *hyperfleetNodePoolUpdate) PreRequest(
 	}
 
 	if imageTypeChanged {
-		// --image-type is a generated flag, so it arrives on the input already.
-		// Normalise it here so the OCM spelling of the Linux default is
-		// accepted and an unknown type fails before the request. The API enum
-		// has no empty member, so clearing the flag is rejected rather than
-		// silently leaving the node pool as it is.
-		if input.ImageType == "" {
+		// Read --image-type from the command flag and validate before request.
+		// The API enum has no empty member, so clearing the flag is rejected
+		// rather than silently leaving the node pool as it is.
+		imageTypeVal, err := h.cmd.Flags().GetString("image-type")
+		if err != nil {
+			return fmt.Errorf("error reading --image-type: %w", err)
+		}
+		if imageTypeVal == "" {
 			return fmt.Errorf("--image-type requires a value: %s or %s",
 				hypershiftv1beta1.ImageTypeLinux, hypershiftv1beta1.ImageTypeWindows)
 		}
-		imageType, err := mpHelpers.ParseHyperfleetImageType(input.ImageType)
+		imageType, err := mpHelpers.ParseHyperfleetImageType(imageTypeVal)
 		if err != nil {
 			return err
 		}
-		input.ImageType = imageType
+		h.imageType = imageType
 	}
 
 	if h.cmd.Flags().Changed("labels") {
@@ -279,13 +282,12 @@ func (h *hyperfleetNodePoolUpdate) PostExpand(
 		merged.Spec.AutoRepair = &autorepair
 	}
 
-	// The merge starts from the current node pool, so an expanded field only
-	// reaches the request when it is carried over explicitly.
-	if h.cmd.Flags().Changed("image-type") && obj.Spec.NodePool.Platform.AWS != nil {
+	// The merge starts from the current node pool, so carry over the updated image type.
+	if h.cmd.Flags().Changed("image-type") {
 		if merged.Spec.NodePool.Platform.AWS == nil {
 			return fmt.Errorf("cannot update the image type on a non-AWS node pool")
 		}
-		merged.Spec.NodePool.Platform.AWS.ImageType = obj.Spec.NodePool.Platform.AWS.ImageType
+		merged.Spec.NodePool.Platform.AWS.ImageType = hypershiftv1beta1.ImageType(h.imageType)
 	}
 
 	if h.cmd.Flags().Changed("labels") {

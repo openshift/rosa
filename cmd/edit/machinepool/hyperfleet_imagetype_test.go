@@ -18,11 +18,10 @@ import (
 	"github.com/openshift/rosa/pkg/test"
 )
 
-// imageTypeEditCmd binds --image-type the way the generated registration does
-// and marks it changed, including for the empty value a user can pass.
-func imageTypeEditCmd(input *hfpathbind.NodePoolUpdateInput, value string) *cobra.Command {
+// imageTypeEditCmd creates a Cobra command with the --image-type flag set.
+func imageTypeEditCmd(value string) *cobra.Command {
 	cmd := &cobra.Command{Use: "test"}
-	cmd.Flags().StringVar(&input.ImageType, "image-type", "", "")
+	cmd.Flags().String("image-type", "", "")
 	Expect(cmd.Flags().Set("image-type", value)).To(Succeed())
 	return cmd
 }
@@ -51,7 +50,7 @@ var _ = Describe("HyperFleet machine pool image type editing", func() {
 			Return(nodePoolWithImageType(hypershiftv1beta1.ImageTypeLinux), nil).AnyTimes()
 
 		input := &hfpathbind.NodePoolUpdateInput{}
-		cmd := imageTypeEditCmd(input, value)
+		cmd := imageTypeEditCmd(value)
 		handler := &hyperfleetNodePoolUpdate{
 			clusterKey: "my-cluster", nodePoolKey: "workers", nodePoolName: "my-cluster.workers",
 			userOptions: &EditMachinepoolUserOptions{}, cmd: cmd,
@@ -93,7 +92,7 @@ var _ = Describe("HyperFleet machine pool image type editing", func() {
 
 	It("rejects clearing the image type, which the API cannot express", func() {
 		input := &hfpathbind.NodePoolUpdateInput{}
-		cmd := imageTypeEditCmd(input, "")
+		cmd := imageTypeEditCmd("")
 		handler := &hyperfleetNodePoolUpdate{userOptions: &EditMachinepoolUserOptions{}, cmd: cmd}
 		err := handler.PreRequest(context.Background(), test.NewTestRuntime().RosaRuntime, input)
 		Expect(err).To(MatchError("--image-type requires a value: Linux or Windows"))
@@ -101,7 +100,7 @@ var _ = Describe("HyperFleet machine pool image type editing", func() {
 
 	It("counts as a supported flag on its own", func() {
 		input := &hfpathbind.NodePoolUpdateInput{}
-		cmd := imageTypeEditCmd(input, "Windows")
+		cmd := imageTypeEditCmd("Windows")
 		handler := &hyperfleetNodePoolUpdate{userOptions: &EditMachinepoolUserOptions{}, cmd: cmd}
 		Expect(handler.PreRequest(context.Background(), test.NewTestRuntime().RosaRuntime, input)).To(Succeed())
 	})

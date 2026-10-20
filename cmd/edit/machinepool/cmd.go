@@ -177,6 +177,9 @@ func NewEditMachinePoolCommand() *cobra.Command {
 			"absolute number i.e. 1, or a percentage i.e. '20%'.",
 	)
 
+	flags.String("image-type", "",
+		"Image type for the node pool (Linux or Windows). Not supported for OCM-managed node pools.")
+
 	output.AddFlag(cmd)
 	ocm.AddClusterFlag(cmd)
 	// ── HyperFleet flag sections ─────────────────────────────────────────────
