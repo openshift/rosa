@@ -155,7 +155,8 @@ func (h *hyperfleetNodePoolCreate) validateAndParseUserOptions() error {
 	httpTokensFlagChanged := h.cmd != nil && h.cmd.Flags().Lookup("ec2-metadata-http-tokens") != nil &&
 		h.cmd.Flags().Changed("ec2-metadata-http-tokens")
 	if h.userOptions.EC2MetadataHttpTokens == "" && httpTokensFlagChanged {
-		return fmt.Errorf("expected a valid http tokens value : ec2-metadata-http-tokens value should be one of 'required', 'optional'")
+		return fmt.Errorf("expected a valid http tokens value : " +
+			"ec2-metadata-http-tokens value should be one of 'required', 'optional'")
 	}
 	if h.userOptions.EC2MetadataHttpTokens != "" {
 		if err := ocm.ValidateHttpTokensValue(h.userOptions.EC2MetadataHttpTokens); err != nil {
