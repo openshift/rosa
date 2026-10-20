@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -44,9 +43,6 @@ var _ = Describe("Healthy check",
 
 		BeforeEach(func() {
 			rosaClient = nil
-			if isHyperfleetMode() && slices.Contains(CurrentSpecReport().Labels(), "hyperfleet-na") {
-				Skip("This test is not applicable to Platform API v2")
-			}
 			By("Get the cluster")
 			clusterID = config.GetClusterID()
 			Expect(clusterID).ToNot(Equal(""), "ClusterID is required. Please export CLUSTER_ID")

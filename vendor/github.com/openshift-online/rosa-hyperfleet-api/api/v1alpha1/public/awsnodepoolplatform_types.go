@@ -36,9 +36,19 @@ type AWSNodePoolPlatform struct {
 	// +kubebuilder:validation:MaxLength=255
 	// +optional
 	AMI string `json:"ami,omitempty"`
-	// imageType specifies the type of image to use for node instances.
+	// imageType selects the operating system image family for node instances,
+	// either "Linux" (RHCOS, the default when unset) or "Windows".
+	// Windows node pools are License Included: HyperShift resolves a Windows
+	// AMI for the pool's region and OpenShift version, and the Windows Server
+	// license is billed through the EC2 instance cost rather than brought by
+	// the customer. Setting ami overrides that automatic selection. Windows is
+	// only supported on amd64, which is the architecture every pool gets.
+	// The image family is baked into every instance the pool launches and an
+	// existing node cannot be converted between Linux and Windows, so this
+	// field is immutable once the pool is created. Add Windows capacity to an
+	// existing cluster by creating a second node pool.
 	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=mutable
+	// +hyperfleet:write-mode=immutable
 	// +kubebuilder:validation:Enum=Windows;Linux
 	// +optional
 	ImageType hypershiftv1beta1.ImageType `json:"imageType,omitempty"`

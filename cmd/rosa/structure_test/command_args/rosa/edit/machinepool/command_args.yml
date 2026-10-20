@@ -28,7 +28,6 @@
 - name: "capacity-reservation-id"
 - name: "filters"
 - name: "image"
-- name: "image-type"
 - name: "instance-profile"
 - name: "max-price"
 - name: "node-labels"

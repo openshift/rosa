@@ -2,12 +2,15 @@ package pathbind
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
 	pathbind "github.com/openshift-online/rosa-hyperfleet-api/clientset/pathbind"
 	platform "github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
 	interactive "github.com/openshift/rosa/pkg/interactive"
 	rosa "github.com/openshift/rosa/pkg/rosa"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // NodePoolUpdateInput holds mutable inputs for NodePool update.
@@ -22,7 +25,6 @@ type NodePoolUpdateInput struct {
 	NodeDrainTimeout              string `hfsdk:"spec.nodePool.nodeDrainTimeout"`
 	NodeLabels                    string `hfsdk:"spec.nodePool.nodeLabels"`
 	Ami                           string `hfsdk:"spec.nodePool.platform.aws.ami"`
-	ImageType                     string `hfsdk:"spec.nodePool.platform.aws.imageType"`
 	InstanceProfile               string `hfsdk:"spec.nodePool.platform.aws.instanceProfile"`
 	CapacityReservationId         string `hfsdk:"spec.nodePool.platform.aws.placement.capacityReservation.id"`
 	CapacityReservationMarketType string `hfsdk:"spec.nodePool.platform.aws.placement.capacityReservation.marketType"`
@@ -47,7 +49,6 @@ var NodePoolUpdatePlatformAPIFlags = []string{
 	"max-unavailable",
 	"node-labels",
 	"ami",
-	"image-type",
 	"instance-profile",
 	"capacity-reservation-id",
 	"capacity-reservation-market-type",
@@ -70,7 +71,6 @@ func RegisterNodePoolUpdateFlags(cmd *cobra.Command, input *NodePoolUpdateInput)
 	registerIfNew(f, "max-unavailable", func() { f.StringVar(&input.MaxUnavailable, "max-unavailable", "", "") })
 	registerIfNew(f, "node-labels", func() { f.StringVar(&input.NodeLabels, "node-labels", "", "") })
 	registerIfNew(f, "ami", func() { f.StringVar(&input.Ami, "ami", "", "") })
-	registerIfNew(f, "image-type", func() { f.StringVar(&input.ImageType, "image-type", "", "") })
 	registerIfNew(f, "instance-profile", func() { f.StringVar(&input.InstanceProfile, "instance-profile", "", "") })
 	registerIfNew(f, "capacity-reservation-id", func() { f.StringVar(&input.CapacityReservationId, "capacity-reservation-id", "", "") })
 	registerIfNew(f, "capacity-reservation-market-type", func() { f.StringVar(&input.CapacityReservationMarketType, "capacity-reservation-market-type", "", "") })
@@ -126,6 +126,190 @@ func normalizeNodePoolUpdateInput(cmd *cobra.Command, input *NodePoolUpdateInput
 	}
 }
 
+// overlayNodePoolUpdateInput starts from the current values and applies only
+// fields explicitly supplied by the caller or computed by PostExpand. An
+// explicitly empty value is allowed only for resettable fields.
+func overlayNodePoolUpdateInput(cmd *cobra.Command, before, input, expanded *NodePoolUpdateInput) (NodePoolUpdateInput, error) {
+	after := *before
+	if flagChanged(cmd, "auto-repair") && pathbind.IsUnset(input.AutoRepair) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.autoRepair")
+	} else if !pathbind.IsUnset(expanded.AutoRepair) {
+		after.AutoRepair = expanded.AutoRepair
+	} else if !pathbind.IsUnset(input.AutoRepair) {
+		after.AutoRepair = input.AutoRepair
+	}
+	if flagChanged(cmd, "labels") && pathbind.IsUnset(input.Labels) {
+		after.Labels = input.Labels
+	} else if !pathbind.IsUnset(expanded.Labels) {
+		after.Labels = expanded.Labels
+	} else if !pathbind.IsUnset(input.Labels) {
+		after.Labels = input.Labels
+	}
+	if flagChanged(cmd, "max-surge") && pathbind.IsUnset(input.MaxSurge) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.maxSurge")
+	} else if !pathbind.IsUnset(expanded.MaxSurge) {
+		after.MaxSurge = expanded.MaxSurge
+	} else if !pathbind.IsUnset(input.MaxSurge) {
+		after.MaxSurge = input.MaxSurge
+	}
+	if flagChanged(cmd, "max-unavailable") && pathbind.IsUnset(input.MaxUnavailable) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.maxUnavailable")
+	} else if !pathbind.IsUnset(expanded.MaxUnavailable) {
+		after.MaxUnavailable = expanded.MaxUnavailable
+	} else if !pathbind.IsUnset(input.MaxUnavailable) {
+		after.MaxUnavailable = input.MaxUnavailable
+	}
+	if flagChanged(cmd, "") && pathbind.IsUnset(input.Max) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.autoScaling.max")
+	} else if !pathbind.IsUnset(expanded.Max) {
+		after.Max = expanded.Max
+	} else if !pathbind.IsUnset(input.Max) {
+		after.Max = input.Max
+	}
+	if flagChanged(cmd, "") && pathbind.IsUnset(input.Min) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.autoScaling.min")
+	} else if !pathbind.IsUnset(expanded.Min) {
+		after.Min = expanded.Min
+	} else if !pathbind.IsUnset(input.Min) {
+		after.Min = input.Min
+	}
+	if flagChanged(cmd, "") && pathbind.IsUnset(input.Config) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.config")
+	} else if !pathbind.IsUnset(expanded.Config) {
+		after.Config = expanded.Config
+	} else if !pathbind.IsUnset(input.Config) {
+		after.Config = input.Config
+	}
+	if flagChanged(cmd, "") && pathbind.IsUnset(input.NodeDrainTimeout) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.nodeDrainTimeout")
+	} else if !pathbind.IsUnset(expanded.NodeDrainTimeout) {
+		after.NodeDrainTimeout = expanded.NodeDrainTimeout
+	} else if !pathbind.IsUnset(input.NodeDrainTimeout) {
+		after.NodeDrainTimeout = input.NodeDrainTimeout
+	}
+	if flagChanged(cmd, "node-labels") && pathbind.IsUnset(input.NodeLabels) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.nodeLabels")
+	} else if !pathbind.IsUnset(expanded.NodeLabels) {
+		after.NodeLabels = expanded.NodeLabels
+	} else if !pathbind.IsUnset(input.NodeLabels) {
+		after.NodeLabels = input.NodeLabels
+	}
+	if flagChanged(cmd, "ami") && pathbind.IsUnset(input.Ami) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.ami")
+	} else if !pathbind.IsUnset(expanded.Ami) {
+		after.Ami = expanded.Ami
+	} else if !pathbind.IsUnset(input.Ami) {
+		after.Ami = input.Ami
+	}
+	if flagChanged(cmd, "instance-profile") && pathbind.IsUnset(input.InstanceProfile) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.instanceProfile")
+	} else if !pathbind.IsUnset(expanded.InstanceProfile) {
+		after.InstanceProfile = expanded.InstanceProfile
+	} else if !pathbind.IsUnset(input.InstanceProfile) {
+		after.InstanceProfile = input.InstanceProfile
+	}
+	if flagChanged(cmd, "capacity-reservation-id") && pathbind.IsUnset(input.CapacityReservationId) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.placement.capacityReservation.id")
+	} else if !pathbind.IsUnset(expanded.CapacityReservationId) {
+		after.CapacityReservationId = expanded.CapacityReservationId
+	} else if !pathbind.IsUnset(input.CapacityReservationId) {
+		after.CapacityReservationId = input.CapacityReservationId
+	}
+	if flagChanged(cmd, "capacity-reservation-market-type") && pathbind.IsUnset(input.CapacityReservationMarketType) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.placement.capacityReservation.marketType")
+	} else if !pathbind.IsUnset(expanded.CapacityReservationMarketType) {
+		after.CapacityReservationMarketType = expanded.CapacityReservationMarketType
+	} else if !pathbind.IsUnset(input.CapacityReservationMarketType) {
+		after.CapacityReservationMarketType = input.CapacityReservationMarketType
+	}
+	if flagChanged(cmd, "preference") && pathbind.IsUnset(input.Preference) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.placement.capacityReservation.preference")
+	} else if !pathbind.IsUnset(expanded.Preference) {
+		after.Preference = expanded.Preference
+	} else if !pathbind.IsUnset(input.Preference) {
+		after.Preference = input.Preference
+	}
+	if flagChanged(cmd, "placement-market-type") && pathbind.IsUnset(input.PlacementMarketType) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.placement.marketType")
+	} else if !pathbind.IsUnset(expanded.PlacementMarketType) {
+		after.PlacementMarketType = expanded.PlacementMarketType
+	} else if !pathbind.IsUnset(input.PlacementMarketType) {
+		after.PlacementMarketType = input.PlacementMarketType
+	}
+	if flagChanged(cmd, "max-price") && pathbind.IsUnset(input.MaxPrice) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.placement.spot.maxPrice")
+	} else if !pathbind.IsUnset(expanded.MaxPrice) {
+		after.MaxPrice = expanded.MaxPrice
+	} else if !pathbind.IsUnset(input.MaxPrice) {
+		after.MaxPrice = input.MaxPrice
+	}
+	if flagChanged(cmd, "tenancy") && pathbind.IsUnset(input.Tenancy) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.placement.tenancy")
+	} else if !pathbind.IsUnset(expanded.Tenancy) {
+		after.Tenancy = expanded.Tenancy
+	} else if !pathbind.IsUnset(input.Tenancy) {
+		after.Tenancy = input.Tenancy
+	}
+	if flagChanged(cmd, "resource-tags") && pathbind.IsUnset(input.ResourceTags) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.resourceTags")
+	} else if !pathbind.IsUnset(expanded.ResourceTags) {
+		after.ResourceTags = expanded.ResourceTags
+	} else if !pathbind.IsUnset(input.ResourceTags) {
+		after.ResourceTags = input.ResourceTags
+	}
+	if flagChanged(cmd, "filters") && pathbind.IsUnset(input.Filters) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.platform.aws.subnet.filters")
+	} else if !pathbind.IsUnset(expanded.Filters) {
+		after.Filters = expanded.Filters
+	} else if !pathbind.IsUnset(input.Filters) {
+		after.Filters = input.Filters
+	}
+	if flagChanged(cmd, "image") && pathbind.IsUnset(input.Image) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.release.image")
+	} else if !pathbind.IsUnset(expanded.Image) {
+		after.Image = expanded.Image
+	} else if !pathbind.IsUnset(input.Image) {
+		after.Image = input.Image
+	}
+	if flagChanged(cmd, "replicas") && pathbind.IsUnset(input.Replicas) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.replicas")
+	} else if !pathbind.IsUnset(expanded.Replicas) {
+		after.Replicas = expanded.Replicas
+	} else if !pathbind.IsUnset(input.Replicas) {
+		after.Replicas = input.Replicas
+	}
+	if flagChanged(cmd, "") && pathbind.IsUnset(input.Taints) {
+		after.Taints = input.Taints
+	} else if !pathbind.IsUnset(expanded.Taints) {
+		after.Taints = expanded.Taints
+	} else if !pathbind.IsUnset(input.Taints) {
+		after.Taints = input.Taints
+	}
+	if flagChanged(cmd, "") && pathbind.IsUnset(input.TuningConfig) {
+		return after, fmt.Errorf("field %s cannot be reset", "spec.nodePool.tuningConfig")
+	} else if !pathbind.IsUnset(expanded.TuningConfig) {
+		after.TuningConfig = expanded.TuningConfig
+	} else if !pathbind.IsUnset(input.TuningConfig) {
+		after.TuningConfig = input.TuningConfig
+	}
+	return after, nil
+}
+
+func buildNodePoolUpdateDocument(ctx context.Context, cmd *cobra.Command, current *v1alpha1.NodePool, input *NodePoolUpdateInput, obj *v1alpha1.NodePool) (map[string]any, error) {
+	var before, expanded NodePoolUpdateInput
+	if err := pathbind.Flatten(ctx, current, &before); err != nil {
+		return nil, err
+	}
+	if err := pathbind.Flatten(ctx, obj, &expanded); err != nil {
+		return nil, err
+	}
+	after, err := overlayNodePoolUpdateInput(cmd, &before, input, &expanded)
+	if err != nil {
+		return nil, err
+	}
+	return pathbind.UpdateDocument(ctx, before, after, obj)
+}
+
 // RunUpdateNodePool executes the update dispatch. Generated; do not edit.
 // name is the account-scoped metadata.name used to address the resource in the Platform API.
 func RunUpdateNodePool(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command, name string, input *NodePoolUpdateInput, h NodePoolUpdateHandler) error {
@@ -138,6 +322,10 @@ func RunUpdateNodePool(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command,
 		return err
 	}
 	normalizeNodePoolUpdateInput(cmd, input)
+	current, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools().Get(ctx, name, platform.GetOptions{})
+	if err != nil {
+		return err
+	}
 	obj := &v1alpha1.NodePool{}
 	if err := pathbind.Expand(ctx, *input, obj); err != nil {
 		return err
@@ -146,7 +334,18 @@ func RunUpdateNodePool(ctx context.Context, r *rosa.Runtime, cmd *cobra.Command,
 	if err := h.PostExpand(ctx, r, input, obj); err != nil {
 		return err
 	}
-	updated, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools().Update(ctx, obj, platform.UpdateOptions{})
+	document, err := buildNodePoolUpdateDocument(ctx, cmd, current, input, obj)
+	if err != nil {
+		return err
+	}
+	if len(document) == 0 {
+		return h.PostResponse(ctx, r, current)
+	}
+	payload, err := json.Marshal(document)
+	if err != nil {
+		return err
+	}
+	updated, err := r.HyperFleetClient.HyperfleetV1alpha1().NodePools().Patch(ctx, name, types.MergePatchType, payload, platform.PatchOptions{})
 	if err != nil {
 		return err
 	}
