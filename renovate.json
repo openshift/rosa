@@ -168,6 +168,7 @@
       "description": "OpenShift OCM libraries",
       "groupName": "openshift-ocm",
       "commitMessagePrefix": "OCM-00000 | chore(deps): ",
+      "commitMessageSuffix": "{{#if isGroup}}{{#each upgrades}}{{#if (equals depName 'github.com/openshift-online/ocm-sdk-go')}}(ocm-sdk-go {{{newVersion}}}){{/if}}{{/each}}{{/if}}",
       "matchManagers": [
         "gomod"
       ],
