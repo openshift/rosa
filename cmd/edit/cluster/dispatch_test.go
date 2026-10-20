@@ -21,38 +21,38 @@ var _ = Describe("Dispatch", func() {
 		cmd = &cobra.Command{}
 		runCalled = false
 		v2Called = false
-		originalEnabled = hyperfleetEnabled
+		originalEnabled = seaplaneEnabled
 		originalRun = runV1
-		originalEdit = hfEditCluster
+		originalEdit = seaplaneEditCluster
 
 		runV1 = func(*cobra.Command, []string) {
 			runCalled = true
 		}
-		hfEditCluster = func(*cobra.Command) { v2Called = true }
+		seaplaneEditCluster = func(*cobra.Command) { v2Called = true }
 	})
 
 	AfterEach(func() {
-		// Reset to production defaults
 		runV1 = originalRun
-		hfEditCluster = originalEdit
-		hyperfleetEnabled = originalEnabled
+		seaplaneEditCluster = originalEdit
+		seaplaneEnabled = originalEnabled
 	})
 
-	Context("when hyperfleet is disabled", func() {
+	Context("when seaplane is disabled", func() {
 		BeforeEach(func() {
-			hyperfleetEnabled = func() bool { return false }
+			seaplaneEnabled = func() bool { return false }
 		})
 
 		It("should call the v1 run function", func() {
 			dispatch(cmd, []string{})
 			Expect(runCalled).To(BeTrue())
+			Expect(v2Called).To(BeFalse())
 		})
 
 	})
 
-	Context("when hyperfleet is enabled", func() {
+	Context("when seaplane is enabled", func() {
 		BeforeEach(func() {
-			hyperfleetEnabled = func() bool { return true }
+			seaplaneEnabled = func() bool { return true }
 		})
 
 		It("should not call the v1 run function", func() {

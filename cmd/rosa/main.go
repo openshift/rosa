@@ -27,9 +27,9 @@ import (
 	"github.com/openshift/rosa/pkg/color"
 	"github.com/openshift/rosa/pkg/commands"
 	"github.com/openshift/rosa/pkg/config"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/info"
 	"github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/seaplane"
 	versionUtils "github.com/openshift/rosa/pkg/version"
 )
 
@@ -41,12 +41,12 @@ var root = &cobra.Command{
 		"https://access.redhat.com/documentation/en-us/red_hat_openshift_service_on_aws\n",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		versionCheck(cmd, args)
-		// Populate the hyperfleet URL from saved config when --hyperfleet-url
+		// Populate the seaplane URL from saved config when --seaplane-url
 		// was not passed on the command line. This allows commands to route to
 		// the Platform API without repeating the flag on every invocation.
-		if !hyperfleet.Enabled() {
+		if !seaplane.Enabled() {
 			if cfg, err := config.Load(); err == nil && cfg != nil {
-				hyperfleet.SetURL(cfg.HyperfleetURL)
+				seaplane.SetURL(cfg.SeaplaneURL)
 			}
 		}
 	},
@@ -59,11 +59,11 @@ func init() {
 	color.AddFlag(root)
 	arguments.AddDebugFlag(fs)
 	fs.Var(
-		hyperfleet.FlagValue{},
-		"hyperfleet-url",
+		seaplane.FlagValue{},
+		"seaplane-url",
 		"Platform API v2 endpoint URL. When set, commands route to the Platform API instead of OCM.",
 	)
-	_ = fs.MarkHidden("hyperfleet-url")
+	_ = fs.MarkHidden("seaplane-url")
 
 	// Register the subcommands:
 	commands.RegisterCommands(root)

@@ -28,7 +28,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = BeforeEach(func() {
-	if isHyperfleetMode() && slices.Contains(CurrentSpecReport().Labels(), "hyperfleet-na") {
+	if isSeaplaneMode() && slices.Contains(CurrentSpecReport().Labels(), "seaplane-na") {
 		Skip("This test is not applicable to Platform API v2")
 	}
 })

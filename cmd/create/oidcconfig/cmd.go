@@ -113,13 +113,13 @@ func init() {
 	arguments.AddRegionFlag(flags)
 	output.AddFlag(Cmd)
 
-	// ── HyperFleet-specific flags ────────────────────────────────────────────
-	// Registers new HF-only flags. Flags already registered by OCM are silently skipped.
-	// hyperfleet.RegisterAndMarkPlatformAPIFlags(Cmd,
-	// 	func() { hfpathbind.RegisterOidcConfigCreateFlags(Cmd, &hfOidcConfigInput) },
-	// 	hfpathbind.OidcConfigCreatePlatformAPIFlags,
+	// ── Seaplane-specific flags ────────────────────────────────────────────
+	// Registers new Seaplane-only flags. Flags already registered by OCM are silently skipped.
+	// seaplane.RegisterAndMarkPlatformAPIFlags(Cmd,
+	// 	func() { seaplanepathbind.RegisterOidcConfigCreateFlags(Cmd, &seaplaneOidcConfigInput) },
+	// 	seaplanepathbind.OidcConfigCreatePlatformAPIFlags,
 	// )
-	// hyperfleet.AddPlatformAPIFlagSection(Cmd)
+	// seaplane.AddPlatformAPIFlagSection(Cmd)
 }
 
 func checkInteractiveModeNeeded(cmd *cobra.Command) {
@@ -143,8 +143,8 @@ func checkInteractiveModeNeeded(cmd *cobra.Command) {
 }
 
 func run(cmd *cobra.Command, _ []string) {
-	if hfEnabled() {
-		hfCreateOidcConfig(cmd)
+	if seaplaneEnabled() {
+		seaplaneCreateOidcConfig(cmd)
 		return
 	}
 	r := rosa.NewRuntime().WithAWS().WithOCM()

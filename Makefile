@@ -202,17 +202,17 @@ clean:
 		*.sha256 \
 		$(NULL)
 
-PATHBIND_GEN_PKG    := github.com/openshift-online/rosa-hyperfleet-api/clientset/cmd/pathbind-gen
+PATHBIND_GEN_PKG    := github.com/openshift-online/rosa-seaplane-api/clientset/cmd/pathbind-gen
 PATHBIND_GEN_BIN    := /tmp/pathbind-gen-$(shell git rev-parse --short HEAD)
-PATHBIND_DRAFT      := vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/pathbind/pathbind-draft.yaml
-PATHBIND_OVERRIDES  := pkg/hyperfleet/pathbind-overrides.yaml
-PATHBIND_OUT        := pkg/hyperfleet/pathbind
+PATHBIND_DRAFT      := vendor/github.com/openshift-online/rosa-seaplane-api/clientset/pathbind/pathbind-draft.yaml
+PATHBIND_OVERRIDES  := pkg/seaplane/pathbind-overrides.yaml
+PATHBIND_OUT        := pkg/seaplane/pathbind
 
 $(PATHBIND_GEN_BIN):
 	GOFLAGS="-mod=mod" go build -o $(PATHBIND_GEN_BIN) $(PATHBIND_GEN_PKG)
 
-.PHONY: generate-hyperfleet
-generate-hyperfleet: $(PATHBIND_GEN_BIN)
+.PHONY: generate-seaplane
+generate-seaplane: $(PATHBIND_GEN_BIN)
 	$(PATHBIND_GEN_BIN) \
 		--mode=cobra \
 		--draft=$(PATHBIND_DRAFT) \
@@ -220,7 +220,7 @@ generate-hyperfleet: $(PATHBIND_GEN_BIN)
 		--output-dir=$(PATHBIND_OUT)
 
 .PHONY: generate
-generate: $(GO_BINDATA) mocks generate-hyperfleet
+generate: $(GO_BINDATA) mocks generate-seaplane
 	$(GO_BINDATA) -nometadata -nocompress -pkg assets -o ./assets/bindata.go ./templates/...
 	go generate ./...
 
@@ -248,9 +248,9 @@ mocks: $(MOCKGEN)
 	$(MOCKGEN) -source=pkg/machinepool/machinepool.go -package=machinepool -destination=pkg/machinepool/machinepool_mock.go
 	$(MOCKGEN) -source=pkg/kubeletconfig/config.go -package=kubeletconfig -destination=pkg/kubeletconfig/capability_checker_mock.go
 	$(MOCKGEN) -source=cmd/create/idp/cmd.go -package=mocks -destination=cmd/create/idp/mocks/identityprovider.go
-	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/hyperfleet.go -package=mocks -destination=pkg/hyperfleet/mocks/hyperfleet_mock.go
-	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-hyperfleet-api/clientset/platform/bridge_wrappers_generated.go -package=mocks -destination=pkg/hyperfleet/mocks/wrappers_mock.go
-	perl -pi -e 's|github\.com/openshift/rosa/vendor/github\.com/openshift-online/rosa-hyperfleet-api/clientset/platform|github.com/openshift-online/rosa-hyperfleet-api/clientset/platform|g' pkg/hyperfleet/mocks/wrappers_mock.go
+	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-seaplane-api/clientset/seaplane.go -package=mocks -destination=pkg/seaplane/mocks/seaplane_mock.go
+	$(MOCKGEN) -source=vendor/github.com/openshift-online/rosa-seaplane-api/clientset/platform/bridge_wrappers_generated.go -package=mocks -destination=pkg/seaplane/mocks/wrappers_mock.go
+	perl -pi -e 's|github\.com/openshift/rosa/vendor/github\.com/openshift-online/rosa-seaplane-api/clientset/platform|github.com/openshift-online/rosa-seaplane-api/clientset/platform|g' pkg/seaplane/mocks/wrappers_mock.go
 
 
 .PHONY: e2e_test
@@ -262,34 +262,34 @@ e2e_test: install
         --focus-file tests/e2e/.* \
 		$(NULL)
 
-# e2e-hyperfleet: hyperfleet e2e via ginkgo --label-filter.
+# e2e-seaplane: seaplane e2e via ginkgo --label-filter.
 #
-# Labels (see tests/ci/labels/hyperfleet.go):
-#   hyperfleet-validated — day1 FVT (profile-driven cluster prep; needs TEST_PROFILE)
-#   hyperfleet-sanity    — full CLI/SDK lifecycle spec (self-contained; no TEST_PROFILE)
+# Labels (see tests/ci/labels/seaplane.go):
+#   seaplane-validated — day1 FVT (profile-driven cluster prep; needs TEST_PROFILE)
+#   seaplane-sanity    — full CLI/SDK lifecycle spec (self-contained; no TEST_PROFILE)
 #
 # Required:
-#   HYPERFLEET_URL  — Platform API v2 base URL
-#   TEST_PROFILE    — e.g. rosa-hyperfleet-basic (for hyperfleet-validated only)
+#   SEAPLANE_URL  — Platform API v2 base URL
+#   TEST_PROFILE    — e.g. rosa-seaplane-basic (for seaplane-validated only)
 #
 # Optional:
-#   CLUSTER_NAME       — defaults to hf-e2e-<unix timestamp> (≤18 chars)
-#   AWS_DEFAULT_REGION — fallback when region cannot be derived from HYPERFLEET_URL
-#   LABEL_FILTER       — defaults to hyperfleet-validated; use hyperfleet-sanity for sanity
-.PHONY: e2e-hyperfleet
-e2e-hyperfleet: install
-	@test -n "$${HYPERFLEET_URL}" || { \
-		echo "HYPERFLEET_URL is required (see guidelines/hyperfleet-guidelines.md)"; \
+#   CLUSTER_NAME       — defaults to seaplane-e2e-<unix timestamp> (≤18 chars)
+#   AWS_DEFAULT_REGION — fallback when region cannot be derived from SEAPLANE_URL
+#   LABEL_FILTER       — defaults to seaplane-validated; use seaplane-sanity for sanity
+.PHONY: e2e-seaplane
+e2e-seaplane: install
+	@test -n "$${SEAPLANE_URL}" || { \
+		echo "SEAPLANE_URL is required (see guidelines/seaplane-guidelines.md)"; \
 		exit 1; \
 	}; \
-	name=$${CLUSTER_NAME:-hf-e2e-$$(date +%s)}; \
-	filter=$${LABEL_FILTER:-hyperfleet-validated}; \
-	HYPERFLEET_URL="$${HYPERFLEET_URL}" \
+	name=$${CLUSTER_NAME:-seaplane-e2e-$$(date +%s)}; \
+	filter=$${LABEL_FILTER:-seaplane-validated}; \
+	SEAPLANE_URL="$${SEAPLANE_URL}" \
 	TEST_PROFILE="$(TEST_PROFILE)" \
 	CLUSTER_NAME="$$name" \
 	OPERATOR_ROLES_PREFIX="$$name" \
 	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
-	ginkgo run --label-filter "($$filter) && !hyperfleet-na && !hyperfleet-deferred" \
+	ginkgo run --label-filter "($$filter) && !seaplane-na && !seaplane-deferred" \
 		--timeout 3h \
 		-v \
 		./tests/e2e/ \

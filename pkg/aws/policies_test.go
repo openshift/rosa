@@ -157,13 +157,13 @@ var _ = Describe("ListOperatorRoles", func() {
 		Expect(roles).To(HaveLen(1))
 	})
 
-	It("Retrieves hyperfleet v2 operator roles by role_prefix tag", func() {
+	It("Retrieves seaplane v2 operator roles by role_prefix tag", func() {
 		mockIamAPI.EXPECT().ListRoles(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 			&iam.ListRolesOutput{
 				IsTruncated: false,
 				Roles: []iamtypes.Role{
 					{
-						RoleName: aws.String("hf-e2e-ingress"),
+						RoleName: aws.String("seaplane-e2e-ingress"),
 					},
 				},
 			}, nil)
@@ -177,7 +177,7 @@ var _ = Describe("ListOperatorRoles", func() {
 					},
 					{
 						Key:   aws.String(tags.RolePrefix),
-						Value: aws.String("hf-e2e"),
+						Value: aws.String("seaplane-e2e"),
 					},
 					{
 						Key:   aws.String(common.ManagedPolicies),
@@ -194,12 +194,12 @@ var _ = Describe("ListOperatorRoles", func() {
 					},
 				},
 			}, nil)
-		roles, err := client.ListOperatorRoles("", "", "hf-e2e")
+		roles, err := client.ListOperatorRoles("", "", "seaplane-e2e")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(roles).To(HaveLen(1))
-		Expect(roles["hf-e2e"]).To(HaveLen(1))
-		Expect(roles["hf-e2e"][0].RoleName).To(Equal("hf-e2e-ingress"))
-		Expect(roles["hf-e2e"][0].ManagedPolicy).To(BeTrue())
+		Expect(roles["seaplane-e2e"]).To(HaveLen(1))
+		Expect(roles["seaplane-e2e"][0].RoleName).To(Equal("seaplane-e2e-ingress"))
+		Expect(roles["seaplane-e2e"][0].ManagedPolicy).To(BeTrue())
 	})
 })
 

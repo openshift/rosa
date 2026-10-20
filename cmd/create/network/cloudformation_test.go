@@ -26,39 +26,50 @@ var _ = Describe("CloudFormationTemplateFile", func() {
 		}
 	})
 
-	DescribeTable("uses per-AZ route tables and supports single-NAT routing",
-		func(n, azCondition, natCondition, natGatewayReference string) {
+	DescribeTable("routes each private subnet through its Availability Zone NAT Gateway in multi-NAT mode",
+		func(n string, natCondition string, azCondition string, privateRouteCondition string) {
 			Expect(CloudFormationTemplateFile).To(ContainSubstring(
 				"  NATGateway" + n + ":\n    Condition: " + natCondition + "\n"))
 			Expect(CloudFormationTemplateFile).To(ContainSubstring(
-				"  PrivateRouteTable" + n + ":\n    Type: AWS::EC2::RouteTable\n    Condition: " + azCondition + "\n"))
+				"  PrivateRouteTable" + n + ":\n    Type: AWS::EC2::RouteTable\n    Condition: " + privateRouteCondition + "\n"))
 			Expect(CloudFormationTemplateFile).To(ContainSubstring(
-				"  PrivateRoute" + n + ":\n    Type: AWS::EC2::Route\n    Condition: " + azCondition +
+				"  PrivateRoute" + n + ":\n    Type: AWS::EC2::Route\n    Condition: " + privateRouteCondition +
 					"\n    Properties:\n      RouteTableId: !Ref PrivateRouteTable" + n +
-					"\n      DestinationCidrBlock: 0.0.0.0/0\n      NatGatewayId: " + natGatewayReference + "\n"))
+					"\n      DestinationCidrBlock: 0.0.0.0/0\n      NatGatewayId: !Ref NATGateway" + n + "\n"))
 			Expect(CloudFormationTemplateFile).To(ContainSubstring(
 				"  PrivateSubnetRouteTableAssociation" + n + ":\n    Condition: " + azCondition +
 					"\n    Type: AWS::EC2::SubnetRouteTableAssociation\n    Properties:\n      SubnetId: !Ref SubnetPrivate" +
-					n + "\n      RouteTableId: !Ref PrivateRouteTable" + n + "\n"))
+					n + "\n      RouteTableId: !If [UseSingleNat, !Ref PrivateRouteTable, !Ref PrivateRouteTable" + n + "]\n"))
 		},
-		Entry("AZ1", "1", "One", "One", "!Ref NATGateway1"),
-		Entry("AZ2", "2", "Two", "CreateNat2", "!If\n        - UseSingleNat\n        - !If\n          - One\n          - !Ref NATGateway1\n          - !Ref NATGateway2\n        - !Ref NATGateway2"),
-		Entry("AZ3", "3", "Three", "CreateNat3", "!If\n        - UseSingleNat\n        - !If\n          - One\n          - !Ref NATGateway1\n          - !If\n            - Two\n            - !Ref NATGateway2\n            - !Ref NATGateway3\n        - !Ref NATGateway3"),
-		Entry("AZ4", "4", "Four", "CreateNat4", "!If\n        - UseSingleNat\n        - !If\n          - One\n          - !Ref NATGateway1\n          - !If\n            - Two\n            - !Ref NATGateway2\n            - !If\n              - Three\n              - !Ref NATGateway3\n              - !Ref NATGateway4\n        - !Ref NATGateway4"),
+		Entry("AZ1", "1", "One", "One", "CreatePrivateRT1"),
+		Entry("AZ2", "2", "CreateNat2", "Two", "CreatePrivateRT2"),
+		Entry("AZ3", "3", "CreateNat3", "Three", "CreatePrivateRT3"),
+		Entry("AZ4", "4", "CreateNat4", "Four", "CreatePrivateRT4"),
 	)
 
 	It("guards every private route table reference so unconfigured AZs are never referenced", func() {
 		Expect(CloudFormationTemplateFile).To(ContainSubstring(
 			"      RouteTableIds:\n        - !Ref PublicRouteTable\n" +
-				"        - !If [One, !Ref PrivateRouteTable1, !Ref \"AWS::NoValue\"]\n" +
-				"        - !If [Two, !Ref PrivateRouteTable2, !Ref \"AWS::NoValue\"]\n" +
-				"        - !If [Three, !Ref PrivateRouteTable3, !Ref \"AWS::NoValue\"]\n" +
-				"        - !If [Four, !Ref PrivateRouteTable4, !Ref \"AWS::NoValue\"]\n"))
+				"        - !If [UseSingleNat, !Ref PrivateRouteTable, !Ref \"AWS::NoValue\"]\n" +
+				"        - !If [CreatePrivateRT1, !Ref PrivateRouteTable1, !Ref \"AWS::NoValue\"]\n" +
+				"        - !If [CreatePrivateRT2, !Ref PrivateRouteTable2, !Ref \"AWS::NoValue\"]\n" +
+				"        - !If [CreatePrivateRT3, !Ref PrivateRouteTable3, !Ref \"AWS::NoValue\"]\n" +
+				"        - !If [CreatePrivateRT4, !Ref PrivateRouteTable4, !Ref \"AWS::NoValue\"]\n"))
 
 		Expect(CloudFormationTemplateFile).To(ContainSubstring(
-			`Value: !Join [",", [!If [One, !Ref PrivateRouteTable1, !Ref "AWS::NoValue"], ` +
-				`!If [Two, !Ref PrivateRouteTable2, !Ref "AWS::NoValue"], ` +
-				`!If [Three, !Ref PrivateRouteTable3, !Ref "AWS::NoValue"], ` +
-				`!If [Four, !Ref PrivateRouteTable4, !Ref "AWS::NoValue"]]]`))
+			`Value: !Join [",", [!If [UseSingleNat, !Ref PrivateRouteTable, !Ref "AWS::NoValue"], ` +
+				`!If [CreatePrivateRT1, !Ref PrivateRouteTable1, !Ref "AWS::NoValue"], ` +
+				`!If [CreatePrivateRT2, !Ref PrivateRouteTable2, !Ref "AWS::NoValue"], ` +
+				`!If [CreatePrivateRT3, !Ref PrivateRouteTable3, !Ref "AWS::NoValue"], ` +
+				`!If [CreatePrivateRT4, !Ref PrivateRouteTable4, !Ref "AWS::NoValue"]]]`))
+	})
+
+	It("uses one shared private route table when single-NAT mode is enabled", func() {
+		Expect(CloudFormationTemplateFile).To(ContainSubstring(
+			"  PrivateRouteTable:\n    Type: AWS::EC2::RouteTable\n    Condition: UseSingleNat\n"))
+		Expect(CloudFormationTemplateFile).To(ContainSubstring(
+			"  PrivateRoute:\n    Type: AWS::EC2::Route\n    Condition: UseSingleNat\n    Properties:\n" +
+				"      RouteTableId: !Ref PrivateRouteTable\n      DestinationCidrBlock: 0.0.0.0/0\n" +
+				"      NatGatewayId: !If\n        - One\n        - !Ref NATGateway1\n"))
 	})
 })

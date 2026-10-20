@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 
 	"go.uber.org/mock/gomock"
@@ -28,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -347,6 +349,9 @@ type TestingRuntime struct {
 }
 
 func (t *TestingRuntime) InitRuntime() {
+	ginkgoT := GinkgoT()
+	ginkgoT.Setenv(constants.OcmConfig, filepath.Join(ginkgoT.TempDir(), "ocm-config.json"))
+
 	// Create the servers:
 	t.SsoServer = MakeTCPServer()
 	t.ApiServer = MakeTCPServer()

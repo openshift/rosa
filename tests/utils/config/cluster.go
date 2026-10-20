@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/pkg/seaplane"
 	"github.com/openshift/rosa/tests/ci/config"
 	rosalog "github.com/openshift/rosa/tests/utils/log"
 )
@@ -196,7 +196,7 @@ func IsNodePoolGlobalCheck() bool {
 }
 
 // ShouldCheckNodePoolReplicas enables observed replica checks when the
-// HyperFleet API is active, while preserving the opt-in behavior for OCM.
+// Seaplane API is active, while preserving the opt-in behavior for OCM.
 func ShouldCheckNodePoolReplicas() bool {
-	return IsNodePoolGlobalCheck() || os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
+	return IsNodePoolGlobalCheck() || os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled()
 }

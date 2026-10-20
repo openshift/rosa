@@ -1,0 +1,280 @@
+# pathbind-overrides.yaml — rosa CLI consumer overrides for pathbind-gen --mode=cobra.
+# Merged with pathbind-draft.yaml (from SDK) to generate pkg/seaplane/pathbind/*.
+#
+# config: consumer-specific generator settings (all required)
+# resources: per-resource alias entries — only include fields that need cobra flags
+#            or consumer-only derived fields (no SDK path).
+#
+# See docs/api/client-pathbinding.md in rosa-seaplane-api for full schema reference.
+
+config:
+  package: pathbind
+  runtimePkg: github.com/openshift/rosa/pkg/rosa
+  runtimeType: "*rosa.Runtime"
+  interactivePkg: github.com/openshift/rosa/pkg/interactive
+
+resources:
+  cluster:
+    aliases:
+      # Complex passthrough values retain their existing JSON-string Cobra representation.
+      - path: spec.hostedCluster.autoscaling.balancingIgnoredLabels
+        type: string
+      - path: spec.hostedCluster.autoscaling.expanders
+        type: string
+      - path: spec.hostedCluster.capabilities.disabled
+        type: string
+      - path: spec.hostedCluster.capabilities.enabled
+        type: string
+      - path: spec.hostedCluster.configuration.kubelet.kubeReserved
+        type: string
+      - path: spec.hostedCluster.configuration.kubelet.systemReserved
+        type: string
+      - path: spec.hostedCluster.configuration.machineConfig.allowedKernelArguments
+        type: string
+      - path: spec.hostedCluster.configuration.ingress.componentRoutes
+        type: string
+      # The API draft marks this nested array as array(object). Keep it on the
+      # internal pathbind model without introducing a new CLI flag here.
+      - path: spec.hostedCluster.configuration.authentication.oidcProviders
+        type: string
+        flag: ""
+      - path: spec.hostedCluster.imageContentSources
+        type: string
+      - path: spec.hostedCluster.networking.apiServer.allowedCIDRBlocks
+        type: string
+      - path: spec.hostedCluster.networking.clusterNetwork
+        type: string
+      - path: spec.hostedCluster.networking.machineNetwork
+        type: string
+      - path: spec.hostedCluster.networking.serviceNetwork
+        type: string
+      - path: spec.hostedCluster.platform.aws.additionalAllowedPrincipals
+        type: string
+      - path: spec.hostedCluster.platform.aws.cloudProviderConfig.subnet.filters
+        type: string
+      - path: spec.hostedCluster.platform.aws.resourceTags
+        type: string
+      - path: spec.hostedCluster.platform.aws.serviceEndpoints
+        type: string
+      - path: spec.properties
+        type: string
+      - path: spec.tags
+        type: string
+
+      # ── User-settable create flags ──────────────────────────────────────────
+      - path: metadata.name
+        alias: name
+        flag: cluster-name
+        description: "Unique name of the cluster."
+        required: true
+        operations: [create]
+
+      - path: spec.hostedCluster.release.image
+        alias: version
+        flag: version
+        description: "OpenShift release image for the cluster."
+        required: true
+        operations: [create]
+
+      - path: spec.hostedCluster.platform.aws.cloudProviderConfig.subnet.id
+        alias: subnetID
+        type: string
+        flag: subnet-id
+        description: "Subnet ID for the cluster (use instead of --subnet-ids for Platform API clusters)."
+        required: true
+        operations: [create]
+
+      # The ROSA Platform API cluster path is AWS-only; PostExpand sets this
+      # service-derived field and it must not be exposed as a CLI flag.
+      - path: spec.hostedCluster.platform.type
+        flag: ""
+        operations: [create]
+
+      - path: spec.deleteProtection
+        alias: deleteProtection
+        type: "*bool"
+        flag: delete-protection
+        description: "Enable delete protection on the cluster."
+        operations: [create, update]
+
+      - path: spec.expirationTimestamp
+        alias: expirationTimestamp
+        flag: expiration-time
+        description: "Cluster expiration time (RFC3339)."
+        operations: [create, update]
+
+      - path: spec.hostedCluster.configuration.scheduler.profile
+        alias: schedulerProfile
+        flag: scheduler-profile
+        description: "Scheduler profile. Valid values are LowNodeUtilization, HighNodeUtilization, and NoScoring."
+        operations: [create, update]
+
+      # Match the existing ROSA HCP behavior: expose only the four supported
+      # cluster-autoscaler options. Create uses their existing --autoscaler-*
+      # names; day-2 updates remain under `rosa edit autoscaler`.
+      - path: spec.hostedCluster.autoscaling.balancingIgnoredLabels
+        type: string
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.maxNodeProvisionTime
+        flag: autoscaler-max-node-provision-time
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.maxNodesTotal
+        flag: autoscaler-max-nodes-total
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.maxPodGracePeriod
+        flag: autoscaler-max-pod-grace-period
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.podPriorityThreshold
+        flag: autoscaler-pod-priority-threshold
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.delayAfterAddSeconds
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.delayAfterDeleteSeconds
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.delayAfterFailureSeconds
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.unneededDurationSeconds
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaleDown.utilizationThresholdPercent
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.scaling
+        flag: ""
+        operations: [create]
+
+      - path: spec.hostedCluster.autoscaling.expanders
+        type: string
+        flag: ""
+        operations: [create]
+      - path: spec.hostedCluster.autoscaling.maxFreeDifferenceRatioPercent
+        flag: ""
+        operations: [create]
+
+      # ── Derived fields: in struct for PreRequest use, no cobra flag ─────────
+      - path: spec.hostedCluster.platform.aws.region
+        alias: region
+        operations: [create]
+
+      - path: spec.hostedCluster.platform.aws.cloudProviderConfig.vpc
+        alias: vpc
+        goName: VPC
+        operations: [create]
+
+      - path: spec.hostedCluster.platform.aws.cloudProviderConfig.zone
+        alias: zone
+        operations: [create]
+
+      # ── Status fields: used by Flatten (read-back), no flag ─────────────────
+      - path: status.phase
+        alias: phase
+        operations: [create, update]
+
+      - path: status.controlPlaneEndpoint.host
+        alias: apiURL
+        goName: APIURL
+        operations: [create, update]
+
+      - path: status.version
+        alias: sdkVersion
+        goName: SDKVersion
+        operations: [create, update]
+
+      # ── Consumer-only derived inputs (no SDK path) ───────────────────────────
+      - alias: operatorRolesPrefix
+        type: string
+        flag: operator-roles-prefix
+        description: "Prefix for all IAM operator role names."
+        required: true
+        operations: [create]
+
+  nodePool:
+    aliases:
+      # Existing machinepool flags cover these fields under their established names.
+      - path: spec.nodePool.autoScaling.max
+        flag: ""
+      - path: spec.nodePool.autoScaling.min
+        flag: ""
+      - path: spec.nodePool.nodeDrainTimeout
+        flag: ""
+
+      # Keep complex API fields JSON-backed internally without adding new CLI flags.
+      - path: spec.nodePool.config
+        type: string
+        flag: ""
+      - path: spec.nodePool.taints
+        type: string
+        flag: ""
+      - path: spec.nodePool.tuningConfig
+        type: string
+        flag: ""
+
+      - path: spec.labels
+        type: string
+      - path: spec.nodePool.platform.aws.resourceTags
+        type: string
+      - path: spec.nodePool.platform.aws.subnet.filters
+        type: string
+      - path: spec.nodePool.nodeLabels
+        type: string
+
+      - path: metadata.name
+        alias: name
+        flag: name
+        description: "Name of the node pool."
+        required: true
+        operations: [create]
+
+      - path: spec.nodePool.replicas
+        alias: replicas
+        type: "*int32"
+        flag: replicas
+        description: "Number of worker nodes."
+        operations: [create, update]
+
+      - path: spec.nodePool.platform.aws.instanceType
+        alias: instanceType
+        flag: instance-type
+        description: "AWS instance type for worker nodes."
+        operations: [create]
+
+      - path: spec.ec2InstanceMetadataHttpTokens
+        alias: ec2MetadataHttpTokens
+        goName: EC2InstanceMetadataHttpTokens
+        flag: ec2-metadata-http-tokens
+        operations: [create]
+
+      - path: spec.nodePool.platform.aws.subnet.id
+        alias: subnetID
+        goName: SubnetID
+        flag: subnet
+        description: "Subnet ID for the node pool."
+        required: true
+        operations: [create]
+
+      # ROSA Seaplane node pools are AWS-only; PostExpand sets this field.
+      - path: spec.nodePool.platform.type
+        flag: ""
+        operations: [create]
+
+      - path: spec.nodePool.platform.aws.securityGroups
+        alias: securityGroupIds
+        type: string
+        flag: additional-security-group-ids
+        description: "Additional AWS Security Group IDs to attach to node pool instances. Format should be a comma-separated list."
+        operations: [create]
+
+      # ── Derived: no flag
+      - path: spec.nodePool.clusterName
+        alias: clusterName
+        flag: ""
+        operations: [create]
+
+      # ── Status
+      - path: status.phase
+        alias: phase
+        operations: [create, update]

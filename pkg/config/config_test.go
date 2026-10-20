@@ -49,18 +49,18 @@ func TestConfig(t *testing.T) {
 
 var _ = Describe("Config", Ordered, func() {
 	propNamesAndDocs := map[string]string{
-		"access_token":   "Bearer access token.",
-		"client_id":      "OpenID client identifier.",
-		"client_secret":  "OpenID client secret.",
-		"insecure":       "Enables insecure communication with the server.",
-		"refresh_token":  "Offline or refresh token.",
-		"scopes":         "OpenID scope.",
-		"token_url":      "OpenID token URL.",
-		"url":            "URL of the API gateway.",
-		"user_agent":     "OCM client UserAgent. Default value is used if not set.",
-		"version":        "OCM client version. Default value is used if not set.",
-		"fedramp":        "Indicates FedRAMP.",
-		"hyperfleet_url": "Platform API v2 endpoint URL.",
+		"access_token":  "Bearer access token.",
+		"client_id":     "OpenID client identifier.",
+		"client_secret": "OpenID client secret.",
+		"insecure":      "Enables insecure communication with the server.",
+		"refresh_token": "Offline or refresh token.",
+		"scopes":        "OpenID scope.",
+		"token_url":     "OpenID token URL.",
+		"url":           "URL of the API gateway.",
+		"user_agent":    "OCM client UserAgent. Default value is used if not set.",
+		"version":       "OCM client version. Default value is used if not set.",
+		"fedramp":       "Indicates FedRAMP.",
+		"seaplane_url":  "Platform API v2 endpoint URL.",
 	}
 
 	It("Shows properties and docs for config", func() {

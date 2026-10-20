@@ -57,8 +57,6 @@ import (
 	"github.com/openshift/rosa/pkg/helper/roles"
 	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	"github.com/openshift/rosa/pkg/helper/versions"
-	"github.com/openshift/rosa/pkg/hyperfleet"
-	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/interactive"
@@ -74,6 +72,8 @@ import (
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
+	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
 )
 
 const (
@@ -1085,14 +1085,14 @@ func initFlags(cmd *cobra.Command) {
 	output.AddFlag(cmd)
 	confirm.AddFlag(flags)
 
-	// ── HyperFleet-specific flags ────────────────────────────────────────────
+	// ── Seaplane-specific flags ────────────────────────────────────────────
 	// Registers available Platform API flags that do not conflict with OCM flags.
 	// Flags already registered by OCM (e.g. --cluster-name, --version) are silently skipped.
-	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
-		func() { hfpathbind.RegisterClusterCreateFlags(cmd, &hfClusterInput) },
-		hfpathbind.ClusterCreatePlatformAPIFlags,
+	seaplane.RegisterAndMarkPlatformAPIFlags(cmd,
+		func() { seaplanepathbind.RegisterClusterCreateFlags(cmd, &seaplaneClusterInput) },
+		seaplanepathbind.ClusterCreatePlatformAPIFlags,
 	)
-	hyperfleet.AddPlatformAPIFlagSection(cmd)
+	seaplane.AddPlatformAPIFlagSection(cmd)
 }
 
 func networkTypeCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

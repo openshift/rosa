@@ -89,12 +89,12 @@ var _ = Describe("logout command", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	Describe("--hyperfleet flag", func() {
-		It("clears HyperfleetURL from config leaving other fields intact", func() {
+	Describe("--seaplane flag", func() {
+		It("clears SeaplaneURL from config leaving other fields intact", func() {
 			cfg := &config.Config{
-				AccessToken:   "test-token",
-				URL:           "https://api.example.com",
-				HyperfleetURL: "https://abc.execute-api.us-east-1.amazonaws.com",
+				AccessToken: "test-token",
+				URL:         "https://api.example.com",
+				SeaplaneURL: "https://abc.execute-api.us-east-1.amazonaws.com",
 			}
 			Expect(config.Save(cfg)).To(Succeed())
 
@@ -103,12 +103,12 @@ var _ = Describe("logout command", func() {
 
 			loaded, err := config.Load()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(loaded.HyperfleetURL).To(BeEmpty())
+			Expect(loaded.SeaplaneURL).To(BeEmpty())
 			Expect(loaded.AccessToken).To(Equal("test-token"))
 			Expect(loaded.URL).To(Equal("https://api.example.com"))
 		})
 
-		It("reports not logged in when HyperfleetURL is already empty", func() {
+		It("reports not logged in when SeaplaneURL is already empty", func() {
 			cfg := &config.Config{AccessToken: "test-token"}
 			Expect(config.Save(cfg)).To(Succeed())
 
@@ -117,7 +117,7 @@ var _ = Describe("logout command", func() {
 
 			loaded, err := config.Load()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(loaded.HyperfleetURL).To(BeEmpty())
+			Expect(loaded.SeaplaneURL).To(BeEmpty())
 			Expect(loaded.AccessToken).To(Equal("test-token"))
 		})
 

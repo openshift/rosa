@@ -10,14 +10,14 @@ import (
 	"sort"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift-online/rosa-hyperfleet-api/clientset/platform"
+	"github.com/openshift-online/rosa-seaplane-api/clientset/platform"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 const (
@@ -37,14 +37,14 @@ func NewDescribeIngressCommand() *cobra.Command {
 		Short:   short,
 		Example: example,
 		Args: func(cmd *cobra.Command, argv []string) error {
-			if hyperfleet.Enabled() && len(argv) != 0 {
-				return fmt.Errorf("HyperFleet describe ingress does not accept an ingress ID")
+			if seaplane.Enabled() && len(argv) != 0 {
+				return fmt.Errorf("seaplane describe ingress does not accept an ingress ID")
 			}
 			return cobra.MaximumNArgs(1)(cmd, argv)
 		},
 		Run: func(c *cobra.Command, argv []string) {
-			if hyperfleet.Enabled() {
-				rosa.DefaultRunner(rosa.RuntimeWithHyperFleet(), DescribeHyperfleetIngressRunner())(c, argv)
+			if seaplane.Enabled() {
+				rosa.DefaultRunner(rosa.RuntimeWithSeaplane(), DescribeSeaplaneIngressRunner())(c, argv)
 				return
 			}
 			rosa.DefaultRunner(rosa.RuntimeWithOCM(), DescribeIngressRunner(options))(c, argv)
@@ -64,13 +64,13 @@ func NewDescribeIngressCommand() *cobra.Command {
 	return cmd
 }
 
-func DescribeHyperfleetIngressRunner() rosa.CommandRunner {
+func DescribeSeaplaneIngressRunner() rosa.CommandRunner {
 	return func(ctx context.Context, runtime *rosa.Runtime, _ *cobra.Command, _ []string) error {
-		clusterName, err := hyperfleet.ResolveClusterName(ctx, runtime.HyperFleetClient, runtime.GetClusterKey())
+		clusterName, err := seaplane.ResolveClusterName(ctx, runtime.SeaplaneClient, runtime.GetClusterKey())
 		if err != nil {
 			return err
 		}
-		cluster, err := runtime.HyperFleetClient.HyperfleetV1alpha1().Clusters().Get(ctx, clusterName, platform.GetOptions{})
+		cluster, err := runtime.SeaplaneClient.SeaplaneV1alpha1().Clusters().Get(ctx, clusterName, platform.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get cluster: %w", err)
 		}

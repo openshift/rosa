@@ -325,9 +325,9 @@ var _ = Describe("whoami command", func() {
 		Expect(stdout).To(ContainSubstring("OCM Account Username:"))
 	})
 
-	It("Shows V2 API URL when logged in with hyperfleet only (no OCM)", func() {
-		hfURL := "https://test.execute-api.us-east-1.amazonaws.com/prod"
-		saveConfig(&config.Config{HyperfleetURL: hfURL})
+	It("Shows V2 API URL when logged in with seaplane only (no OCM)", func() {
+		seaplaneURL := "https://test.execute-api.us-east-1.amazonaws.com/prod"
+		saveConfig(&config.Config{SeaplaneURL: seaplaneURL})
 
 		stdout, _, err := test.RunWithOutputCapture(
 			func(r *rosa.Runtime, _ *cobra.Command) error {
@@ -335,7 +335,7 @@ var _ = Describe("whoami command", func() {
 			}, t.RosaRuntime, Cmd)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(stdout).To(ContainSubstring("V2 API"))
-		Expect(stdout).To(ContainSubstring(hfURL))
+		Expect(stdout).To(ContainSubstring(seaplaneURL))
 		Expect(stdout).NotTo(ContainSubstring("OCM API"))
 	})
 
@@ -361,19 +361,19 @@ var _ = Describe("useAWSOnly", func() {
 		Expect(useAWSOnly(cfg, nil, "https://api.example.com")).To(BeFalse())
 	})
 
-	It("returns true for stored hyperfleet URL when OCM access token is expired", func() {
+	It("returns true for stored seaplane URL when OCM access token is expired", func() {
 		expiredToken := MakeTokenString("Bearer", -10*time.Minute)
 		cfg := &config.Config{
-			AccessToken:   expiredToken,
-			ClientID:      "client-id",
-			URL:           "https://api.openshift.com",
-			TokenURL:      "https://sso.example.com",
-			HyperfleetURL: "https://api.example.com",
+			AccessToken: expiredToken,
+			ClientID:    "client-id",
+			URL:         "https://api.openshift.com",
+			TokenURL:    "https://sso.example.com",
+			SeaplaneURL: "https://api.example.com",
 		}
 		Expect(useAWSOnly(cfg, nil, "")).To(BeTrue())
 	})
 
-	It("returns false when no hyperfleet URL is configured", func() {
+	It("returns false when no seaplane URL is configured", func() {
 		cfg := &config.Config{
 			ClientID:     "client-id",
 			ClientSecret: "client-secret",

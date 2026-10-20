@@ -29,8 +29,8 @@
 - name: type
 - name: capacity-reservation-preference
 
-# hyperfleet only commands
-# currently manually set, maybe generate as part of generate-hyperfleet?
+# seaplane only commands
+# currently manually set, maybe generate as part of generate-seaplane?
 - name: "ami"
 - name: "auto-repair"
 - name: "capacity-reservation-market-type"

@@ -1,0 +1,334 @@
+package cluster
+
+import (
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	v1alpha1 "github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public"
+	configv1 "github.com/openshift/api/config/v1"
+	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/seaplane"
+)
+
+var _ = Describe("Seaplane trust-bundle describe output", func() {
+	It("reports the redacted bundle in text and structured output", func() {
+		description := &seaplane.ClusterDescription{
+			Cluster: &v1alpha1.Cluster{}, AdditionalTrustBundle: "REDACTED",
+		}
+		Expect(seaplaneClusterDescriptionToMap(description, nil, nil, "")).To(
+			HaveKeyWithValue("additional_trust_bundle", "REDACTED"))
+		Expect(seaplaneClusterDescriptionToString(description, nil, nil)).To(
+			ContainSubstring("Additional trust bundle:    REDACTED"))
+	})
+
+	It("omits the bundle after it is cleared", func() {
+		description := &seaplane.ClusterDescription{Cluster: &v1alpha1.Cluster{}}
+		Expect(seaplaneClusterDescriptionToMap(description, nil, nil, "")).NotTo(HaveKey("additional_trust_bundle"))
+		Expect(seaplaneClusterDescriptionToString(description, nil, nil)).NotTo(ContainSubstring("Additional trust bundle:"))
+	})
+})
+
+var _ = Describe("Seaplane proxy describe output", func() {
+	DescribeTable("exposes proxy settings from API responses", func(response string) {
+		description, err := seaplane.DecodeClusterDescription([]byte(response))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(seaplaneClusterDescriptionToMap(description, nil, nil, "")).To(HaveKeyWithValue("proxy", map[string]string{
+			"http_proxy":  "http://10.0.0.68:8080",
+			"https_proxy": "http://10.0.0.68:8080",
+			"no_proxy":    ".example.com",
+		}))
+		text := seaplaneClusterDescriptionToString(description, nil, nil)
+		Expect(text).To(ContainSubstring("HTTPProxy:               http://10.0.0.68:8080"))
+		Expect(text).To(ContainSubstring("HTTPSProxy:              http://10.0.0.68:8080"))
+		Expect(text).To(ContainSubstring("NoProxy:                 .example.com"))
+	},
+		Entry("top-level projection", `{"proxy":{"http_proxy":"http://10.0.0.68:8080","https_proxy":"http://10.0.0.68:8080","no_proxy":".example.com"}}`),
+		Entry("nested configuration", `{"spec":{"hostedCluster":{"configuration":{"proxy":{"httpProxy":"http://10.0.0.68:8080","httpsProxy":"http://10.0.0.68:8080","noProxy":".example.com"}}}}}`),
+	)
+
+	It("uses the projection when both response locations are present", func() {
+		description, err := seaplane.DecodeClusterDescription([]byte(`{"proxy":{"no_proxy":".current.example.com"},"spec":{"hostedCluster":{"configuration":{"proxy":{"noProxy":".old.example.com"}}}}}`))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(seaplaneClusterDescriptionToMap(description, nil, nil, "")).To(HaveKeyWithValue("proxy", map[string]string{
+			"no_proxy": ".current.example.com",
+		}))
+		text := seaplaneClusterDescriptionToString(description, nil, nil)
+		Expect(text).To(ContainSubstring("Proxy:\n - NoProxy:                 .current.example.com"))
+		Expect(text).NotTo(ContainSubstring(".old.example.com"))
+	})
+
+	It("omits proxy output when the API reports no settings", func() {
+		c := &v1alpha1.Cluster{}
+		Expect(seaplaneClusterToMap(c, nil, nil, "")).NotTo(HaveKey("proxy"))
+		Expect(seaplaneClusterToString(c, nil, nil)).NotTo(ContainSubstring("Proxy:\n"))
+	})
+})
+
+var _ = Describe("seaplane dispatch", func() {
+	var (
+		origEnabled         func() bool
+		origDescribeCluster func(*cobra.Command, []string)
+	)
+
+	BeforeEach(func() {
+		origEnabled = seaplaneEnabled
+		origDescribeCluster = seaplaneDescribeCluster
+	})
+
+	AfterEach(func() {
+		seaplaneEnabled = origEnabled
+		seaplaneDescribeCluster = origDescribeCluster
+	})
+
+	It("routes to seaplaneDescribeCluster when seaplane is enabled", func() {
+		called := false
+		seaplaneEnabled = func() bool { return true }
+		seaplaneDescribeCluster = func(_ *cobra.Command, _ []string) { called = true }
+
+		dispatch(Cmd, nil)
+
+		Expect(called).To(BeTrue())
+	})
+})
+
+var _ = Describe("seaplaneClusterToMap", func() {
+	buildCluster := func() *v1alpha1.Cluster {
+		subnetID := "subnet-abc123"
+		expiry := metav1.NewTime(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC))
+		return &v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "my-cluster",
+				UID:  types.UID("cluster-uid-123"),
+			},
+			Spec: v1alpha1.ClusterSpec{
+				ExpirationTimestamp: &expiry,
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
+					IssuerURL: "https://oidc.example.com/issuer",
+					Configuration: &v1alpha1.ClusterConfiguration{
+						Scheduler: &v1alpha1.SchedulerConfiguration{
+							Profile: configv1.HighNodeUtilization,
+						},
+					},
+					Platform: v1alpha1.PlatformSpec{
+						AWS: &hypershiftv1beta1.AWSPlatformSpec{
+							Region: "us-east-1",
+							RolesRef: hypershiftv1beta1.AWSRolesRef{
+								IngressARN:              "arn:aws:iam::123456789012:role/my-cluster-ingress",
+								ImageRegistryARN:        "arn:aws:iam::123456789012:role/my-cluster-image-registry",
+								StorageARN:              "arn:aws:iam::123456789012:role/my-cluster-ebs-csi",
+								NetworkARN:              "arn:aws:iam::123456789012:role/my-cluster-network-config",
+								KubeCloudControllerARN:  "arn:aws:iam::123456789012:role/my-cluster-cloud-controller-manager",
+								ControlPlaneOperatorARN: "arn:aws:iam::123456789012:role/my-cluster-control-plane-operator",
+								NodePoolManagementARN:   "arn:aws:iam::123456789012:role/my-cluster-node-pool-management",
+							},
+							CloudProviderConfig: &hypershiftv1beta1.AWSCloudProviderConfig{
+								VPC: "vpc-def456",
+								Subnet: &hypershiftv1beta1.AWSResourceReference{
+									ID: &subnetID,
+								},
+							},
+						},
+					},
+				},
+			},
+			Status: v1alpha1.ClusterStatus{
+				Phase:   v1alpha1.ClusterPhaseReady,
+				Version: "4.17.0",
+				ControlPlaneEndpoint: hypershiftv1beta1.APIEndpoint{
+					Host: "api.my-cluster.example.com",
+					Port: 6443,
+				},
+				PlacementRef: &v1alpha1.PlacementReference{
+					ManagementCluster: "mc01",
+				},
+				Conditions: []metav1.Condition{
+					{
+						Type:    "Available",
+						Status:  "True",
+						Reason:  "AsExpected",
+						Message: "All good",
+					},
+				},
+			},
+		}
+	}
+
+	It("maps all core fields", func() {
+		c := buildCluster()
+		m := seaplaneClusterToMap(c, nil, nil, "")
+
+		Expect(m["id"]).To(Equal("cluster-uid-123"))
+		Expect(m["name"]).To(Equal("my-cluster"))
+		Expect(m["control_plane"]).To(Equal("ROSA Service Hosted"))
+		Expect(m["state"]).To(Equal("ready"))
+		Expect(m["delete_protection"]).To(BeFalse())
+		version, ok := m["version"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(version["raw_id"]).To(Equal("4.17.0"))
+		Expect(m["region"]).To(Equal("us-east-1"))
+		Expect(m["vpc"]).To(Equal("vpc-def456"))
+		Expect(m["subnet"]).To(Equal("subnet-abc123"))
+		Expect(m["api_url"]).To(Equal("https://api.my-cluster.example.com:6443"))
+		Expect(m["management_cluster"]).To(Equal("mc01"))
+		Expect(m["scheduler_profile"]).To(Equal("HighNodeUtilization"))
+	})
+
+	It("reports customer AWS tags under aws.tags", func() {
+		c := buildCluster()
+		c.Spec.Tags = map[string]string{"test-tag": "tagvalue", "qe-managed": "true"}
+		m := seaplaneClusterToMap(c, nil, nil, "")
+
+		awsMap, ok := m["aws"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(awsMap["tags"]).To(Equal(map[string]string{
+			"test-tag":   "tagvalue",
+			"qe-managed": "true",
+		}))
+	})
+
+	It("omits aws.tags when the cluster has no customer tags", func() {
+		c := buildCluster()
+		m := seaplaneClusterToMap(c, nil, nil, "")
+
+		awsMap, ok := m["aws"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(awsMap).NotTo(HaveKey("tags"))
+	})
+
+	It("maps spec fields", func() {
+		c := buildCluster()
+		m := seaplaneClusterToMap(c, nil, nil, "")
+
+		spec, ok := m["spec"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(spec["oidc_issuer"]).To(Equal("https://oidc.example.com/issuer"))
+
+		roles, ok := spec["roles_ref"].(map[string]string)
+		Expect(ok).To(BeTrue())
+		Expect(roles["ingressARN"]).To(Equal("arn:aws:iam::123456789012:role/my-cluster-ingress"))
+		Expect(roles["storageARN"]).To(Equal("arn:aws:iam::123456789012:role/my-cluster-ebs-csi"))
+	})
+
+	It("maps conditions", func() {
+		c := buildCluster()
+		m := seaplaneClusterToMap(c, nil, nil, "")
+
+		conds, ok := m["conditions"].([]map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(conds).To(HaveLen(1))
+		Expect(conds[0]["type"]).To(Equal("Available"))
+		Expect(conds[0]["status"]).To(Equal("True"))
+	})
+
+	It("includes expiration when set", func() {
+		c := buildCluster()
+		m := seaplaneClusterToMap(c, nil, nil, "")
+		Expect(m).To(HaveKey("expiration"))
+	})
+
+	It("handles nil AWS spec gracefully", func() {
+		c := buildCluster()
+		c.Spec.HostedCluster.Platform.AWS = nil
+		m := seaplaneClusterToMap(c, nil, nil, "")
+		Expect(m).NotTo(HaveKey("region"))
+		Expect(m).NotTo(HaveKey("vpc"))
+		Expect(m).NotTo(HaveKey("subnet"))
+
+		spec := m["spec"].(map[string]interface{})
+		roles := spec["roles_ref"].(map[string]string)
+		Expect(roles).To(BeEmpty())
+	})
+
+	It("maps nodes.compute_machine_type from default node pool instance type", func() {
+		c := buildCluster()
+		m := seaplaneClusterToMap(c, nil, nil, "m5.xlarge")
+		nodes, ok := m["nodes"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		cmt, ok := nodes["compute_machine_type"].(map[string]interface{})
+		Expect(ok).To(BeTrue())
+		Expect(cmt["id"]).To(Equal("m5.xlarge"))
+	})
+
+	It("omits EC2 metadata tokens when the API omits them", func() {
+		c := buildCluster()
+		m := seaplaneClusterToMap(c, nil, nil, "")
+		aws := m["aws"].(map[string]interface{})
+		Expect(aws).NotTo(HaveKey("ec2_metadata_http_tokens"))
+		Expect(seaplaneClusterToString(c, nil, nil)).NotTo(ContainSubstring("EC2 Metadata Http Tokens:"))
+	})
+})
+
+var _ = Describe("seaplaneDefaultNodePoolInstanceTypeFromList", func() {
+	It("does not treat a non-worker pool as the default", func() {
+		list := &v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
+			ObjectMeta: metav1.ObjectMeta{Name: "custom"},
+			Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
+				Platform: v1alpha1.NodePoolPlatform{
+					AWS: &v1alpha1.AWSNodePoolPlatform{InstanceType: "m7i.xlarge"},
+				},
+			}},
+		}}}
+		Expect(seaplaneDefaultNodePoolInstanceTypeFromList(list)).To(BeEmpty())
+	})
+})
+
+var _ = Describe("seaplaneClusterToString", func() {
+	It("shows the scheduler profile when configured", func() {
+		out := seaplaneClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
+					Configuration: &v1alpha1.ClusterConfiguration{
+						Scheduler: &v1alpha1.SchedulerConfiguration{
+							Profile: configv1.HighNodeUtilization,
+						},
+					},
+				},
+			},
+		}, nil, nil)
+		Expect(out).To(ContainSubstring("Scheduler Profile:          HighNodeUtilization"))
+	})
+
+	It("lists operator role ARNs like OCM describe output", func() {
+		arn := "arn:aws:iam::123456789012:role/my-cluster-ingress"
+		out := seaplaneClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
+					Platform: v1alpha1.PlatformSpec{
+						AWS: &hypershiftv1beta1.AWSPlatformSpec{
+							RolesRef: hypershiftv1beta1.AWSRolesRef{IngressARN: arn},
+						},
+					},
+				},
+			},
+		}, nil, nil)
+		Expect(out).To(ContainSubstring("Operator IAM Roles:\n - " + arn + "\n"))
+		Expect(out).NotTo(ContainSubstring("Ingress:"))
+	})
+
+	It("shows delete protection enabled/disabled", func() {
+		enabled := true
+		out := seaplaneClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{DeleteProtection: &enabled},
+		}, nil, nil)
+		Expect(out).To(ContainSubstring("Delete Protection:          Enabled"))
+
+		out = seaplaneClusterToString(&v1alpha1.Cluster{}, nil, nil)
+		Expect(out).To(ContainSubstring("Delete Protection:          Disabled"))
+	})
+
+	It("shows channel group from HostedCluster.Channel", func() {
+		out := seaplaneClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{Channel: "candidate"},
+			},
+			Status: v1alpha1.ClusterStatus{Version: "4.17.0"},
+		}, nil, nil)
+		Expect(out).To(ContainSubstring("Channel Group:              candidate"))
+	})
+})

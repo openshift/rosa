@@ -30,7 +30,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 		rosaClient = rosacli.NewClient()
 		clusterService = rosaClient.Cluster
 
-		if isHyperfleetMode() {
+		if isSeaplaneMode() {
 			hostedCluster = true
 		} else {
 			hostedCluster, err = clusterService.IsHostedCPCluster(clusterID)
@@ -307,12 +307,12 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 			})
 	})
 
-	Describe("autoscaler testing on hyperfleet cluster", func() {
+	Describe("autoscaler testing on seaplane cluster", func() {
 		It("edits and describes the cluster autoscaler",
-			labels.Low, labels.Runtime.Day2, labels.Hyperfleet.Validated,
+			labels.Low, labels.Runtime.Day2, labels.Seaplane.Validated,
 			func() {
-				if !isHyperfleetMode() {
-					Skip("This case exercises the HyperFleet autoscaler flow")
+				if !isSeaplaneMode() {
+					Skip("This case exercises the Seaplane autoscaler flow")
 				}
 				rosaClient.Runner.YamlFormat()
 				output, err := rosaClient.AutoScaler.DescribeAutoScaler(clusterID)

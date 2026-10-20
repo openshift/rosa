@@ -30,9 +30,9 @@ import (
 	"github.com/openshift/rosa/cmd/edit/service"
 	"github.com/openshift/rosa/cmd/edit/tuningconfigs"
 	"github.com/openshift/rosa/pkg/arguments"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 var Cmd = &cobra.Command{
@@ -76,7 +76,7 @@ func init() {
 
 	// MarkRegionDeprecated overwrites SetHelpFunc on each command; re-apply
 	// the Platform API flag section wrapper so it runs on top of that.
-	hyperfleet.AddPlatformAPIFlagSection(cluster.Cmd)
-	hyperfleet.AddPlatformAPIFlagSection(machinepoolCommand)
-	hyperfleet.AddPlatformAPIFlagSection(autoscalerCommand)
+	seaplane.AddPlatformAPIFlagSection(cluster.Cmd)
+	seaplane.AddPlatformAPIFlagSection(machinepoolCommand)
+	seaplane.AddPlatformAPIFlagSection(autoscalerCommand)
 }

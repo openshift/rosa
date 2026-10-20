@@ -17,7 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/pkg/seaplane"
 	"github.com/openshift/rosa/tests/utils/helper"
 	"github.com/openshift/rosa/tests/utils/log"
 )
@@ -97,7 +97,7 @@ func (rh *resourcesHandler) PreparePlatformAPIPostCreateIAM(issuerURL, rolesPref
 	}
 
 	ctx := context.Background()
-	log.Logger.Info("Creating IAM OIDC provider for hyperfleet cluster")
+	log.Logger.Info("Creating IAM OIDC provider for seaplane cluster")
 	_, err = awsClient.IamClient.CreateOpenIDConnectProvider(ctx, &iam.CreateOpenIDConnectProviderInput{
 		Url:            awssdk.String(issuerURL),
 		ClientIDList:   []string{"openshift"},
@@ -128,7 +128,7 @@ func (rh *resourcesHandler) PreparePlatformAPIPostCreateIAM(issuerURL, rolesPref
 		}
 	}
 
-	workerRoleName := hyperfleet.ComputeInstanceProfile(rolesPrefix)
+	workerRoleName := seaplane.ComputeInstanceProfile(rolesPrefix)
 	log.Logger.Infof("Creating worker instance profile %s", workerRoleName)
 	_, err = awsClient.IamClient.CreateRole(ctx, &iam.CreateRoleInput{
 		RoleName: awssdk.String(workerRoleName),

@@ -27,42 +27,42 @@ import (
 )
 
 var args struct {
-	hyperfleet bool
+	seaplane bool
 }
 
 var Cmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Log out",
-	Long:  "Log out, removing the configuration file. Use --hyperfleet to clear only the Platform API configuration.",
+	Long:  "Log out, removing the configuration file. Use --seaplane to clear only the Platform API configuration.",
 	Run:   run,
 	Args:  cobra.NoArgs,
 }
 
 func init() {
-	Cmd.Flags().BoolVar(&args.hyperfleet, "hyperfleet", false,
+	Cmd.Flags().BoolVar(&args.seaplane, "seaplane", false,
 		"Clear the Platform API configuration only, keeping OCM credentials intact")
 }
 
 func run(_ *cobra.Command, _ []string) {
 	reporter := rprtr.CreateReporter()
-	err := runLogout(reporter, args.hyperfleet)
+	err := runLogout(reporter, args.seaplane)
 	if err != nil {
 		reporter.Errorf("Failed to log out: %v", err)
 		os.Exit(1)
 	}
 }
 
-func runLogout(reporter *rprtr.Object, hyperfleet bool) error {
-	if hyperfleet {
+func runLogout(reporter *rprtr.Object, seaplane bool) error {
+	if seaplane {
 		cfg, err := config.Load()
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %v", err)
 		}
-		if cfg == nil || cfg.HyperfleetURL == "" {
+		if cfg == nil || cfg.SeaplaneURL == "" {
 			reporter.Infof("Not logged in to Platform API")
 			return nil
 		}
-		cfg.HyperfleetURL = ""
+		cfg.SeaplaneURL = ""
 		if err = config.Save(cfg); err != nil {
 			return fmt.Errorf("failed to save configuration: %v", err)
 		}

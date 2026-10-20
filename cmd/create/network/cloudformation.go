@@ -81,6 +81,10 @@ Conditions:
   CreateNat2: !Or [!And [!Condition Two, !Condition UseMultiNat], !And [!Condition Two, !Condition UseSingleNat, !Condition NoAZ1]]
   CreateNat3: !Or [!And [!Condition Three, !Condition UseMultiNat], !And [!Condition Three, !Condition UseSingleNat, !Condition NoAZ1, !Condition NoAZ2]]
   CreateNat4: !Or [!And [!Condition Four, !Condition UseMultiNat], !And [!Condition Four, !Condition UseSingleNat, !Condition NoAZ1, !Condition NoAZ2, !Condition NoAZ3]]
+  CreatePrivateRT1: !And [!Condition One, !Condition UseMultiNat]
+  CreatePrivateRT2: !And [!Condition Two, !Condition UseMultiNat]
+  CreatePrivateRT3: !And [!Condition Three, !Condition UseMultiNat]
+  CreatePrivateRT4: !And [!Condition Four, !Condition UseMultiNat]
 
 Resources:
   VPC:
@@ -107,10 +111,11 @@ Resources:
       VpcEndpointType: Gateway
       RouteTableIds:
         - !Ref PublicRouteTable
-        - !If [One, !Ref PrivateRouteTable1, !Ref "AWS::NoValue"]
-        - !If [Two, !Ref PrivateRouteTable2, !Ref "AWS::NoValue"]
-        - !If [Three, !Ref PrivateRouteTable3, !Ref "AWS::NoValue"]
-        - !If [Four, !Ref PrivateRouteTable4, !Ref "AWS::NoValue"]
+        - !If [UseSingleNat, !Ref PrivateRouteTable, !Ref "AWS::NoValue"]
+        - !If [CreatePrivateRT1, !Ref PrivateRouteTable1, !Ref "AWS::NoValue"]
+        - !If [CreatePrivateRT2, !Ref PrivateRouteTable2, !Ref "AWS::NoValue"]
+        - !If [CreatePrivateRT3, !Ref PrivateRouteTable3, !Ref "AWS::NoValue"]
+        - !If [CreatePrivateRT4, !Ref PrivateRouteTable4, !Ref "AWS::NoValue"]
 
   SubnetPublic1:
     Type: AWS::EC2::Subnet
@@ -437,9 +442,24 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: UseSingleNat
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${Name}-Private-Route-Table"
+        - Key: 'rosa_managed_policies'
+          Value: 'true'
+        - Key: 'rosa_hcp_policies'
+          Value: 'true'
+        - Key: 'service'
+          Value: 'ROSA'
+
   PrivateRouteTable1:
     Type: AWS::EC2::RouteTable
-    Condition: One
+    Condition: CreatePrivateRT1
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -454,7 +474,7 @@ Resources:
 
   PrivateRouteTable2:
     Type: AWS::EC2::RouteTable
-    Condition: Two
+    Condition: CreatePrivateRT2
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -469,7 +489,7 @@ Resources:
 
   PrivateRouteTable3:
     Type: AWS::EC2::RouteTable
-    Condition: Three
+    Condition: CreatePrivateRT3
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -484,7 +504,7 @@ Resources:
 
   PrivateRouteTable4:
     Type: AWS::EC2::RouteTable
-    Condition: Four
+    Condition: CreatePrivateRT4
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -497,9 +517,29 @@ Resources:
         - Key: 'service'
           Value: 'ROSA'
 
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Condition: UseSingleNat
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !If
+        - One
+        - !Ref NATGateway1
+        - !If
+          - Two
+          - !Ref NATGateway2
+          - !If
+            - Three
+            - !Ref NATGateway3
+            - !If
+              - Four
+              - !Ref NATGateway4
+              - !Ref "AWS::NoValue"
+
   PrivateRoute1:
     Type: AWS::EC2::Route
-    Condition: One
+    Condition: CreatePrivateRT1
     Properties:
       RouteTableId: !Ref PrivateRouteTable1
       DestinationCidrBlock: 0.0.0.0/0
@@ -507,54 +547,27 @@ Resources:
 
   PrivateRoute2:
     Type: AWS::EC2::Route
-    Condition: Two
+    Condition: CreatePrivateRT2
     Properties:
       RouteTableId: !Ref PrivateRouteTable2
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !If
-        - UseSingleNat
-        - !If
-          - One
-          - !Ref NATGateway1
-          - !Ref NATGateway2
-        - !Ref NATGateway2
+      NatGatewayId: !Ref NATGateway2
 
   PrivateRoute3:
     Type: AWS::EC2::Route
-    Condition: Three
+    Condition: CreatePrivateRT3
     Properties:
       RouteTableId: !Ref PrivateRouteTable3
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !If
-        - UseSingleNat
-        - !If
-          - One
-          - !Ref NATGateway1
-          - !If
-            - Two
-            - !Ref NATGateway2
-            - !Ref NATGateway3
-        - !Ref NATGateway3
+      NatGatewayId: !Ref NATGateway3
 
   PrivateRoute4:
     Type: AWS::EC2::Route
-    Condition: Four
+    Condition: CreatePrivateRT4
     Properties:
       RouteTableId: !Ref PrivateRouteTable4
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !If
-        - UseSingleNat
-        - !If
-          - One
-          - !Ref NATGateway1
-          - !If
-            - Two
-            - !Ref NATGateway2
-            - !If
-              - Three
-              - !Ref NATGateway3
-              - !Ref NATGateway4
-        - !Ref NATGateway4
+      NatGatewayId: !Ref NATGateway4
 
   PublicSubnetRouteTableAssociation1:
     Condition: One
@@ -589,28 +602,28 @@ Resources:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate1
-      RouteTableId: !Ref PrivateRouteTable1
+      RouteTableId: !If [UseSingleNat, !Ref PrivateRouteTable, !Ref PrivateRouteTable1]
 
   PrivateSubnetRouteTableAssociation2:
     Condition: Two
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate2
-      RouteTableId: !Ref PrivateRouteTable2
+      RouteTableId: !If [UseSingleNat, !Ref PrivateRouteTable, !Ref PrivateRouteTable2]
 
   PrivateSubnetRouteTableAssociation3:
     Condition: Three
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate3
-      RouteTableId: !Ref PrivateRouteTable3
+      RouteTableId: !If [UseSingleNat, !Ref PrivateRouteTable, !Ref PrivateRouteTable3]
 
   PrivateSubnetRouteTableAssociation4:
     Condition: Four
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref SubnetPrivate4
-      RouteTableId: !Ref PrivateRouteTable4
+      RouteTableId: !If [UseSingleNat, !Ref PrivateRouteTable, !Ref PrivateRouteTable4]
   
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -785,7 +798,7 @@ Outputs:
 
   PrivateRouteTableId:
     Description: The IDs of the private route tables
-    Value: !Join [",", [!If [One, !Ref PrivateRouteTable1, !Ref "AWS::NoValue"], !If [Two, !Ref PrivateRouteTable2, !Ref "AWS::NoValue"], !If [Three, !Ref PrivateRouteTable3, !Ref "AWS::NoValue"], !If [Four, !Ref PrivateRouteTable4, !Ref "AWS::NoValue"]]]
+    Value: !Join [",", [!If [UseSingleNat, !Ref PrivateRouteTable, !Ref "AWS::NoValue"], !If [CreatePrivateRT1, !Ref PrivateRouteTable1, !Ref "AWS::NoValue"], !If [CreatePrivateRT2, !Ref PrivateRouteTable2, !Ref "AWS::NoValue"], !If [CreatePrivateRT3, !Ref PrivateRouteTable3, !Ref "AWS::NoValue"], !If [CreatePrivateRT4, !Ref PrivateRouteTable4, !Ref "AWS::NoValue"]]]
     Export:
       Name: !Sub "${Name}-PrivateRouteTableId"
 

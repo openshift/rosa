@@ -14,18 +14,18 @@ var _ = Describe("Dispatch", func() {
 	var originalDelete func(*cobra.Command, *DeleteMachinepoolUserOptions, []string)
 
 	BeforeEach(func() {
-		originalEnabled = hyperfleetEnabled
-		originalDelete = hfDeleteMachinePool
+		originalEnabled = seaplaneEnabled
+		originalDelete = seaplaneDeleteMachinePool
 	})
 
 	AfterEach(func() {
-		hyperfleetEnabled = originalEnabled
-		hfDeleteMachinePool = originalDelete
+		seaplaneEnabled = originalEnabled
+		seaplaneDeleteMachinePool = originalDelete
 	})
 
-	Context("when hyperfleet is disabled", func() {
+	Context("when seaplane is disabled", func() {
 		BeforeEach(func() {
-			hyperfleetEnabled = func() bool { return false }
+			seaplaneEnabled = func() bool { return false }
 		})
 
 		It("should return a runner function", func() {
@@ -36,14 +36,16 @@ var _ = Describe("Dispatch", func() {
 
 	})
 
-	Context("when hyperfleet is enabled", func() {
+	Context("when seaplane is enabled", func() {
 		BeforeEach(func() {
-			hyperfleetEnabled = func() bool { return true }
+			seaplaneEnabled = func() bool { return true }
 		})
 
 		It("routes to the Platform API handler", func() {
 			called := false
-			hfDeleteMachinePool = func(*cobra.Command, *DeleteMachinepoolUserOptions, []string) { called = true }
+			seaplaneDeleteMachinePool = func(*cobra.Command, *DeleteMachinepoolUserOptions, []string) {
+				called = true
+			}
 			opts := &DeleteMachinepoolUserOptions{}
 			dispatch(opts)(&cobra.Command{}, []string{"worker"})
 			Expect(called).To(BeTrue())

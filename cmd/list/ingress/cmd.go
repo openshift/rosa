@@ -26,10 +26,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 var Cmd = &cobra.Command{
@@ -40,8 +40,8 @@ var Cmd = &cobra.Command{
 	Example: `  # List all routes on a cluster named "mycluster"
   rosa list ingresses --cluster=mycluster`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if hyperfleet.Enabled() {
-			fmt.Fprintln(os.Stderr, "HyperFleet Platform API does not expose ingress resources")
+		if seaplane.Enabled() {
+			fmt.Fprintln(os.Stderr, "Seaplane Platform API does not expose ingress resources")
 			os.Exit(1)
 		}
 		run(cmd, args)

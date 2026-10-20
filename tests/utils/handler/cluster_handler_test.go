@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/pkg/seaplane"
 	ClusterConfigure "github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 )
@@ -50,34 +50,34 @@ var _ = Describe("classifyClusterState", func() {
 	})
 })
 
-var _ = Describe("Hyperfleet node pool setup", func() {
+var _ = Describe("Seaplane node pool setup", func() {
 	It("uses configured replicas on every pool", func() {
-		n, err := hyperfleetNodePoolReplicas(&ClusterConfig{WorkerPoolReplicas: 3}, 3)
+		n, err := seaplaneNodePoolReplicas(&ClusterConfig{WorkerPoolReplicas: 3}, 3)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(n).To(Equal(3))
 	})
 
 	It("uses the ROSA single-AZ default", func() {
-		n, err := hyperfleetNodePoolReplicas(&ClusterConfig{}, 1)
+		n, err := seaplaneNodePoolReplicas(&ClusterConfig{}, 1)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(n).To(Equal(2))
 	})
 
 	It("rejects unsupported autoscaling profiles", func() {
-		_, err := hyperfleetNodePoolReplicas(&ClusterConfig{Autoscale: true}, 1)
-		Expect(err).To(MatchError("HyperFleet e2e setup does not support autoscaled default node pools"))
+		_, err := seaplaneNodePoolReplicas(&ClusterConfig{Autoscale: true}, 1)
+		Expect(err).To(MatchError("seaplane e2e setup does not support autoscaled default node pools"))
 	})
 })
 
-var _ = Describe("GenerateClusterCreateFlags hyperfleet", func() {
+var _ = Describe("GenerateClusterCreateFlags seaplane", func() {
 	AfterEach(func() {
-		hyperfleet.Reset()
+		seaplane.Reset()
 	})
 
 	DescribeTable("rejects custom KMS before preparing any resources",
 		func(kmsKey, etcdKMS bool) {
-			hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
-			GinkgoT().Setenv("CLUSTER_NAME", "hf-kms-test")
+			seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+			GinkgoT().Setenv("CLUSTER_NAME", "seaplane-kms-test")
 			ch := &clusterHandler{
 				profile: &Profile{ClusterConfig: &ClusterConfig{
 					KMSKey: kmsKey, EtcdKMS: etcdKMS, STS: true, BYOVPC: true, OIDCConfig: "managed",
@@ -85,7 +85,7 @@ var _ = Describe("GenerateClusterCreateFlags hyperfleet", func() {
 				clusterConfig: &ClusterConfigure.ClusterConfig{},
 			}
 			flags, err := ch.GenerateClusterCreateFlags()
-			Expect(err).To(MatchError(hyperfleetCustomKMSError))
+			Expect(err).To(MatchError(seaplaneCustomKMSError))
 			Expect(flags).To(BeEmpty())
 		},
 		Entry("EBS key", true, false),
@@ -93,19 +93,19 @@ var _ = Describe("GenerateClusterCreateFlags hyperfleet", func() {
 		Entry("both keys", true, true),
 	)
 
-	DescribeTable("returns an error instead of parsing OCM KMS data on HyperFleet",
+	DescribeTable("returns an error instead of parsing OCM KMS data on Seaplane",
 		func(etcdKMS bool) {
-			hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+			seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
 			ch := &clusterHandler{}
-			Expect(ch.elaborateKMSKeyForSTSCluster(etcdKMS)).To(MatchError(hyperfleetCustomKMSError))
+			Expect(ch.elaborateKMSKeyForSTSCluster(etcdKMS)).To(MatchError(seaplaneCustomKMSError))
 		},
 		Entry("EBS key", false),
 		Entry("etcd key", true),
 	)
 
 	It("skips NAME_PREFIX when CLUSTER_NAME is set", func() {
-		hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
-		GinkgoT().Setenv("CLUSTER_NAME", "hf-e2e-12345")
+		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
 		ch := &clusterHandler{
 			profile:          &Profile{Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
 			clusterConfig:    &ClusterConfigure.ClusterConfig{},
@@ -114,15 +114,15 @@ var _ = Describe("GenerateClusterCreateFlags hyperfleet", func() {
 		}
 		flags, err := ch.GenerateClusterCreateFlags()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(ch.profile.ClusterConfig.Name).To(Equal("hf-e2e-12345"))
-		Expect(flags).To(ContainElement("hf-e2e-12345"))
+		Expect(ch.profile.ClusterConfig.Name).To(Equal("seaplane-e2e-12345"))
+		Expect(flags).To(ContainElement("seaplane-e2e-12345"))
 	})
 
 	It("passes the release image configured in the profile", func() {
 		const releaseImage = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
-		hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
-		GinkgoT().Setenv("CLUSTER_NAME", "hf-e2e-12345")
-		GinkgoT().Setenv("HYPERFLEET_VERSION", "")
+		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
+		GinkgoT().Setenv("SEAPLANE_VERSION", "")
 		ch := &clusterHandler{
 			profile:          &Profile{Version: releaseImage, Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
 			clusterConfig:    &ClusterConfigure.ClusterConfig{},
@@ -134,12 +134,12 @@ var _ = Describe("GenerateClusterCreateFlags hyperfleet", func() {
 		Expect(flags).To(ContainElements("--version", releaseImage))
 	})
 
-	It("keeps the HYPERFLEET_VERSION override in the saved cluster configuration", func() {
+	It("keeps the SEAPLANE_VERSION override in the saved cluster configuration", func() {
 		const profileVersion = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
 		const overrideVersion = "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
-		hyperfleet.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
-		GinkgoT().Setenv("CLUSTER_NAME", "hf-e2e-12345")
-		GinkgoT().Setenv("HYPERFLEET_VERSION", overrideVersion)
+		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
+		GinkgoT().Setenv("SEAPLANE_VERSION", overrideVersion)
 		ch := &clusterHandler{
 			profile:          &Profile{Version: profileVersion, Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
 			clusterConfig:    &ClusterConfigure.ClusterConfig{},

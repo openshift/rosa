@@ -9,19 +9,19 @@ import (
 	awssts "github.com/aws/aws-sdk-go-v2/service/sts"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
-	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
+	seaplaneclientset "github.com/openshift-online/rosa-seaplane-api/clientset"
+	seaplanerest "github.com/openshift-online/rosa-seaplane-api/clientset/rest"
 
 	reportertest "github.com/openshift/rosa/test/reporter"
 )
 
-const testHyperfleetURL = "https://abc123.execute-api.us-east-1.amazonaws.com"
+const testSeaplaneURL = "https://abc123.execute-api.us-east-1.amazonaws.com"
 
-var _ = Describe("WithHyperFleet", func() {
+var _ = Describe("WithSeaplane", func() {
 	var (
 		origLoadConfig  func(context.Context, string, string) (awssdk.Config, error)
 		origGetIdentity func(context.Context, awssdk.Config) (*awssts.GetCallerIdentityOutput, error)
-		origNewClient   func(*hfrest.Config) (*hyperfleetclientset.Clientset, error)
+		origNewClient   func(*seaplanerest.Config) (*seaplaneclientset.Clientset, error)
 		origExplicitURL func() string
 		origExitFn      func(int)
 
@@ -33,15 +33,15 @@ var _ = Describe("WithHyperFleet", func() {
 	BeforeEach(func() {
 		origLoadConfig = awsLoadConfig
 		origGetIdentity = awsGetIdentity
-		origNewClient = hfNewClient
-		origExplicitURL = hfExplicitURL
-		origExitFn = hfExitFn
+		origNewClient = seaplaneNewClient
+		origExplicitURL = seaplaneExplicitURL
+		origExitFn = seaplaneExitFn
 
 		exited = false
 		errMsg = ""
 
-		hfExplicitURL = func() string { return testHyperfleetURL }
-		hfExitFn = func(int) { exited = true }
+		seaplaneExplicitURL = func() string { return testSeaplaneURL }
+		seaplaneExitFn = func(int) { exited = true }
 
 		fakeRept = &reportertest.FakeLogger{
 			ErrorFn: func(f string, a ...any) error {
@@ -54,9 +54,9 @@ var _ = Describe("WithHyperFleet", func() {
 	AfterEach(func() {
 		awsLoadConfig = origLoadConfig
 		awsGetIdentity = origGetIdentity
-		hfNewClient = origNewClient
-		hfExplicitURL = origExplicitURL
-		hfExitFn = origExitFn
+		seaplaneNewClient = origNewClient
+		seaplaneExplicitURL = origExplicitURL
+		seaplaneExitFn = origExitFn
 	})
 
 	stubLoadConfig := func() {
@@ -75,38 +75,38 @@ var _ = Describe("WithHyperFleet", func() {
 		}
 	}
 
-	It("populates Creator and HyperFleetClient on success", func() {
+	It("populates Creator and SeaplaneClient on success", func() {
 		GinkgoT().Setenv("AWS_REGION", "")
 
 		stubLoadConfig()
 		stubIdentity("123456789012", "arn:aws:iam::123456789012:user/test")
 
-		var capturedCfg *hfrest.Config
-		hfNewClient = func(cfg *hfrest.Config) (*hyperfleetclientset.Clientset, error) {
+		var capturedCfg *seaplanerest.Config
+		seaplaneNewClient = func(cfg *seaplanerest.Config) (*seaplaneclientset.Clientset, error) {
 			capturedCfg = cfg
-			return &hyperfleetclientset.Clientset{}, nil
+			return &seaplaneclientset.Clientset{}, nil
 		}
 
 		r := &Runtime{Reporter: fakeRept}
-		r.WithHyperFleet()
+		r.WithSeaplane()
 
 		Expect(exited).To(BeFalse())
 		Expect(r.Creator).NotTo(BeNil())
 		Expect(r.Creator.AccountID).To(Equal("123456789012"))
-		Expect(r.HyperFleetClient).NotTo(BeNil())
+		Expect(r.SeaplaneClient).NotTo(BeNil())
 
-		Expect(capturedCfg).NotTo(BeNil(), "hfNewClient must have been called with a config")
-		Expect(capturedCfg.Host).To(Equal(testHyperfleetURL), "Host must be the hyperfleet URL")
+		Expect(capturedCfg).NotTo(BeNil(), "seaplaneNewClient must have been called with a config")
+		Expect(capturedCfg.Host).To(Equal(testSeaplaneURL), "Host must be the seaplane URL")
 		Expect(capturedCfg.Region).To(Equal("us-east-1"), "Region must be extracted from the URL")
 		Expect(capturedCfg.AccountID).To(Equal("123456789012"), "AccountID must match caller identity")
 		Expect(capturedCfg.CallerARN).To(Equal("arn:aws:iam::123456789012:user/test"), "CallerARN must match caller identity")
 	})
 
 	It("exits when URL uses HTTP instead of HTTPS", func() {
-		hfExplicitURL = func() string { return "http://abc123.execute-api.us-east-1.amazonaws.com" }
+		seaplaneExplicitURL = func() string { return "http://abc123.execute-api.us-east-1.amazonaws.com" }
 
 		r := &Runtime{Reporter: fakeRept}
-		r.WithHyperFleet()
+		r.WithSeaplane()
 
 		Expect(exited).To(BeTrue())
 		Expect(errMsg).To(ContainSubstring("must use HTTPS"))
@@ -116,10 +116,10 @@ var _ = Describe("WithHyperFleet", func() {
 		GinkgoT().Setenv("AWS_REGION", "")
 		GinkgoT().Setenv("AWS_DEFAULT_REGION", "")
 
-		hfExplicitURL = func() string { return "https://example.com/api" }
+		seaplaneExplicitURL = func() string { return "https://example.com/api" }
 
 		r := &Runtime{Reporter: fakeRept}
-		r.WithHyperFleet()
+		r.WithSeaplane()
 
 		Expect(exited).To(BeTrue())
 		Expect(errMsg).To(ContainSubstring("cannot derive AWS region"))
@@ -129,7 +129,7 @@ var _ = Describe("WithHyperFleet", func() {
 		GinkgoT().Setenv("AWS_REGION", "us-west-2")
 
 		r := &Runtime{Reporter: fakeRept}
-		r.WithHyperFleet()
+		r.WithSeaplane()
 
 		Expect(exited).To(BeTrue())
 		Expect(errMsg).To(ContainSubstring("us-west-2"))
@@ -147,7 +147,7 @@ var _ = Describe("WithHyperFleet", func() {
 		}
 
 		r := &Runtime{Reporter: fakeRept}
-		r.WithHyperFleet()
+		r.WithSeaplane()
 
 		Expect(exited).To(BeTrue())
 		Expect(errMsg).To(ContainSubstring("Failed to build creator from caller identity"))
@@ -159,7 +159,7 @@ var _ = Describe("WithHyperFleet", func() {
 		}
 
 		r := &Runtime{Reporter: fakeRept}
-		r.WithHyperFleet()
+		r.WithSeaplane()
 
 		Expect(exited).To(BeTrue())
 		Expect(errMsg).To(ContainSubstring("Failed to load AWS config"))
@@ -172,7 +172,7 @@ var _ = Describe("WithHyperFleet", func() {
 		}
 
 		r := &Runtime{Reporter: fakeRept}
-		r.WithHyperFleet()
+		r.WithSeaplane()
 
 		Expect(exited).To(BeTrue())
 		Expect(errMsg).To(ContainSubstring("Failed to get AWS caller identity"))
@@ -181,12 +181,12 @@ var _ = Describe("WithHyperFleet", func() {
 	It("exits when NewForConfig fails", func() {
 		stubLoadConfig()
 		stubIdentity("123456789012", "arn:aws:iam::123456789012:user/test")
-		hfNewClient = func(_ *hfrest.Config) (*hyperfleetclientset.Clientset, error) {
+		seaplaneNewClient = func(_ *seaplanerest.Config) (*seaplaneclientset.Clientset, error) {
 			return nil, errors.New("client error")
 		}
 
 		r := &Runtime{Reporter: fakeRept}
-		r.WithHyperFleet()
+		r.WithSeaplane()
 
 		Expect(exited).To(BeTrue())
 		Expect(errMsg).To(ContainSubstring("Failed to build Platform API client"))

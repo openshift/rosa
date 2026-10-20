@@ -37,13 +37,13 @@ import (
 	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
 	urlHelper "github.com/openshift/rosa/pkg/helper/url"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/reporter"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 // #nosec G101
@@ -286,18 +286,18 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		haveReqs = token != ""
 	}
 
-	// Hyperfleet-only login: --hyperfleet-url without OCM creds: validate, persist, and return.
-	if hyperfleet.FromFlag() {
-		if hfURL := hyperfleet.ExplicitURL(); hfURL != "" {
-			if err := hyperfleet.ValidateURL(hfURL); err != nil {
+	// Seaplane-only login: --seaplane-url without OCM creds: validate, persist, and return.
+	if seaplane.FromFlag() {
+		if seaplaneURL := seaplane.ExplicitURL(); seaplaneURL != "" {
+			if err := seaplane.ValidateURL(seaplaneURL); err != nil {
 				return err
 			}
-			cfg.HyperfleetURL = hfURL
+			cfg.SeaplaneURL = seaplaneURL
 			if !haveReqs {
 				if err = config.Save(cfg); err != nil {
 					return fmt.Errorf("failed to save config file: %v", err)
 				}
-				r.Reporter.Infof("Logged in to Platform API: %s", cfg.HyperfleetURL)
+				r.Reporter.Infof("Logged in to Platform API: %s", cfg.SeaplaneURL)
 				return nil
 			}
 		}
@@ -489,8 +489,8 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	}
 
 	r.Reporter.Infof("Logged in as '%s' on '%s'", username, cfg.URL)
-	if cfg.HyperfleetURL != "" {
-		r.Reporter.Infof("Platform API: %s", cfg.HyperfleetURL)
+	if cfg.SeaplaneURL != "" {
+		r.Reporter.Infof("Platform API: %s", cfg.SeaplaneURL)
 	}
 	r.OCMClient.LogEvent("ROSALoginSuccess", map[string]string{
 		ocm.Response: ocm.Success,

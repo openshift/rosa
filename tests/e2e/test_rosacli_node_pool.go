@@ -76,11 +76,11 @@ var _ = Describe("Edit nodepool",
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("can create, replace and clear HyperFleet nodepool labels and taints",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+		It("can create, replace and clear Seaplane nodepool labels and taints",
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated,
 			func() {
-				if !isHyperfleetMode() {
-					Skip("This case exercises HyperFleet nodepool metadata")
+				if !isSeaplaneMode() {
+					Skip("This case exercises Seaplane nodepool metadata")
 				}
 				By("Select an existing worker subnet and instance type")
 				existing, err := machinePoolService.ListAndReflectNodePools(clusterID)
@@ -137,7 +137,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can create/edit/list/delete nodepool - [id:56782]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated,
 			func() {
 				nodePoolName := helper.GenerateRandomName("np-56782", 2)
 				labels := "label1=value1,label2=value2"
@@ -171,7 +171,7 @@ var _ = Describe("Edit nodepool",
 				Expect(np.InstanceType).To(Equal(instanceType))
 				Expect(np.AvalaiblityZones).ToNot(BeNil())
 				Expect(np.Subnet).ToNot(BeNil())
-				if !isHyperfleetMode() {
+				if !isSeaplaneMode() {
 					Expect(np.Version).To(Equal(cpVersion))
 				}
 				originalPoolVersion := np.Version
@@ -190,8 +190,10 @@ var _ = Describe("Edit nodepool",
 					"--labels", newLabels,
 					"--taints", newTaints)
 				Expect(err).ToNot(HaveOccurred())
-				if isHyperfleetMode() {
-					Expect(output.String()).To(ContainSubstring("Updated node pool '%s' in cluster '%s'", nodePoolName, clusterID))
+				if isSeaplaneMode() {
+					Expect(
+						output.String(),
+					).To(ContainSubstring("Updated node pool '%s' in cluster '%s'", nodePoolName, clusterID))
 				} else {
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring(
 						"Updated machine pool '%s' on hosted cluster '%s'", nodePoolName, clusterID))
@@ -217,7 +219,7 @@ var _ = Describe("Edit nodepool",
 				Expect(npDesc).ToNot(BeNil())
 				Expect(npDesc.AutoScaling).To(Equal("No"))
 				Expect(npDesc.DesiredReplicas).To(Equal(replicasCount))
-				if isHyperfleetMode() {
+				if isSeaplaneMode() {
 					// An absent observed count is unknown, rather than a reported zero.
 					Expect(npDesc.CurrentReplicas).To(MatchRegexp("^[0-9]*$"))
 				} else {
@@ -236,7 +238,7 @@ var _ = Describe("Edit nodepool",
 				By("Delete nodepool")
 				output, err = machinePoolService.DeleteMachinePool(clusterID, nodePoolName)
 				Expect(err).ToNot(HaveOccurred())
-				if isHyperfleetMode() {
+				if isSeaplaneMode() {
 					Expect(output.String()).To(ContainSubstring("Node pool '%s' will start deleting now", nodePoolName))
 				} else {
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).To(ContainSubstring(
@@ -1804,14 +1806,14 @@ var _ = Describe("Edit nodepool",
 		})
 
 		It("create/describe machinepool supports imdsv2 - [id:75227]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated,
 			func() {
 				By("Check the help message of 'rosa create machinepool -h'")
 				res, err := machinePoolService.RetrieveHelpForCreate()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(res.String()).To(ContainSubstring("--ec2-metadata-http-tokens"))
 				defaultTokens := constants.DefaultEc2MetadataHttpTokens
-				if isHyperfleetMode() {
+				if isSeaplaneMode() {
 					defaultTokens = constants.RequiredEc2MetadataHttpTokens
 				}
 
@@ -1867,8 +1869,12 @@ var _ = Describe("Edit nodepool",
 								"value should be one of 'required', 'optional'"))
 			})
 
-		It("Edit machine pool to the ROSA Hypershift cluster - [id:56778]", labels.Runtime.Day2, labels.High, labels.FedRAMP,
-			labels.Hyperfleet.Validated,
+		It(
+			"Edit machine pool to the ROSA Hypershift cluster - [id:56778]",
+			labels.Runtime.Day2,
+			labels.High,
+			labels.FedRAMP,
+			labels.Seaplane.Validated,
 			func() {
 				var (
 					replicas         string
@@ -1964,11 +1970,11 @@ var _ = Describe("Edit nodepool",
 			})
 	})
 
-// HyperFleet may omit the observed count until its controller reports status.
+// Seaplane may omit the observed count until its controller reports status.
 // Verify the requested desired count while accepting only non-negative observed counts.
 func expectNodePoolReplicas(actual, desired string) {
 	GinkgoHelper()
-	if isHyperfleetMode() {
+	if isSeaplaneMode() {
 		Expect(actual).To(MatchRegexp("^([0-9]+|-)/" + desired + "$"))
 	} else {
 		Expect(actual).To(Equal("0/" + desired))

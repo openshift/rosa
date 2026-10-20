@@ -28,13 +28,13 @@ import (
 	"github.com/spf13/pflag"
 
 	utils "github.com/openshift/rosa/pkg/helper"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	helper "github.com/openshift/rosa/pkg/ingress"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/interactive/consts"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 // Regular expression to used to make sure that the identifier given by the
@@ -61,8 +61,8 @@ var Cmd = &cobra.Command{
   rosa edit ingress --lb-type=nlb --cluster=mycluster apps2`,
 	Run: dispatch,
 	Args: func(cmd *cobra.Command, argv []string) error {
-		if hyperfleet.Enabled() && len(argv) != 0 {
-			return fmt.Errorf("HyperFleet edit ingress does not accept an ingress ID")
+		if seaplane.Enabled() && len(argv) != 0 {
+			return fmt.Errorf("seaplane edit ingress does not accept an ingress ID")
 		}
 		return cobra.MaximumNArgs(1)(cmd, argv)
 	},

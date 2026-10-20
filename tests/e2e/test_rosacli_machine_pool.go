@@ -73,7 +73,7 @@ var _ = Describe("Create machinepool",
 			labels.Critical,
 			labels.Runtime.Day2,
 			labels.FedRAMP,
-			labels.Hyperfleet.NotApplicable,
+			labels.Seaplane.NotApplicable,
 			func() {
 				By("Check help info for create machinepool")
 				_, err := machinePoolService.RetrieveHelpForCreate()
@@ -804,7 +804,7 @@ var _ = Describe("Create machinepool",
 		Context("validation", func() {
 			It("will validate name/replicas/labels/taints  - [id:67057]",
 				labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
-				labels.Hyperfleet.NotApplicable,
+				labels.Seaplane.NotApplicable,
 				func() {
 					mpName := "mp-67057"
 
@@ -1223,7 +1223,7 @@ var _ = Describe("Edit machinepool",
 
 		It("will succeed - [id:38838]",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP,
-			labels.Hyperfleet.NotApplicable,
+			labels.Seaplane.NotApplicable,
 			func() {
 				By("Check help message")
 				output, err := machinePoolService.EditMachinePool(clusterID, "", "-h")
@@ -1273,7 +1273,7 @@ var _ = Describe("Edit machinepool",
 			labels.High,
 			labels.Runtime.Day2,
 			labels.FedRAMP,
-			labels.Hyperfleet.NotApplicable,
+			labels.Seaplane.NotApplicable,
 			func() {
 				By("List the machinepools of the cluster")
 				mpList, err := rosaClient.MachinePool.ListAndReflectMachinePools(clusterID)
@@ -1466,7 +1466,7 @@ var _ = Describe("Edit machinepool",
 
 		It("will validate labels and taints for default worker pool - [id:57105]",
 			labels.Runtime.Day2, labels.Medium, labels.FedRAMP,
-			labels.Hyperfleet.NotApplicable,
+			labels.Seaplane.NotApplicable,
 			func() {
 				By("Record original labels and define the recovery steps")
 				mpDescription, err := machinePoolService.

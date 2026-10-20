@@ -66,7 +66,7 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("to delete in-used operator-roles and byo oidc-config  [id:74761]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated, func() {
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated, func() {
 				By("Get cluster config")
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
@@ -118,7 +118,6 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					"--oidc-config-id", oidcConfigID,
 					"--region", clusterConfig.Region,
 					"--mode", "auto",
-					"--region", clusterConfig.Region,
 					"-y",
 				)
 				Expect(err).To(HaveOccurred())

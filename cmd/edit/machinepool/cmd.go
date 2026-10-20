@@ -21,13 +21,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
-	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/machinepool"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
+	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
 )
 
 const (
@@ -179,10 +179,10 @@ func NewEditMachinePoolCommand() *cobra.Command {
 
 	output.AddFlag(cmd)
 	ocm.AddClusterFlag(cmd)
-	// ── HyperFleet flag sections ─────────────────────────────────────────────
-	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
-		func() { hfpathbind.RegisterNodePoolUpdateFlags(cmd, &hfNodePoolUpdateInput) },
-		hfpathbind.NodePoolUpdatePlatformAPIFlags,
+	// ── Seaplane flag sections ─────────────────────────────────────────────
+	seaplane.RegisterAndMarkPlatformAPIFlags(cmd,
+		func() { seaplanepathbind.RegisterNodePoolUpdateFlags(cmd, &seaplaneNodePoolUpdateInput) },
+		seaplanepathbind.NodePoolUpdatePlatformAPIFlags,
 	)
 	// AddPlatformAPIFlagSection is called from the edit parent after MarkRegionDeprecated,
 	// since MarkRegionDeprecated overwrites SetHelpFunc and would orphan the wrapper here.

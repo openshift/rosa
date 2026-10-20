@@ -6,17 +6,17 @@ package cluster
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 var (
-	hyperfleetEnabled = hyperfleet.Enabled
-	runV1             = run
+	seaplaneEnabled = seaplane.Enabled
+	runV1           = run
 )
 
 func dispatch(cmd *cobra.Command, args []string) {
-	if hyperfleetEnabled() {
-		hfEditCluster(cmd)
+	if seaplaneEnabled() {
+		seaplaneEditCluster(cmd)
 		return
 	}
 	runV1(cmd, args)

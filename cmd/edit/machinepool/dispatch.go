@@ -6,16 +6,18 @@ package machinepool
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
-var hyperfleetEnabled = hyperfleet.Enabled
+var (
+	seaplaneEnabled = seaplane.Enabled
+)
 
 func dispatch(options *EditMachinepoolUserOptions) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, argv []string) {
-		if hyperfleetEnabled() {
-			hfEditMachinePool(options, cmd, argv)
+		if seaplaneEnabled() {
+			seaplaneEditMachinePool(options, cmd, argv)
 			return
 		}
 		rosa.DefaultRunner(rosa.RuntimeWithOCM(), EditMachinePoolRunner(options))(cmd, argv)

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	v1alpha1 "github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public"
 
 	"github.com/openshift/rosa/tests/ci/config"
 	ClusterConfigure "github.com/openshift/rosa/tests/utils/config"
@@ -19,12 +19,12 @@ import (
 
 const rosaAutoConfirmFlag = "-y" // skip interactive rosa prompts in FVT
 
-const hyperfleetCustomKMSError = "HyperFleet e2e setup does not support custom KMS keys; " +
+const seaplaneCustomKMSError = "seaplane e2e setup does not support custom KMS keys; " +
 	"set kms_key and etcd_kms to false"
 
-func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
+func (ch *clusterHandler) generateSeaplaneCreateFlags() ([]string, error) {
 	if ch.profile.ClusterConfig.KMSKey || ch.profile.ClusterConfig.EtcdKMS {
-		return nil, errors.New(hyperfleetCustomKMSError)
+		return nil, errors.New(seaplaneCustomKMSError)
 	}
 	clusterName := strings.TrimSpace(os.Getenv("CLUSTER_NAME"))
 	if clusterName == "" || len(clusterName) > 18 {
@@ -188,7 +188,7 @@ func (ch *clusterHandler) generateHyperfleetCreateFlags() ([]string, error) {
 }
 
 func resolvePlatformAPIVersion(profileVersion string) (string, bool) {
-	if v := os.Getenv("HYPERFLEET_VERSION"); v != "" {
+	if v := os.Getenv("SEAPLANE_VERSION"); v != "" {
 		return v, true
 	}
 
@@ -198,7 +198,7 @@ func resolvePlatformAPIVersion(profileVersion string) (string, bool) {
 
 	if profileVersion != "" {
 		log.Logger.Infof(
-			"Skipping OCM version lookup for %q; Platform API resolves default (set HYPERFLEET_VERSION to pin)",
+			"Skipping OCM version lookup for %q; Platform API resolves default (set SEAPLANE_VERSION to pin)",
 			profileVersion,
 		)
 	}
@@ -206,7 +206,7 @@ func resolvePlatformAPIVersion(profileVersion string) (string, bool) {
 }
 
 func platformAPIVersionRequirement(profileVersion string) string {
-	if version := os.Getenv("HYPERFLEET_VERSION"); version != "" {
+	if version := os.Getenv("SEAPLANE_VERSION"); version != "" {
 		return version
 	}
 	return profileVersion
@@ -249,7 +249,7 @@ func preparePlatformAPIPreCreateInfra(rh *resourcesHandler, clusterName string) 
 	return rh.preparePlatformAPIWorkerSecurityGroup(clusterName)
 }
 
-func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
+func (ch *clusterHandler) waitForSeaplaneClusterReady(timeoutMin int) error {
 	clusterKey := ch.clusterDetail.ClusterName
 	if clusterKey == "" {
 		clusterKey = ch.profile.ClusterConfig.Name
@@ -258,7 +258,7 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 		return errors.New("no cluster name defined to wait for")
 	}
 	// Ginkgo buffers its writer in normal mode; tee readiness updates to stdout
-	// so long HyperFleet provisioning waits provide live feedback.
+	// so long Seaplane provisioning waits provide live feedback.
 	_, reporterConfig := ginkgo.GinkgoConfiguration()
 	if !reporterConfig.Verbose && !reporterConfig.VeryVerbose {
 		ginkgo.GinkgoWriter.TeeTo(os.Stdout)
@@ -273,7 +273,7 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 	clusterService := ch.rosaClient.Cluster
 	startTime := time.Now()
 	endTime := startTime.Add(time.Duration(timeoutMin) * time.Minute)
-	log.Logger.Infof("Waiting for HyperFleet cluster %s to become Ready (timeout %d minutes)", clusterKey, timeoutMin)
+	log.Logger.Infof("Waiting for Seaplane cluster %s to become Ready (timeout %d minutes)", clusterKey, timeoutMin)
 	for time.Now().Before(endTime) {
 		description, err := clusterService.DescribeClusterAndReflect(clusterKey)
 		if err != nil {
@@ -293,14 +293,14 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 				// A no-CNI cluster requires a customer-provided network plugin before
 				// node pools can be provisioned. Leave node-pool creation to the test
 				// or environment that configures that network plugin.
-				log.Logger.Infof("Skipping default HyperFleet node-pool creation for no-CNI cluster %s", clusterKey)
-				ch.recordHyperfleetClusterVersion(clusterKey)
+				log.Logger.Infof("Skipping default Seaplane node-pool creation for no-CNI cluster %s", clusterKey)
+				ch.recordSeaplaneClusterVersion(clusterKey)
 				return nil
 			}
-			if err := ch.createHyperfleetNodePoolsAfterReady(); err != nil {
+			if err := ch.createSeaplaneNodePoolsAfterReady(); err != nil {
 				return err
 			}
-			ch.recordHyperfleetClusterVersion(clusterKey)
+			ch.recordSeaplaneClusterVersion(clusterKey)
 			return nil
 		case strings.ToLower(string(v1alpha1.ClusterPhaseDeleting)):
 			return fmt.Errorf("cluster %s is %s now. Cannot wait for it ready", clusterKey, phase)
@@ -317,9 +317,9 @@ func (ch *clusterHandler) waitForHyperfleetClusterReady(timeoutMin int) error {
 	return fmt.Errorf("timeout for cluster ready waiting after %d mins", timeoutMin)
 }
 
-func hyperfleetNodePoolReplicas(pc *ClusterConfig, poolCount int) (int, error) {
+func seaplaneNodePoolReplicas(pc *ClusterConfig, poolCount int) (int, error) {
 	if pc.Autoscale {
-		return 0, errors.New("HyperFleet e2e setup does not support autoscaled default node pools")
+		return 0, errors.New("seaplane e2e setup does not support autoscaled default node pools")
 	}
 	n := 2
 	if poolCount > 1 {
@@ -331,7 +331,7 @@ func hyperfleetNodePoolReplicas(pc *ClusterConfig, poolCount int) (int, error) {
 	return n, nil
 }
 
-func (ch *clusterHandler) createHyperfleetNodePoolsAfterReady() error {
+func (ch *clusterHandler) createSeaplaneNodePoolsAfterReady() error {
 	clusterKey := ch.clusterDetail.ClusterID
 	if clusterKey == "" {
 		clusterKey = ch.clusterDetail.ClusterName
@@ -360,7 +360,7 @@ func (ch *clusterHandler) createHyperfleetNodePoolsAfterReady() error {
 			poolNames = append(poolNames, fmt.Sprintf("workers-%d", i))
 		}
 	}
-	replicas, err := hyperfleetNodePoolReplicas(pc, len(poolNames))
+	replicas, err := seaplaneNodePoolReplicas(pc, len(poolNames))
 	if err != nil {
 		return err
 	}
@@ -377,24 +377,24 @@ func (ch *clusterHandler) createHyperfleetNodePoolsAfterReady() error {
 		if ch.clusterConfig.WorkerDiskSize != "" {
 			flags = append(flags, "--disk-size", ch.clusterConfig.WorkerDiskSize)
 		}
-		log.Logger.Infof("Creating Hyperfleet node pool %s on subnet %s", name, subnet)
+		log.Logger.Infof("Creating Seaplane node pool %s on subnet %s", name, subnet)
 		if _, err := mp.CreateMachinePool(clusterKey, name, flags...); err != nil {
 			if strings.Contains(err.Error(), "already exists") {
-				log.Logger.Infof("Hyperfleet node pool %s already exists, continuing", name)
+				log.Logger.Infof("Seaplane node pool %s already exists, continuing", name)
 				continue
 			}
 			return fmt.Errorf("create node pool %q: %w", name, err)
 		}
 	}
 
-	return ch.waitForHyperfleetNodePools(clusterKey, poolNames)
+	return ch.waitForSeaplaneNodePools(clusterKey, poolNames)
 }
 
-func (ch *clusterHandler) waitForHyperfleetNodePools(clusterKey string, poolNames []string) error {
+func (ch *clusterHandler) waitForSeaplaneNodePools(clusterKey string, poolNames []string) error {
 	startTime := time.Now()
 	end := startTime.Add(20 * time.Minute)
 	var lastErr error
-	log.Logger.Infof("Waiting for %d Hyperfleet node pool(s) on cluster %s to become Ready",
+	log.Logger.Infof("Waiting for %d Seaplane node pool(s) on cluster %s to become Ready",
 		len(poolNames), clusterKey)
 	for time.Now().Before(end) {
 		lastErr = nil
@@ -425,7 +425,7 @@ func (ch *clusterHandler) waitForHyperfleetNodePools(clusterKey string, poolName
 			}
 		}
 		if allReady {
-			log.Logger.Infof("Hyperfleet node pools ready: %d", len(poolNames))
+			log.Logger.Infof("Seaplane node pools ready: %d", len(poolNames))
 			return nil
 		}
 		log.Logger.Infof("Cluster %s node pool status after %s: %s; waiting for Ready",
@@ -438,7 +438,7 @@ func (ch *clusterHandler) waitForHyperfleetNodePools(clusterKey string, poolName
 	return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s", len(poolNames), clusterKey)
 }
 
-func (ch *clusterHandler) recordHyperfleetClusterVersion(clusterKey string) {
+func (ch *clusterHandler) recordSeaplaneClusterVersion(clusterKey string) {
 	v, err := ch.rosaClient.Cluster.GetClusterVersion(clusterKey)
 	if err != nil {
 		log.Logger.Warnf("Could not read cluster version for cluster-config: %v", err)

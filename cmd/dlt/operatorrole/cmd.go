@@ -95,8 +95,8 @@ const (
 )
 
 func run(cmd *cobra.Command, _ []string) {
-	if hfEnabled() {
-		hfDeleteOperatorRoles()
+	if seaplaneEnabled() {
+		seaplaneDeleteOperatorRoles()
 		return
 	}
 

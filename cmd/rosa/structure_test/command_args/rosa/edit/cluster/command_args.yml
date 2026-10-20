@@ -30,8 +30,8 @@
 - name: profile
 - name: region
 
-# hyperfleet only commands
-# currently manually set, maybe generate as part of generate-hyperfleet?
+# seaplane only commands
+# currently manually set, maybe generate as part of generate-seaplane?
 - name: "additional-trust-bundle"
 - name: "role-arn"
 - name: "platform"
