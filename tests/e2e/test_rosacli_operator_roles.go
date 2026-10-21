@@ -237,8 +237,8 @@ var _ = Describe("Edit operator roles", labels.Feature.OperatorRoles, func() {
 					Expect(err).To(HaveOccurred())
 					Expect(rosaClient.Parser.TextData.Input(output).Parse().Tip()).
 						To(ContainSubstring(
-							"ERR: A cluster key for STS cluster and an OIDC configuration ID" +
-								" cannot be specified alongside each other."))
+							"ERR: a cluster key for STS cluster and an OIDC configuration ID" +
+								" cannot be specified alongside each other"))
 				}
 			})
 	})

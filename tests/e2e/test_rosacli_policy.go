@@ -4,9 +4,12 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
@@ -17,6 +20,42 @@ import (
 	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
 )
+
+func createArbitraryPolicies(awsClient *aws_client.AWSClient, count int) ([]string, error) {
+	statement := map[string]interface{}{
+		"Effect":   "Allow",
+		"Action":   "*",
+		"Resource": "*",
+	}
+	policyNamePrefix := fmt.Sprintf("ocmqe-arpolicy-%s", helper.GenerateRandomString(8))
+	policyARNs := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		policyARN, err := awsClient.CreatePolicy(fmt.Sprintf("%s-%d", policyNamePrefix, i), statement)
+		if err != nil {
+			return policyARNs, fmt.Errorf("create arbitrary policy %d of %d: %w", i+1, count, err)
+		}
+		policyARNs = append(policyARNs, policyARN)
+	}
+	return policyARNs, nil
+}
+
+func managedPoliciesPerRoleQuota(awsClient *aws_client.AWSClient) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	accountSummary, err := awsClient.IamClient.GetAccountSummary(
+		ctx,
+		&iam.GetAccountSummaryInput{},
+	)
+	if err != nil {
+		return 0, fmt.Errorf("get IAM account summary: %w", err)
+	}
+	quota, ok := accountSummary.SummaryMap["AttachedPoliciesPerRoleQuota"]
+	if !ok {
+		return 0, fmt.Errorf("IAM account summary did not include AttachedPoliciesPerRoleQuota")
+	}
+	return int(quota), nil
+}
 
 var _ = Describe("Attach and Detach arbitrary policies",
 	labels.Feature.Policy,
@@ -36,6 +75,8 @@ var _ = Describe("Attach and Detach arbitrary policies",
 		)
 
 		BeforeEach(func() {
+			arbitraryPoliciesToClean = nil
+
 			By("Load profile")
 			profile = handler.LoadProfileYamlFileByENV()
 			if !profile.ClusterConfig.STS {
@@ -54,19 +95,9 @@ var _ = Describe("Attach and Detach arbitrary policies",
 			By("Prepare arbitrary policies for testing")
 			awsClient, err = aws_client.CreateAWSClient("", "")
 			Expect(err).To(BeNil())
-			statement := map[string]interface{}{
-				"Effect":   "Allow",
-				"Action":   "*",
-				"Resource": "*",
-			}
-			for i := 0; i < 2; i++ {
-				arn, err := awsClient.CreatePolicy(
-					fmt.Sprintf("ocmqe-arpolicy-%s-%d", helper.GenerateRandomString(3), i),
-					statement,
-				)
-				Expect(err).To(BeNil())
-				arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, arn)
-			}
+			policyARNs, err := createArbitraryPolicies(awsClient, 2)
+			arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, policyARNs...)
+			Expect(err).To(BeNil())
 
 		})
 
@@ -311,6 +342,9 @@ var _ = Describe("Validation testing",
 		)
 
 		BeforeEach(func() {
+			arbitraryPoliciesToClean = nil
+			testingRolesToClean = nil
+
 			By("Load profile")
 			profile = handler.LoadProfileYamlFileByENV()
 
@@ -326,19 +360,9 @@ var _ = Describe("Validation testing",
 
 			awsClient, err = aws_client.CreateAWSClient("", "")
 			Expect(err).To(BeNil())
-			statement := map[string]interface{}{
-				"Effect":   "Allow",
-				"Action":   "*",
-				"Resource": "*",
-			}
-			for i := 0; i < 10; i++ {
-				arn, err := awsClient.CreatePolicy(
-					fmt.Sprintf("ocmqe-arpolicy-%s-%d", helper.GenerateRandomString(3), i),
-					statement,
-				)
-				Expect(err).To(BeNil())
-				arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, arn)
-			}
+			policyARNs, err := createArbitraryPolicies(awsClient, 2)
+			arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, policyARNs...)
+			Expect(err).To(BeNil())
 
 		})
 
@@ -376,6 +400,8 @@ var _ = Describe("Validation testing",
 				if !profile.ClusterConfig.STS {
 					Skip("This feature only works for STS cluster")
 				}
+				quotaTestPolicyARNs := append([]string(nil), arbitraryPoliciesToClean...)
+
 				By("Prepare a role wihtout red-hat-managed=true label for testing")
 				notRHManagedRoleName := fmt.Sprintf("ocmqe-role-%s", helper.GenerateRandomString(3))
 
@@ -446,20 +472,35 @@ var _ = Describe("Validation testing",
 				Expect(err).NotTo(BeNil())
 				Expect(out.String()).To(ContainSubstring("role with name %s cannot be found", notExistedRoleName))
 
-				By("number of the attaching policies exceed the quote (L-0DA4ABF3) when attach")
-				policyArnsWithNine := arbitraryPoliciesToClean[0:9]
-				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnsWithNine, "--mode", "auto")
+				By("request policies exceeding the support role's managed policy quota")
+				quota, err := managedPoliciesPerRoleQuota(awsClient)
 				Expect(err).To(BeNil())
-				defer func() {
-					By("Detach the attached policies from role " + supportRoleName)
-					out, err = arbitraryPolicyService.DetachPolicy(supportRoleName, policyArnsWithNine, "--mode", "auto")
-					Expect(err).To(BeNil())
-				}()
+				attachedPolicies, err := awsClient.ListAttachedRolePolicies(supportRoleName)
+				Expect(err).To(BeNil())
+				Expect(len(attachedPolicies)).To(BeNumerically("<=", quota),
+					"support role already has %d policies, above the quota of %d", len(attachedPolicies), quota)
 
-				policyArnWithTen := []string{arbitraryPoliciesToClean[9]}
-				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyArnWithTen, "--mode", "auto")
+				policyCountToExceedQuota := quota - len(attachedPolicies) + 1
+				if len(quotaTestPolicyARNs) < policyCountToExceedQuota {
+					additionalPolicyARNs, createErr := createArbitraryPolicies(
+						awsClient,
+						policyCountToExceedQuota-len(quotaTestPolicyARNs),
+					)
+					arbitraryPoliciesToClean = append(arbitraryPoliciesToClean, additionalPolicyARNs...)
+					quotaTestPolicyARNs = append(quotaTestPolicyARNs, additionalPolicyARNs...)
+					Expect(createErr).To(BeNil())
+				}
+				policyARNsExceedingQuota := quotaTestPolicyARNs[:policyCountToExceedQuota]
+				expectedPolicyCount := len(attachedPolicies) + len(policyARNsExceedingQuota)
+				Expect(expectedPolicyCount).To(Equal(quota + 1))
+
+				out, err = arbitraryPolicyService.AttachPolicy(supportRoleName, policyARNsExceedingQuota, "--mode", "auto")
 				Expect(err).ToNot(BeNil())
-				Expect(out.String()).To(ContainSubstring("Failed to attach policies due to quota limitations (total limit: 10"))
+				Expect(out.String()).To(ContainSubstring(fmt.Sprintf(
+					"Failed to attach policies due to quota limitations (total limit: %d, expected: %d)",
+					quota,
+					expectedPolicyCount,
+				)))
 
 				By("role has no red-hat-managed=true tag when attach")
 				out, err = arbitraryPolicyService.AttachPolicy(notRHManagedRoleName, policyArns, "--mode", "auto")
