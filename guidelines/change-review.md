@@ -13,7 +13,7 @@ and exit behavior, see
 Seek human direction when:
 
 - A change requires a bump to `aws-sdk-go-v2`, `ocm-sdk-go`, Cobra, Ginkgo,
-  `go mod tidy`, `go mod vendor`, or a broad dependency rewrite.
+  `go mod tidy`, or a broad dependency rewrite.
 - A new feature or command appears to duplicate an existing ROSA workflow,
   Jira ticket, or merged PR and its intended scope is unclear.
 - A change touches login, authentication, token storage, keyrings,

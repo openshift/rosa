@@ -19,3 +19,9 @@ RUN mkdir -p /opt/app-root/src /tmp/gomodcache /tmp/.cache && \
 ENV HOME="/opt/app-root/src" \
     GOMODCACHE="/tmp/gomodcache" \
     GOLANGCI_LINT_CACHE="/tmp/.cache"
+# Warm the module cache once at image build so each presubmit job does not
+# download the module graph again. A toolchain switch also writes $GOPATH
+# (sumdb cache) and $HOME/.config as root, so keep HOME group-writable too,
+# otherwise the Prow UID cannot create $GOPATH/bin for bingo tools.
+RUN GOTOOLCHAIN=auto go mod download && \
+    chmod -R g+rwX /tmp/gomodcache /opt/app-root/src

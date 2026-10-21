@@ -17,8 +17,8 @@ Use this file when adding or changing unit tests, structure tests, generated fil
   matching `cmd/rosa/structure_test/command_args/**/command_args.yml` files
   define supported flags.
 - Generated mocks must come from `make generate`; do not hand-edit files under `pkg/*/mocks/` or `cmd/create/idp/mocks/`.
-- Do not hand-edit generated `assets/bindata.go` or vendored dependencies in
-  `vendor/`. Use the documented generator when regeneration is required.
+- Do not hand-edit generated `assets/bindata.go`. Use the documented generator
+  when regeneration is required.
 - If generated files change unexpectedly, stop and confirm why before committing them.
 
 ## Validation Paths
@@ -34,7 +34,7 @@ the omission is intentional.
 
 ## Dependency State
 
-- Do not run `go mod tidy`, `go mod vendor`, or `make verify` unless the task
+- Do not run `go mod tidy` or `make verify` unless the task
   explicitly requires dependency-state changes or the user asked that workflow. `make verify`
   rewrites dependency state.
 

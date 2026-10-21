@@ -30,7 +30,6 @@ Keep compilation, presubmits, E2E builds, and product images aligned:
   `images/Dockerfile.e2e`, and `images/Dockerfile.konflux`.
 - Match `.ci-operator.yaml` `build_root_image.tag` to an available
   `ocp/builder:rhel-9-golang-*` for pipeline plumbing.
-- Regenerate `vendor/` when required by `CONTRIBUTING.md`.
 
 `images/Dockerfile.release` downloads a released binary and is not tied to
 the source Go version. Release-side ci-operator configs are under
