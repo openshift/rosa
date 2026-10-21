@@ -3509,39 +3509,6 @@ var _ = Describe("HCP cluster creation negative testing",
 								"ec2-metadata-http-tokens value should be one of 'required', 'optional'"))
 			})
 
-		It("expose additional allowed principals for HCP negative - [id:74433]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.Deferred,
-			func() {
-				By("Create hcp cluster using --additional-allowed-principals and invalid formatted arn")
-				clusterName := "ocp-74408"
-				replacingFlags := map[string]string{
-					"-c":              clusterName,
-					"--cluster-name":  clusterName,
-					"--domain-prefix": clusterName,
-				}
-
-				By("Create cluster with invalid additional allowed principals")
-				rosalCommand.ReplaceFlagValue(replacingFlags)
-				if rosalCommand.CheckFlagExist("--additional-allowed-principals") {
-					rosalCommand.DeleteFlag("--additional-allowed-principals", true)
-				}
-				rosalCommand.AddFlags("--dry-run", "--additional-allowed-principals", "zzzz", "-y")
-				_, err := rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
-				helper.ExpectErrorWithMessage(
-					err,
-					"ERR: Expected valid ARNs for additional allowed principals list: Invalid ARN: arn: invalid prefix",
-				)
-
-				By("Create classic cluster with additional allowed principals")
-				_, err = clusterService.CreateDryRun(
-					clusterName,
-					"--additional-allowed-principals", "zzzz",
-					"--debug",
-					"--non-sts",
-				)
-				helper.ExpectErrorWithMessage(err, "ERR: Additional Allowed Principals is supported only for Hosted Control Planes")
-			})
-
 		It("Updating default ingress settings is not supported for HCP clusters - [id:71174]",
 			labels.Low, labels.Runtime.Day1Negative, labels.Seaplane.Deferred,
 			func() {
@@ -3772,6 +3739,58 @@ var _ = Describe("HCP cluster creation negative testing",
 				_, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				helper.ExpectErrorWithMessage(err,
 					"allowed registries and blocked registries are mutually exclusive fields")
+			})
+	})
+
+var _ = Describe("HCP additional allowed principals negative testing",
+	labels.Feature.Cluster,
+	func() {
+		defer GinkgoRecover()
+
+		var (
+			rosaClient     *rosacli.Client
+			clusterService rosacli.ClusterService
+		)
+
+		BeforeEach(func() {
+			By("Init the client")
+			rosaClient = rosacli.NewClient()
+			clusterService = rosaClient.Cluster
+		})
+
+		It("expose additional allowed principals for HCP negative - [id:74433]",
+			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.Validated,
+			func() {
+				By("Create hcp cluster using --additional-allowed-principals and invalid formatted arn")
+				clusterName := helper.GenerateRandomName("ocp74433", 2)
+				command := []string{
+					"rosa", "create", "cluster",
+					"-c", clusterName,
+					"--cluster-name", clusterName,
+					"--hosted-cp",
+					"--operator-roles-prefix", clusterName,
+					"--subnet-ids", "subnet-00000000000000000",
+					"--dry-run",
+					"--additional-allowed-principals", "zzzz",
+					"-y",
+				}
+				_, err := rosaClient.Runner.RunCMD(command)
+				helper.ExpectErrorWithMessage(
+					err,
+					"Expected valid ARNs for additional allowed principals list: Invalid ARN: arn: invalid prefix",
+				)
+
+				if isSeaplaneMode() {
+					return
+				}
+
+				By("Create classic cluster with additional allowed principals")
+				_, err = clusterService.CreateDryRun(
+					clusterName,
+					"--additional-allowed-principals", "zzzz",
+					"--debug",
+				)
+				helper.ExpectErrorWithMessage(err, "ERR: Additional Allowed Principals is supported only for Hosted Control Planes")
 			})
 	})
 
