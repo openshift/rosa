@@ -105,6 +105,14 @@ func seaplaneNodePoolEC2MetadataHttpTokens(np *v1alpha1.NodePool) string {
 	return string(np.Spec.EC2InstanceMetadataHttpTokens)
 }
 
+func seaplaneManagementUpgradeToMap(np *v1alpha1.NodePool) map[string]string {
+	_, upgrade := seaplane.NodePoolUpgradeSettings(np)
+	return map[string]string{
+		"max_surge":       upgrade.MaxSurge,
+		"max_unavailable": upgrade.MaxUnavailable,
+	}
+}
+
 func seaplaneNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string]interface{} {
 	replicas := int32(0)
 	if np.Spec.NodePool.Replicas != nil {
@@ -132,7 +140,7 @@ func seaplaneNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string
 		})
 	}
 
-	return map[string]interface{}{
+	m := map[string]interface{}{
 		"id":                       string(np.UID),
 		"name":                     seaplane.NodePoolDisplayName(clusterName, np.Name),
 		"state":                    string(np.Status.Phase),
@@ -148,6 +156,11 @@ func seaplaneNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string
 		"labels":                   np.Spec.Labels,
 		"taints":                   np.Spec.NodePool.Taints,
 	}
+
+	// The rolling-update settings are reported under "management_upgrade" to
+	// match the OCM-based machine pool describe output.
+	m["management_upgrade"] = seaplaneManagementUpgradeToMap(np)
+	return m
 }
 
 func seaplaneNodePoolToString(np *v1alpha1.NodePool, clusterName string) string {
