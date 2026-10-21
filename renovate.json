@@ -156,6 +156,7 @@
     {
       "description": "AWS SDK v2 and smithy",
       "groupName": "aws-sdk",
+      "commitMessagePrefix": "OCM-00000 | chore(deps): ",
       "matchManagers": [
         "gomod"
       ],
@@ -166,6 +167,8 @@
     {
       "description": "OpenShift OCM libraries",
       "groupName": "openshift-ocm",
+      "commitMessagePrefix": "OCM-00000 | chore(deps): ",
+      "commitMessageSuffix": "{{#if isGroup}}{{#each upgrades}}{{#if (equals depName 'github.com/openshift-online/ocm-sdk-go')}}(ocm-sdk-go {{{newVersion}}}){{/if}}{{/each}}{{/if}}",
       "matchManagers": [
         "gomod"
       ],
@@ -176,6 +179,7 @@
     {
       "description": "Cobra CLI stack",
       "groupName": "spf13-cli",
+      "commitMessagePrefix": "OCM-00000 | chore(deps): ",
       "matchManagers": [
         "gomod"
       ],

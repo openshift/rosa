@@ -3,15 +3,83 @@
 
 [changelog]
 body = """
+{%- macro group(commit) -%}
+{%- set body = commit.body | default(value="") -%}
+{%- if commit.group is starting_with("<!--") -%}
+    {{- commit.group -}}
+{%- elif commit.raw_message is matching("^feat") -%}
+    <!-- 1 -->FEATURES:
+{%- elif commit.raw_message is matching("^(fix|docs|perf|refactor|style|chore)") -%}
+    <!-- 2 -->ENHANCEMENTS:
+{%- elif body is matching(".*security") -%}
+    <!-- 4 -->SECURITY:
+{%- elif commit.raw_message is matching("^revert") -%}
+    <!-- 5 -->REVERTS:
+{%- else -%}
+    <!-- 2 -->ENHANCEMENTS:
+{%- endif -%}
+{%- endmacro group -%}
+{%- macro scope(commit) -%}
+{%- set body = commit.body | default(value="") -%}
+{%- if commit.raw_message is matching("^chore[(]deps[)]!?:") -%}
+    Dependencies
+{%- elif commit.scope -%}
+    {{- commit.scope -}}
+{%- elif commit.raw_message is matching("^feat") -%}
+    Ignore scope
+{%- elif commit.raw_message is matching("^fix") -%}
+    Bug fixes
+{%- elif commit.raw_message is matching("^docs") -%}
+    Documentation
+{%- elif commit.raw_message is matching("^perf") -%}
+    Performance
+{%- elif commit.raw_message is matching("^(refactor|style|chore)") -%}
+    Chores
+{%- elif body is matching(".*security") or commit.raw_message is matching("^revert") -%}
+    Ignore scope
+{%- elif commit.raw_message is matching("(?i).*documentation.*") -%}
+    Documentation
+{%- elif commit.raw_message is matching("(?i)(^|.*[[:space:]])fix([[:space:]]|:)") -%}
+    Bug fixes
+{%- else -%}
+    Other
+{%- endif -%}
+{%- endmacro scope -%}
 {%- if version -%}
 ## {{ version | trim_start_matches(pat="v") }} ({{ timestamp | date(format="%d %b, %Y") }})
 {%- else -%}
 ## [unreleased]
 {%- endif -%}
-{%- for group, commits in commits | group_by(attribute="group") %}
+{%- set breaking_commits = commits | filter(attribute="breaking", value=true) -%}
+{%- if breaking_commits %}
+
+BREAKING CHANGES:
+{% for commit in breaking_commits %}
+   * {{ commit.message | upper_first | split(pat="\n") | first }}
+{% if commit.breaking_description and commit.breaking_description != commit.message %}
+     {{ commit.breaking_description | replace(from="\n", to="\n     ") }}
+{% endif -%}
+{%- endfor -%}
+{%- endif -%}
+{%- for group in ["<!-- 1 -->FEATURES:", "<!-- 2 -->ENHANCEMENTS:", "<!-- 4 -->SECURITY:", "<!-- 5 -->REVERTS:"] -%}
+{%- set_global group_commits = [] -%}
+{%- set_global scopes = [] -%}
+{%- for commit in commits -%}
+{%- if not commit.breaking and self::group(commit=commit) == group -%}
+{%- set_global group_commits = group_commits | concat(with=commit) -%}
+{%- set_global scopes = scopes | concat(with=self::scope(commit=commit)) -%}
+{%- endif -%}
+{%- endfor -%}
+{%- if group_commits %}
 
 {{ group | striptags | trim | upper }}
-{%- for scope, scope_commits in commits | group_by(attribute="scope") %}
+{%- for scope in scopes | unique | sort -%}
+{%- set_global scope_commits = [] -%}
+{%- for commit in group_commits -%}
+{%- if self::scope(commit=commit) == scope -%}
+{%- set_global scope_commits = scope_commits | concat(with=commit) -%}
+{%- endif -%}
+{%- endfor %}
 {%- if not (scope is containing("Ignore")) %}
  * {{ scope | upper_first }}
    {%- for commit in scope_commits %}
@@ -23,6 +91,7 @@ body = """
 {%- endfor -%}
 {%- endif %}
 {%- endfor %}
+{%- endif %}
 {%- endfor %}\n
 """
 trim = false
@@ -44,9 +113,7 @@ commit_preprocessors = [
 ]
 
 commit_parsers = [
-    { message = "^test", skip = true },
-    { message = "^ci", skip = true },
-    { message = "^build", skip = true },
+    { message = "^[[:alnum:]_-]+\\((ci|test|e2e)\\)!?:", skip = true },
     { message = "(?i).*changelog.*", skip = true },
     { message = "(?i).*set release version.*", skip = true },
     { message = "(?i).*update release version.*", skip = true },
@@ -54,12 +121,14 @@ commit_parsers = [
     { message = "(?i).*prepare cli .* for release.*", skip = true },
     { message = "(?i).*release process.*", skip = true },
     { message = "^chore\\(release\\)", skip = true },
-    { message = "^chore\\(deps", skip = true },
     { message = "^\\S+$", skip = true },
     { message = "^Merge pull request", skip = true },
     { message = "^Merge branch", skip = true },
     { message = "^Merge remote-tracking branch", skip = true },
     { message = "Update README.md", skip = true },
+
+    { message = "^chore\\(deps\\)!?:", group = "<!-- 2 -->ENHANCEMENTS:", scope = "Dependencies" },
+    { message = "^(test|ci|build|chore)(\\([^)]*\\))?!?:", skip = true },
 
     { message = "^feat", group = "<!-- 1 -->FEATURES:", default_scope = "Ignore scope" },
     { message = "^fix", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Bug fixes" },
@@ -75,7 +144,7 @@ commit_parsers = [
     { message = ".*", group = "<!-- 2 -->ENHANCEMENTS:", default_scope = "Other" },
 ]
 
-protect_breaking_commits = false
+protect_breaking_commits = true
 filter_commits = true
 fail_on_unmatched_commit = false
 link_parsers = [
