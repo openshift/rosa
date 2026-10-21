@@ -93,6 +93,7 @@ type seaplaneNodePoolUpdate struct {
 	cmd          *cobra.Command
 	labels       map[string]string
 	taints       []hypershiftv1beta1.Taint
+	imageType    string
 }
 
 func (h *seaplaneNodePoolUpdate) PreRequest(
@@ -106,13 +107,16 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 	maxReplicasChanged := h.cmd.Flags().Changed("max-replicas")
 	autoscalingChanged := h.cmd.Flags().Changed("enable-autoscaling") ||
 		minReplicasChanged || maxReplicasChanged
+	imageTypeChanged := h.cmd.Flags().Changed("image-type")
 
 	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged &&
 		!h.cmd.Flags().Changed("labels") && !h.cmd.Flags().Changed("taints") &&
-		!h.cmd.Flags().Changed("autorepair") && !h.cmd.Flags().Changed("additional-security-group-ids") {
+		!h.cmd.Flags().Changed("autorepair") && !h.cmd.Flags().Changed("additional-security-group-ids") &&
+		!imageTypeChanged {
 		return fmt.Errorf(
 			"specify at least one supported flag: --replicas, --enable-autoscaling, " +
-				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair, --additional-security-group-ids",
+				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair, " +
+				"--additional-security-group-ids, --image-type",
 		)
 	}
 
@@ -129,6 +133,25 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 			return err
 		}
 		h.taints = taints
+	}
+
+	if imageTypeChanged {
+		// Read --image-type from the command flag and validate before request.
+		// The API enum has no empty member, so clearing the flag is rejected
+		// rather than silently leaving the node pool as it is.
+		imageTypeVal, err := h.cmd.Flags().GetString("image-type")
+		if err != nil {
+			return fmt.Errorf("error reading --image-type: %w", err)
+		}
+		if imageTypeVal == "" {
+			return fmt.Errorf("--image-type requires a value: %s or %s",
+				hypershiftv1beta1.ImageTypeLinux, hypershiftv1beta1.ImageTypeWindows)
+		}
+		imageType, err := mpHelpers.ParseSeaplaneImageType(imageTypeVal)
+		if err != nil {
+			return err
+		}
+		h.imageType = imageType
 	}
 
 	// Validate autoscaling and replicas are mutually exclusive
@@ -265,6 +288,14 @@ func (h *seaplaneNodePoolUpdate) PostExpand(
 	}
 	if h.cmd.Flags().Changed("taints") {
 		merged.Spec.NodePool.Taints = h.taints
+	}
+
+	// The merge starts from the current node pool, so carry over the updated image type.
+	if h.cmd.Flags().Changed("image-type") {
+		if merged.Spec.NodePool.Platform.AWS == nil {
+			return fmt.Errorf("cannot update the image type on a non-AWS node pool")
+		}
+		merged.Spec.NodePool.Platform.AWS.ImageType = hypershiftv1beta1.ImageType(h.imageType)
 	}
 
 	// Security groups - convert comma-separated string to []AWSResourceReference

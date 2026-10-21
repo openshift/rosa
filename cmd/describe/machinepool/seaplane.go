@@ -121,6 +121,7 @@ func seaplaneNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string
 	instanceType := ""
 	subnetID := ""
 	diskSize := ""
+	imageType := seaplane.FormatNodePoolImageType(np.Spec.NodePool.Platform.AWS)
 	if np.Spec.NodePool.Platform.AWS != nil {
 		instanceType = np.Spec.NodePool.Platform.AWS.InstanceType
 		if np.Spec.NodePool.Platform.AWS.Subnet.ID != nil {
@@ -148,6 +149,7 @@ func seaplaneNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string
 		"instanceType":             instanceType,
 		"subnet":                   subnetID,
 		"disk_size":                diskSize,
+		"image_type":               imageType,
 		"security_group_ids":       securityGroupIDs,
 		"version":                  np.Spec.NodePool.Release.Image,
 		"ec2_metadata_http_tokens": seaplaneNodePoolEC2MetadataHttpTokens(np),
@@ -170,6 +172,7 @@ func seaplaneNodePoolToString(np *v1alpha1.NodePool, clusterName string) string 
 	spotInstances := "No"
 	securityGroupIDs := ""
 	tags := ""
+	imageType := seaplane.FormatNodePoolImageType(np.Spec.NodePool.Platform.AWS)
 
 	if np.Spec.NodePool.Platform.AWS != nil {
 		aws := np.Spec.NodePool.Platform.AWS
@@ -274,6 +277,7 @@ func seaplaneNodePoolToString(np *v1alpha1.NodePool, clusterName string) string 
 		"Subnet:                                %s\n"+
 		"Spot instances:                        %s\n"+
 		"Disk Size:                             %s\n"+
+		"Image type:                            %s\n"+
 		"Version:                               %s\n"+
 		"EC2 Metadata Http Tokens:              %s\n"+
 		"Autorepair:                            %s\n"+
@@ -297,6 +301,7 @@ func seaplaneNodePoolToString(np *v1alpha1.NodePool, clusterName string) string 
 		subnetID,
 		spotInstances,
 		diskSize,
+		imageType,
 		np.Spec.NodePool.Release.Image,
 		seaplaneNodePoolEC2MetadataHttpTokens(np),
 		autorepair,
