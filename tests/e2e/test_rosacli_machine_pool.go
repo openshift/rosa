@@ -452,10 +452,6 @@ var _ = Describe("Create machinepool",
 					"--tags", `"Cost Center":"Finance Team",owner:`,
 				)
 				Expect(err).ToNot(HaveOccurred(), out.String())
-				DeferCleanup(func() error {
-					_, err := machinePoolService.DeleteMachinePool(clusterID, mpName)
-					return err
-				})
 
 				By("Describe the machinepool and verify tags")
 				description, err := machinePoolService.DescribeAndReflectMachinePool(clusterID, mpName)
