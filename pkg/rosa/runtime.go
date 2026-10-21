@@ -13,21 +13,21 @@ import (
 	awssts "github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
-	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
+	seaplaneclientset "github.com/openshift-online/rosa-seaplane-api/clientset"
+	seaplanerest "github.com/openshift-online/rosa-seaplane-api/clientset/rest"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/aws/profile"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/reporter"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
-// awsLoadConfig, awsGetIdentity, hfNewClient, hfExplicitURL, hfExitFn are
+// awsLoadConfig, awsGetIdentity, seaplaneNewClient, seaplaneExplicitURL, seaplaneExitFn are
 // package-level vars so they can be replaced in unit tests without interface indirection.
 var (
 	awsLoadConfig = func(ctx context.Context, region, awsProfile string) (awssdk.Config, error) {
@@ -39,23 +39,23 @@ var (
 	awsGetIdentity = func(ctx context.Context, cfg awssdk.Config) (*awssts.GetCallerIdentityOutput, error) {
 		return awssts.NewFromConfig(cfg).GetCallerIdentity(ctx, &awssts.GetCallerIdentityInput{})
 	}
-	hfNewClient   = hyperfleetclientset.NewForConfig
-	hfExplicitURL = hyperfleet.ExplicitURL
-	hfExitFn      = func(code int) { os.Exit(code) }
+	seaplaneNewClient   = seaplaneclientset.NewForConfig
+	seaplaneExplicitURL = seaplane.ExplicitURL
+	seaplaneExitFn      = func(code int) { os.Exit(code) }
 )
 
 type Runtime struct {
-	Reporter         reporter.Logger
-	Logger           *logrus.Logger
-	OCMClient        *ocm.Client
-	AWSClient        aws.Client
-	AWSConfig        awssdk.Config
-	Creator          *aws.Creator
-	Region           string
-	ClusterKey       string
-	Cluster          *cmv1.Cluster
-	Spinner          *spinner.Spinner
-	HyperFleetClient hyperfleetclientset.Interface
+	Reporter       reporter.Logger
+	Logger         *logrus.Logger
+	OCMClient      *ocm.Client
+	AWSClient      aws.Client
+	AWSConfig      awssdk.Config
+	Creator        *aws.Creator
+	Region         string
+	ClusterKey     string
+	Cluster        *cmv1.Cluster
+	Spinner        *spinner.Spinner
+	SeaplaneClient seaplaneclientset.Interface
 }
 
 func NewRuntime() *Runtime {
@@ -97,7 +97,7 @@ func (r *Runtime) WithAWS() *Runtime {
 }
 
 // WithAWSOnly initializes the AWS client and creator without requiring an OCM connection.
-// Use this when OCM credentials may not be available (e.g. hyperfleet-only mode).
+// Use this when OCM credentials may not be available (e.g. seaplane-only mode).
 func (r *Runtime) WithAWSOnly() *Runtime {
 	if r.AWSClient == nil {
 		r.AWSClient = aws.CreateNewClientOrExit(r.Logger, r.Reporter)
@@ -154,19 +154,19 @@ func (r *Runtime) GetClusterKey() string {
 	return clusterKey
 }
 
-// WithHyperFleet builds the Platform API v2 client from the --hyperfleet-url flag.
+// WithSeaplane builds the Platform API v2 client from the --seaplane-url flag.
 // Region is resolved from --region / AWS_DEFAULT_REGION, falling back to extraction
 // from the URL hostname. --profile / AWS_PROFILE are honoured for credential loading.
 // No OCM login is required.
-func (r *Runtime) WithHyperFleet() *Runtime {
+func (r *Runtime) WithSeaplane() *Runtime {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	rawURL := hfExplicitURL()
+	rawURL := seaplaneExplicitURL()
 
-	if err := hyperfleet.ValidateURL(rawURL); err != nil {
+	if err := seaplane.ValidateURL(rawURL); err != nil {
 		r.Reporter.Errorf("%v", err)
-		hfExitFn(1)
+		seaplaneExitFn(1)
 		return r
 	}
 
@@ -174,17 +174,17 @@ func (r *Runtime) WithHyperFleet() *Runtime {
 	region := arguments.GetRegion()
 	if region == "" {
 		var err error
-		region, err = hyperfleet.ExtractRegion(rawURL)
+		region, err = seaplane.ExtractRegion(rawURL)
 		if err != nil {
 			r.Reporter.Errorf("%v", err)
-			hfExitFn(1)
+			seaplaneExitFn(1)
 			return r
 		}
 	} else {
-		warn, err := hyperfleet.CheckRegionConflict(region, rawURL)
+		warn, err := seaplane.CheckRegionConflict(region, rawURL)
 		if err != nil {
 			r.Reporter.Errorf("%v", err)
-			hfExitFn(1)
+			seaplaneExitFn(1)
 			return r
 		}
 		if warn != "" {
@@ -196,7 +196,7 @@ func (r *Runtime) WithHyperFleet() *Runtime {
 	awsCfg, err := awsLoadConfig(ctx, region, profile.Profile())
 	if err != nil {
 		r.Reporter.Errorf("Failed to load AWS config: %v", err)
-		hfExitFn(1)
+		seaplaneExitFn(1)
 		return r
 	}
 
@@ -204,20 +204,20 @@ func (r *Runtime) WithHyperFleet() *Runtime {
 	identity, err := awsGetIdentity(ctx, awsCfg)
 	if err != nil {
 		r.Reporter.Errorf("Failed to get AWS caller identity: %v", err)
-		hfExitFn(1)
+		seaplaneExitFn(1)
 		return r
 	}
 	creator, err := aws.CreatorForCallerIdentity(identity)
 	if err != nil {
 		r.Reporter.Errorf("Failed to build creator from caller identity: %v", err)
-		hfExitFn(1)
+		seaplaneExitFn(1)
 		return r
 	}
 	r.Creator = creator
 	r.AWSConfig = awsCfg
 	r.Region = region
 
-	cs, err := hfNewClient(&hfrest.Config{
+	cs, err := seaplaneNewClient(&seaplanerest.Config{
 		Host:      rawURL,
 		Region:    region,
 		AccountID: creator.AccountID,
@@ -226,10 +226,10 @@ func (r *Runtime) WithHyperFleet() *Runtime {
 	})
 	if err != nil {
 		r.Reporter.Errorf("Failed to build Platform API client: %v", err)
-		hfExitFn(1)
+		seaplaneExitFn(1)
 		return r
 	}
-	r.HyperFleetClient = cs
+	r.SeaplaneClient = cs
 	return r
 }
 
@@ -260,7 +260,7 @@ func (r *Runtime) FetchCluster() *cmv1.Cluster {
 	return cluster
 }
 
-// IsUsingHyperfleet returns true if the runtime is configured to use Platform API v2 (hyperfleet).
-func (r *Runtime) IsUsingHyperfleet() bool {
-	return r.HyperFleetClient != nil
+// IsUsingSeaplane returns true if the runtime is configured to use Platform API v2 (seaplane).
+func (r *Runtime) IsUsingSeaplane() bool {
+	return r.SeaplaneClient != nil
 }

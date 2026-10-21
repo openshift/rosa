@@ -47,18 +47,18 @@ var (
 
 // Config is the type used to store the configuration of the client.
 type Config struct {
-	AccessToken   string   `json:"access_token,omitempty" doc:"Bearer access token."`
-	ClientID      string   `json:"client_id,omitempty" doc:"OpenID client identifier."`
-	ClientSecret  string   `json:"client_secret,omitempty" doc:"OpenID client secret."`
-	Insecure      bool     `json:"insecure,omitempty" doc:"Enables insecure communication with the server."`
-	RefreshToken  string   `json:"refresh_token,omitempty" doc:"Offline or refresh token."`
-	Scopes        []string `json:"scopes,omitempty" doc:"OpenID scope."`
-	TokenURL      string   `json:"token_url,omitempty" doc:"OpenID token URL."`
-	URL           string   `json:"url,omitempty" doc:"URL of the API gateway."`
-	UserAgent     string   `json:"user_agent,omitempty" doc:"OCM client UserAgent. Default value is used if not set."`
-	Version       string   `json:"version,omitempty" doc:"OCM client version. Default value is used if not set."`
-	FedRAMP       bool     `json:"fedramp,omitempty" doc:"Indicates FedRAMP."`
-	HyperfleetURL string   `json:"hyperfleet_url,omitempty" doc:"Platform API v2 endpoint URL."`
+	AccessToken  string   `json:"access_token,omitempty" doc:"Bearer access token."`
+	ClientID     string   `json:"client_id,omitempty" doc:"OpenID client identifier."`
+	ClientSecret string   `json:"client_secret,omitempty" doc:"OpenID client secret."`
+	Insecure     bool     `json:"insecure,omitempty" doc:"Enables insecure communication with the server."`
+	RefreshToken string   `json:"refresh_token,omitempty" doc:"Offline or refresh token."`
+	Scopes       []string `json:"scopes,omitempty" doc:"OpenID scope."`
+	TokenURL     string   `json:"token_url,omitempty" doc:"OpenID token URL."`
+	URL          string   `json:"url,omitempty" doc:"URL of the API gateway."`
+	UserAgent    string   `json:"user_agent,omitempty" doc:"OCM client UserAgent. Default value is used if not set."`
+	Version      string   `json:"version,omitempty" doc:"OCM client version. Default value is used if not set."`
+	FedRAMP      bool     `json:"fedramp,omitempty" doc:"Indicates FedRAMP."`
+	SeaplaneURL  string   `json:"seaplane_url,omitempty" doc:"Platform API v2 endpoint URL."`
 }
 
 var DisallowedSetConfigProperties = []string{"scopes"}

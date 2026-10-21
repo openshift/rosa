@@ -6,13 +6,13 @@ package ingress
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 func dispatch(cmd *cobra.Command, argv []string) {
-	if hyperfleet.Enabled() {
-		rosa.DefaultRunner(rosa.RuntimeWithHyperFleet(), editHyperfleetComponentRoutesRunner())(cmd, argv)
+	if seaplane.Enabled() {
+		rosa.DefaultRunner(rosa.RuntimeWithSeaplane(), editSeaplaneComponentRoutesRunner())(cmd, argv)
 		return
 	}
 	run(cmd, argv)

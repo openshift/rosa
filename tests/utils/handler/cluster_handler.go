@@ -199,8 +199,8 @@ func (ch *clusterHandler) GetResourcesHandler() ResourcesHandler {
 
 // GenerateClusterCreateFlags will generate cluster creation flags
 func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
-	if usesHyperfleet() {
-		return ch.generateHyperfleetCreateFlags()
+	if usesSeaplane() {
+		return ch.generateSeaplaneCreateFlags()
 	}
 	resourcesHandler := ch.resourcesHandler
 	if ch.profile.ClusterConfig.NameLength == 0 {
@@ -1024,8 +1024,8 @@ func (ch *clusterHandler) GenerateClusterCreateFlags() ([]string, error) {
 }
 
 func (ch *clusterHandler) WaitForClusterReady(timeoutMin int) error {
-	if usesHyperfleet() {
-		return ch.waitForHyperfleetClusterReady(timeoutMin)
+	if usesSeaplane() {
+		return ch.waitForSeaplaneClusterReady(timeoutMin)
 	}
 
 	var err error
@@ -1180,7 +1180,7 @@ func (ch *clusterHandler) createClusterByProfileWithoutWaiting() error {
 
 	// Need to do the post step when cluster has no oidcconfig enabled
 	if ch.profile.ClusterConfig.OIDCConfig == "" && ch.profile.ClusterConfig.STS {
-		if usesHyperfleet() {
+		if usesSeaplane() {
 			prefix := ch.clusterConfig.Aws.Sts.OperatorRolesPrefix
 			err = ch.resourcesHandler.PreparePlatformAPIPostCreateIAM(description.OIDCEndpointURL, prefix)
 		} else {
@@ -1220,7 +1220,7 @@ func (ch *clusterHandler) CreateCluster(waitForClusterReady bool) (err error) {
 	if err != nil {
 		return err
 	}
-	if ch.profile.ClusterConfig.BYOVPC && !usesHyperfleet() {
+	if ch.profile.ClusterConfig.BYOVPC && !usesSeaplane() {
 		log.Logger.Infof("Reverify the network for the cluster %s to make sure it can be parsed", clusterID)
 		ch.reverifyClusterNetwork()
 	}
@@ -1274,7 +1274,7 @@ func (ch *clusterHandler) destroyCluster() (errors []error, clusterRemoved bool)
 
 	// Remove OIDC provider only after uninstall completed.
 	// Platform API clusters use AWS IAM OIDC providers, not OCM oidc-config resources.
-	if ch.profile.ClusterConfig.STS && ch.profile.ClusterConfig.OIDCConfig != "managed" && !usesHyperfleet() {
+	if ch.profile.ClusterConfig.STS && ch.profile.ClusterConfig.OIDCConfig != "managed" && !usesSeaplane() {
 		_, err = ch.rosaClient.OCMResource.DeleteOIDCProvider("-c", clusterID, "-y", "--mode", "auto")
 		if err != nil {
 			log.Logger.Errorf("Error happened when delete oidc provider: %s", err.Error())
@@ -1317,8 +1317,8 @@ func (ch *clusterHandler) RegisterClusterID(clusterID string) error {
 }
 
 func (ch *clusterHandler) elaborateKMSKeyForSTSCluster(etcdKMS bool) error {
-	if usesHyperfleet() {
-		return errors.New(hyperfleetCustomKMSError)
+	if usesSeaplane() {
+		return errors.New(seaplaneCustomKMSError)
 	}
 	clusterID := ch.clusterDetail.ClusterID
 	jsonData, err := ch.rosaClient.Cluster.GetJSONClusterDescription(clusterID)

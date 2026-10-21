@@ -26,10 +26,10 @@ import (
 
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
 	"github.com/openshift/rosa/pkg/config"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 const (
@@ -49,7 +49,7 @@ const (
 
   # Edit a cluster-autoscaler with total CPU constraints
   rosa edit autoscaler --cluster=mycluster --min-cores 10 --max-cores 100`
-	hyperfleetExample = `  # Edit the maximum node count for a HyperFleet cluster
+	seaplaneExample = `  # Edit the maximum node count for a Seaplane cluster
   rosa edit autoscaler --cluster=mycluster --max-nodes-total 100
 
   # Edit how long the autoscaler waits for a node to be provisioned
@@ -74,22 +74,22 @@ func NewEditAutoscalerCommand() *cobra.Command {
 	ocm.AddClusterFlag(cmd)
 	interactive.AddFlag(flags)
 	autoscalerArgs := clusterautoscaler.AddClusterAutoscalerFlags(cmd, argsPrefix)
-	configureHyperfleetHelp := func() {
-		if !hyperfleet.Enabled() {
+	configureSeaplaneHelp := func() {
+		if !seaplane.Enabled() {
 			if cfg, err := config.Load(); err == nil && cfg != nil {
-				hyperfleet.SetURL(cfg.HyperfleetURL)
+				seaplane.SetURL(cfg.SeaplaneURL)
 			}
 		}
-		if !hyperfleet.Enabled() {
+		if !seaplane.Enabled() {
 			return
 		}
 		_ = flags.MarkHidden("interactive")
-		cmd.Example = hyperfleetExample
+		cmd.Example = seaplaneExample
 	}
-	configureHyperfleetHelp()
+	configureSeaplaneHelp()
 	defaultHelp := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(command *cobra.Command, args []string) {
-		configureHyperfleetHelp()
+		configureSeaplaneHelp()
 		defaultHelp(command, args)
 	})
 	cmd.Run = dispatch(autoscalerArgs)

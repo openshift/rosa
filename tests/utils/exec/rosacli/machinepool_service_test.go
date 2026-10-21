@@ -101,7 +101,7 @@ Message:
 })
 
 var _ = Describe("Nodepool lookup", func() {
-	It("resolves HyperFleet nodepools by name or UID", func() {
+	It("resolves Seaplane nodepools by name or UID", func() {
 		pool := &NodePool{ID: "pool-uid", Name: "workers"}
 		list := NodePoolList{NodePools: []*NodePool{pool}}
 		Expect(list.Nodepool("workers")).To(BeIdenticalTo(pool))

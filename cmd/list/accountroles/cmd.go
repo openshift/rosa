@@ -25,23 +25,23 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 var args struct {
 	version string
 }
 
-var hfEnabled = hyperfleet.Enabled
+var seaplaneEnabled = seaplane.Enabled
 
 var Cmd = &cobra.Command{
 	Use:     "account-roles",
 	Aliases: []string{"accountrole", "account-role", "accountroles"},
 	Short:   "List ROSA account-role IAM resources",
-	Long:    "List ROSA account-role IAM resources found in the current AWS account. Not available in HyperFleet mode.",
+	Long:    "List ROSA account-role IAM resources found in the current AWS account. Not available in Seaplane mode.",
 	Example: `  # List all account roles
   rosa list account-roles`,
 	Run:  run,
@@ -62,9 +62,9 @@ func init() {
 
 // run lists account roles after validating the requested version across supported topologies.
 func run(_ *cobra.Command, _ []string) {
-	if hfEnabled() {
+	if seaplaneEnabled() {
 		r := rosa.NewRuntime()
-		r.Reporter.Errorf("Account roles are not supported in HyperFleet mode")
+		r.Reporter.Errorf("Account roles are not supported in Seaplane mode")
 		os.Exit(1)
 	}
 

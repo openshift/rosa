@@ -11,8 +11,8 @@ import (
 	awssts "github.com/aws/aws-sdk-go-v2/service/sts"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	hyperfleetclientset "github.com/openshift-online/rosa-hyperfleet-api/clientset"
-	hfrest "github.com/openshift-online/rosa-hyperfleet-api/clientset/rest"
+	seaplaneclientset "github.com/openshift-online/rosa-seaplane-api/clientset"
+	seaplanerest "github.com/openshift-online/rosa-seaplane-api/clientset/rest"
 	"github.com/spf13/cobra"
 
 	reportertest "github.com/openshift/rosa/test/reporter"
@@ -55,21 +55,21 @@ var _ = Describe("Runner Tests", func() {
 		Expect(run).To(BeTrue())
 	})
 
-	It("RuntimeWithHyperFleet returns a non-nil visitor that calls WithHyperFleet", func() {
-		origExplicitURL := hfExplicitURL
+	It("RuntimeWithSeaplane returns a non-nil visitor that calls WithSeaplane", func() {
+		origExplicitURL := seaplaneExplicitURL
 		origLoadConfig := awsLoadConfig
 		origGetIdentity := awsGetIdentity
-		origNewClient := hfNewClient
-		origExitFn := hfExitFn
+		origNewClient := seaplaneNewClient
+		origExitFn := seaplaneExitFn
 		defer func() {
-			hfExplicitURL = origExplicitURL
+			seaplaneExplicitURL = origExplicitURL
 			awsLoadConfig = origLoadConfig
 			awsGetIdentity = origGetIdentity
-			hfNewClient = origNewClient
-			hfExitFn = origExitFn
+			seaplaneNewClient = origNewClient
+			seaplaneExitFn = origExitFn
 		}()
 
-		hfExplicitURL = func() string { return "https://abc.execute-api.us-east-1.amazonaws.com" }
+		seaplaneExplicitURL = func() string { return "https://abc.execute-api.us-east-1.amazonaws.com" }
 		awsLoadConfig = func(_ context.Context, _, _ string) (awssdk.Config, error) { return awssdk.Config{}, nil }
 		awsGetIdentity = func(_ context.Context, _ awssdk.Config) (*awssts.GetCallerIdentityOutput, error) {
 			return &awssts.GetCallerIdentityOutput{
@@ -78,15 +78,15 @@ var _ = Describe("Runner Tests", func() {
 				UserId:  awssdk.String("AIDAEXAMPLE"),
 			}, nil
 		}
-		hfNewClient = func(_ *hfrest.Config) (*hyperfleetclientset.Clientset, error) {
-			return &hyperfleetclientset.Clientset{}, nil
+		seaplaneNewClient = func(_ *seaplanerest.Config) (*seaplaneclientset.Clientset, error) {
+			return &seaplaneclientset.Clientset{}, nil
 		}
-		hfExitFn = func(int) {}
+		seaplaneExitFn = func(int) {}
 
 		r := &Runtime{Reporter: &reportertest.FakeLogger{}}
-		visitor := RuntimeWithHyperFleet()
+		visitor := RuntimeWithSeaplane()
 		Expect(visitor).ToNot(BeNil())
 		visitor(nil, r, nil, nil)
-		Expect(r.HyperFleetClient).ToNot(BeNil())
+		Expect(r.SeaplaneClient).ToNot(BeNil())
 	})
 })

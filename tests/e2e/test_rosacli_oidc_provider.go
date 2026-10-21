@@ -12,7 +12,7 @@ import (
 	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/pkg/seaplane"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -49,7 +49,7 @@ var _ = Describe("OIDC provider",
 		})
 
 		It("validate when user create oidc-provider to cluster - [id:43046]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated,
 			func() {
 				By("Check if cluster is sts cluster")
 				StsCluster, err := clusterService.IsSTSCluster(clusterID)
@@ -97,7 +97,7 @@ var _ = Describe("OIDC provider",
 	})
 
 var _ = Describe("OIDC provider by OIDC config ID",
-	labels.Feature.OIDCProvider, labels.Hyperfleet.Validated,
+	labels.Feature.OIDCProvider, labels.Seaplane.Validated,
 	func() {
 		var (
 			rosaClient         *rosacli.Client
@@ -127,8 +127,8 @@ var _ = Describe("OIDC provider by OIDC config ID",
 					Expect(err).NotTo(HaveOccurred())
 				})
 
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
-				if isHyperfleet {
+				isSeaplane := os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled()
+				if isSeaplane {
 					By("Create a managed OIDC config through Platform API")
 					output, err := ocmResourceService.CreateOIDCConfig(
 						"--mode", "auto",

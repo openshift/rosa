@@ -45,7 +45,7 @@ var _ = Describe("Edit default ingress",
 
 			By("Check cluster is hosted")
 			var err error
-			if isHyperfleetMode() {
+			if isSeaplaneMode() {
 				isHosted = true
 			} else {
 				isHosted, err = rosaClient.Cluster.IsHostedCPCluster(clusterID)
@@ -486,11 +486,11 @@ var _ = Describe("Edit ingress",
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("can edit and describe component routes in default ingress on HyperFleet cluster",
-			labels.Low, labels.Runtime.Day2, labels.Hyperfleet.Validated,
+		It("can edit and describe component routes in default ingress on Seaplane cluster",
+			labels.Low, labels.Runtime.Day2, labels.Seaplane.Validated,
 			func() {
-				if !isHosted || !isHyperfleetMode() {
-					Skip("This case exercises HyperFleet ingress component routes")
+				if !isHosted || !isSeaplaneMode() {
+					Skip("This case exercises Seaplane ingress component routes")
 				}
 				output, err := ingressService.EditDefaultIngress(clusterID,
 					"--component-routes", "console: hostname=console.example.com;tlsSecretRef=console-tls")

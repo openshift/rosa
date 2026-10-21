@@ -15,7 +15,7 @@ import (
 	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/pkg/seaplane"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/helper"
@@ -42,11 +42,11 @@ var _ = Describe("Edit OIDC config",
 		})
 
 		It("can create/list/delete BYO oidc config in auto mode - [id:57570]",
-			labels.High, labels.Runtime.OCMResources, labels.Hyperfleet.Validated,
+			labels.High, labels.Runtime.OCMResources, labels.Seaplane.Validated,
 			func() {
 
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
-					// is hyperfleet v2
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
+					// is seaplane v2
 					helper_v2_oidc_configs(rosaClient, ocmResourceService)
 					return
 				}
@@ -260,9 +260,9 @@ var _ = Describe("Register OIDC config testing",
 			}
 		})
 		It("to register successfully - [id:64620]", labels.High, labels.Runtime.OCMResources,
-			labels.Hyperfleet.Validated, func() {
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
-					By("Use the managed OIDC config flow supported by HyperFleet")
+			labels.Seaplane.Validated, func() {
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
+					By("Use the managed OIDC config flow supported by Seaplane")
 					helper_v2_oidc_configs(rosaClient, ocmResourceService)
 					return
 				}

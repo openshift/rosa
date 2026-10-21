@@ -23,19 +23,19 @@ import (
 	"strings"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	v1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1/public"
+	v1alpha1 "github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	interactiveOidc "github.com/openshift/rosa/pkg/interactive/oidc"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 var Cmd = &cobra.Command{
@@ -78,9 +78,9 @@ func init() {
 }
 
 func run(cmd *cobra.Command, argv []string) {
-	// Check for hyperfleet mode first and route to separate handler
-	if hyperfleet.Enabled() {
-		runHyperfleet(cmd, argv)
+	// Check for seaplane mode first and route to separate handler
+	if seaplane.Enabled() {
+		runSeaplane(cmd, argv)
 		return
 	}
 
@@ -127,9 +127,9 @@ func run(cmd *cobra.Command, argv []string) {
 	if cmd.Flags().Changed("cluster") || (isProgrammaticallyCalled && shouldUseClusterKey) {
 		clusterKey = r.GetClusterKey()
 
-		// Platform API v2 (hyperfleet) handling
-		if r.IsUsingHyperfleet() {
-			handleHyperfleetOIDCProvider(r, clusterKey, args.oidcConfigId, mode)
+		// Platform API v2 (seaplane) handling
+		if r.IsUsingSeaplane() {
+			handleSeaplaneOIDCProvider(r, clusterKey, args.oidcConfigId, mode)
 			return
 		}
 
@@ -317,9 +317,9 @@ func buildCommands(r *rosa.Runtime, oidcEndpointUrl string, clusterId string) (s
 	return awscb.JoinCommands(commands), nil
 }
 
-// runHyperfleet is the entry point for hyperfleet mode
-func runHyperfleet(cmd *cobra.Command, argv []string) {
-	r := rosa.NewRuntime().WithHyperFleet().WithAWSOnly()
+// runSeaplane is the entry point for seaplane mode
+func runSeaplane(cmd *cobra.Command, argv []string) {
+	r := rosa.NewRuntime().WithSeaplane().WithAWSOnly()
 	defer r.Cleanup()
 
 	clusterFlagChanged := cmd.Flags().Changed("cluster")
@@ -358,12 +358,12 @@ func runHyperfleet(cmd *cobra.Command, argv []string) {
 		}
 	}
 
-	handleHyperfleetOIDCProvider(r, clusterKey, args.oidcConfigId, mode)
+	handleSeaplaneOIDCProvider(r, clusterKey, args.oidcConfigId, mode)
 }
 
-// handleHyperfleetOIDCProvider handles OIDC provider operations for Platform API v2 (hyperfleet) clusters.
-func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcKey, mode string) {
-	r.Reporter.Debugf("Handling HyperFleet OIDC provider for cluster '%s' and config '%s'", clusterKey, oidcKey)
+// handleSeaplaneOIDCProvider handles OIDC provider operations for Platform API v2 (seaplane) clusters.
+func handleSeaplaneOIDCProvider(r *rosa.Runtime, clusterKey, oidcKey, mode string) {
+	r.Reporter.Debugf("Handling Seaplane OIDC provider for cluster '%s' and config '%s'", clusterKey, oidcKey)
 
 	ctx := context.Background()
 
@@ -375,7 +375,7 @@ func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcKey, mode str
 	if oidcKey != "" {
 		// An OIDC config key is an alternate issuer source. The provider check
 		// and auto/manual recovery below are shared with the cluster path.
-		config, getErr := hyperfleet.ResolveOidcConfig(ctx, r.HyperFleetClient, oidcKey)
+		config, getErr := seaplane.ResolveOidcConfig(ctx, r.SeaplaneClient, oidcKey)
 		if getErr != nil {
 			r.Reporter.Errorf("Failed to get OIDC config '%s': %v", oidcKey, getErr)
 			os.Exit(1)
@@ -384,7 +384,7 @@ func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcKey, mode str
 	} else {
 		// Resolve the key and retain the cluster returned by the list operation.
 		// Fetching it again by UID would make a second Platform API request.
-		cluster, getErr := hyperfleet.GetCluster(ctx, r.HyperFleetClient, clusterKey)
+		cluster, getErr := seaplane.GetCluster(ctx, r.SeaplaneClient, clusterKey)
 		if getErr != nil {
 			r.Reporter.Errorf("Failed to resolve cluster '%s': %v", clusterKey, getErr)
 			os.Exit(1)
@@ -394,7 +394,7 @@ func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcKey, mode str
 			os.Exit(1)
 		}
 		clusterUID = string(cluster.UID)
-		oidcIssuerURL = extractOIDCIssuerFromHyperfleetCluster(cluster)
+		oidcIssuerURL = extractOIDCIssuerFromSeaplaneCluster(cluster)
 	}
 
 	if oidcIssuerURL == "" {
@@ -457,7 +457,7 @@ func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcKey, mode str
 			r.Reporter.Errorf("Failed to compute OIDC provider thumbprint: %v", err)
 			os.Exit(1)
 		}
-		commands := buildHyperfleetOIDCProviderCommand(oidcIssuerURL, thumbprint, clusterUID)
+		commands := buildSeaplaneOIDCProviderCommand(oidcIssuerURL, thumbprint, clusterUID)
 		r.Reporter.Infof("Run the following commands to create the OIDC provider:\n")
 		fmt.Println(commands)
 	default:
@@ -466,7 +466,7 @@ func handleHyperfleetOIDCProvider(r *rosa.Runtime, clusterKey, oidcKey, mode str
 	}
 }
 
-func buildHyperfleetOIDCProviderCommand(issuerURL, thumbprint, clusterID string) string {
+func buildSeaplaneOIDCProviderCommand(issuerURL, thumbprint, clusterID string) string {
 	iamTags := map[string]string{tags.RedHatManaged: tags.True}
 	if clusterID != "" {
 		iamTags[tags.ClusterID] = clusterID
@@ -482,8 +482,8 @@ func buildHyperfleetOIDCProviderCommand(issuerURL, thumbprint, clusterID string)
 		Build()
 }
 
-// extractOIDCIssuerFromHyperfleetCluster extracts the OIDC issuer URL from a hyperfleet cluster object.
-func extractOIDCIssuerFromHyperfleetCluster(cluster *v1alpha1.Cluster) string {
+// extractOIDCIssuerFromSeaplaneCluster extracts the OIDC issuer URL from a seaplane cluster object.
+func extractOIDCIssuerFromSeaplaneCluster(cluster *v1alpha1.Cluster) string {
 	// The OIDC issuer is in the HostedCluster spec
 	if cluster.Spec.HostedCluster.IssuerURL != "" {
 		return cluster.Spec.HostedCluster.IssuerURL

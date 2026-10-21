@@ -1,0 +1,185 @@
+# Seaplane FVT profile for Platform API v2 (ephemeral / integration).
+# Use with: TEST_PROFILE=rosa-seaplane-basic
+# Login: rosa login --seaplane-url $SEAPLANE_URL
+#
+# Day1 create uses the seaplane handler (oidc_config: managed).
+profiles:
+  - as: rosa-seaplane-basic
+    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+    region: "us-east-1"
+    cluster:
+      multi_az: true
+      instance_type: "m5.xlarge"
+      hcp: true
+      sts: true
+      byo_vpc: true
+      additional_principals: false
+      imdsv2: ""
+      private: false
+      default_ingress_private: false
+      etcd_encryption: false
+      autoscale: false
+      kms_key: false
+      networking: false
+      proxy_enabled: false
+      label_enabled: false
+      zones: ""
+      tag_enabled: false
+      etcd_kms: false
+      fips: false
+      oidc_config: managed
+      auditlog_forward: false
+      admin_enabled: false
+      volume_size: 75
+      disable_uwm: false
+      autoscaler_enabled: false
+      additional_sg_number: 3
+      registries_config: false
+      scheduler_profile: HighNodeUtilization
+      allowed_registries: false
+      log_forward: false
+    account-role:
+      customized_prefix: false
+      path: ""
+      permission_boundary: ""
+  - as: rosa-seaplane-fips
+    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+    region: "us-east-1"
+    cluster:
+      multi_az: true
+      instance_type: "m5.xlarge"
+      hcp: true
+      sts: true
+      byo_vpc: true
+      additional_principals: false
+      imdsv2: ""
+      private: false
+      default_ingress_private: false
+      etcd_encryption: false
+      autoscale: false
+      kms_key: false
+      networking: false
+      proxy_enabled: false
+      label_enabled: false
+      zones: ""
+      tag_enabled: false
+      etcd_kms: false
+      fips: true
+      oidc_config: managed
+      auditlog_forward: false
+      admin_enabled: false
+      volume_size: 75
+      disable_uwm: false
+      autoscaler_enabled: false
+      additional_sg_number: 3
+      registries_config: false
+      allowed_registries: false
+      log_forward: false
+    account-role:
+      customized_prefix: false
+      path: ""
+      permission_boundary: ""
+  - as: rosa-seaplane-advanced
+    version: latest
+    region: "us-east-1"
+    cluster:
+      multi_az: true
+      instance_type: "c5.xlarge"
+      hcp: true
+      sts: true
+      byo_vpc: true
+      additional_principals: false
+      imdsv2: "required"
+      private: false
+      default_ingress_private: false
+      etcd_encryption: true
+      autoscale: false
+      kms_key: false
+      networking: true
+      proxy_enabled: true
+      label_enabled: false
+      zones: ""
+      tag_enabled: true
+      etcd_kms: false
+      fips: false
+      oidc_config: managed
+      auditlog_forward: false
+      admin_enabled: false
+      volume_size: 75
+      disable_uwm: false
+      autoscaler_enabled: false
+      additional_sg_number: 3
+      registries_config: true
+      allowed_registries: true
+      log_forward: false
+    account-role:
+      customized_prefix: true
+      path: ""
+      permission_boundary: ""
+  - as: rosa-seaplane-private
+    version: latest
+    region: "us-east-1"
+    cluster:
+      multi_az: true
+      instance_type: "m5.xlarge"
+      hcp: true
+      sts: true
+      byo_vpc: true
+      private: true
+      default_ingress_private: true
+      additional_principals: true
+      imdsv2: ""
+      etcd_encryption: false
+      autoscale: false
+      kms_key: false
+      oidc_config: managed
+      networking: false
+      proxy_enabled: false
+      label_enabled: false
+      tag_enabled: false
+      zones: ""
+      registries_config: false
+      allowed_registries: false
+      log_forward: false
+    account-role:
+      path: ""
+      permission_boundary: ""
+  - as: rosa-seaplane-nocni
+    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+    region: "us-east-1"
+    cluster:
+      multi_az: true
+      instance_type: "m5.xlarge"
+      hcp: true
+      sts: true
+      byo_vpc: true
+      additional_principals: false
+      imdsv2: ""
+      private: false
+      default_ingress_private: false
+      etcd_encryption: false
+      autoscale: false
+      kms_key: false
+      networking: false
+      proxy_enabled: false
+      label_enabled: false
+      zones: ""
+      tag_enabled: false
+      etcd_kms: false
+      fips: false
+      oidc_config: managed
+      network_type: other
+      auditlog_forward: false
+      admin_enabled: false
+      volume_size: 75
+      disable_uwm: false
+      autoscaler_enabled: false
+      additional_sg_number: 3
+      registries_config: false
+      scheduler_profile: HighNodeUtilization
+      allowed_registries: false
+      log_forward: false
+    account-role:
+      customized_prefix: false
+      path: ""
+      permission_boundary: ""

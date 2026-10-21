@@ -28,11 +28,11 @@ import (
 	"github.com/openshift/rosa/pkg/arguments"
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/config"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/object"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 var Cmd = &cobra.Command{
@@ -58,10 +58,10 @@ func init() {
 // It returns true when an effective Platform API URL is present (explicit flag
 // takes precedence over the stored config value) and OCM credentials are absent,
 // structurally invalid, or expired/unarmed.
-func useAWSOnly(cfg *config.Config, cfgErr error, explicitHFURL string) bool {
-	effectiveURL := explicitHFURL
+func useAWSOnly(cfg *config.Config, cfgErr error, explicitSeaplaneURL string) bool {
+	effectiveURL := explicitSeaplaneURL
 	if effectiveURL == "" && cfgErr == nil && cfg != nil {
-		effectiveURL = cfg.HyperfleetURL
+		effectiveURL = cfg.SeaplaneURL
 	}
 	if effectiveURL == "" {
 		return false
@@ -76,7 +76,7 @@ func useAWSOnly(cfg *config.Config, cfgErr error, explicitHFURL string) bool {
 func run(_ *cobra.Command, _ []string) {
 	r := rosa.NewRuntime()
 	cfg, cfgErr := config.Load()
-	if useAWSOnly(cfg, cfgErr, hyperfleet.ExplicitURL()) {
+	if useAWSOnly(cfg, cfgErr, seaplane.ExplicitURL()) {
 		r = r.WithAWSOnly()
 	} else {
 		r = r.WithAWS()
@@ -104,9 +104,9 @@ func runWithRuntime(r *rosa.Runtime) error {
 		return fmt.Errorf("loading config file: %w", err)
 	}
 
-	hfURL := ""
+	seaplaneURL := ""
 	if cfg != nil {
-		hfURL = cfg.HyperfleetURL
+		seaplaneURL = cfg.SeaplaneURL
 	}
 
 	ocmArmed := cfg != nil && !config.IsNotValid(cfg)
@@ -120,7 +120,7 @@ func runWithRuntime(r *rosa.Runtime) error {
 		ocmArmed = armed
 	}
 
-	if !ocmArmed && hfURL == "" {
+	if !ocmArmed && seaplaneURL == "" {
 		r.Reporter.Errorf("User is not logged in")
 		return errNotLoggedIn
 	}
@@ -131,8 +131,8 @@ func runWithRuntime(r *rosa.Runtime) error {
 		"AWS ARN":            r.Creator.ARN,
 	}
 
-	if hfURL != "" {
-		outputObject["V2 API"] = hfURL
+	if seaplaneURL != "" {
+		outputObject["V2 API"] = seaplaneURL
 	}
 
 	if ocmArmed {
@@ -149,8 +149,8 @@ func runWithRuntime(r *rosa.Runtime) error {
 			Logger(r.Logger).
 			Build()
 		if err != nil {
-			if hfURL != "" {
-				// Hyperfleet-only login: stale OCM credentials may be present
+			if seaplaneURL != "" {
+				// Seaplane-only login: stale OCM credentials may be present
 				// but are not required. Degrade gracefully without OCM data.
 				r.Reporter.Warnf("Skipping OCM info (not logged in to OCM): %v", err)
 			} else {

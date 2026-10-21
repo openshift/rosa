@@ -14,18 +14,18 @@ var _ = Describe("Dispatch", func() {
 	var originalEdit func(*EditMachinepoolUserOptions, *cobra.Command, []string)
 
 	BeforeEach(func() {
-		originalEnabled = hyperfleetEnabled
-		originalEdit = hfEditMachinePool
+		originalEnabled = seaplaneEnabled
+		originalEdit = seaplaneEditMachinePool
 	})
 
 	AfterEach(func() {
-		hyperfleetEnabled = originalEnabled
-		hfEditMachinePool = originalEdit
+		seaplaneEnabled = originalEnabled
+		seaplaneEditMachinePool = originalEdit
 	})
 
-	Context("when hyperfleet is disabled", func() {
+	Context("when seaplane is disabled", func() {
 		BeforeEach(func() {
-			hyperfleetEnabled = func() bool { return false }
+			seaplaneEnabled = func() bool { return false }
 		})
 
 		It("should return a runner function", func() {
@@ -36,14 +36,16 @@ var _ = Describe("Dispatch", func() {
 
 	})
 
-	Context("when hyperfleet is enabled", func() {
+	Context("when seaplane is enabled", func() {
 		BeforeEach(func() {
-			hyperfleetEnabled = func() bool { return true }
+			seaplaneEnabled = func() bool { return true }
 		})
 
 		It("routes to the Platform API handler", func() {
 			called := false
-			hfEditMachinePool = func(*EditMachinepoolUserOptions, *cobra.Command, []string) { called = true }
+			seaplaneEditMachinePool = func(*EditMachinepoolUserOptions, *cobra.Command, []string) {
+				called = true
+			}
 			opts := &EditMachinepoolUserOptions{}
 			cmd := &cobra.Command{}
 			dispatch(opts)(cmd, []string{"worker"})

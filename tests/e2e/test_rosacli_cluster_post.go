@@ -21,7 +21,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
 
-	"github.com/openshift/rosa/pkg/hyperfleet"
+	"github.com/openshift/rosa/pkg/seaplane"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
@@ -80,7 +80,7 @@ var _ = Describe("Healthy check",
 			})
 
 			It("the creation of rosa cluster with volume size will work - [id:66359]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated,
 				func() {
 					alignDiskSize := func(diskSize string) string {
 						aligned := strings.Join(strings.Split(diskSize, " "), "")
@@ -89,7 +89,7 @@ var _ = Describe("Healthy check",
 
 					By("Set expected worker pool size")
 					expectedDiskSize := clusterConfig.WorkerDiskSize
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						// V2 day1 creates nodepools using the profile's volume_size.
 						if profile.ClusterConfig.VolumeSize != 0 {
 							expectedDiskSize = fmt.Sprintf("%dGiB", profile.ClusterConfig.VolumeSize)
@@ -120,7 +120,7 @@ var _ = Describe("Healthy check",
 						Expect(err).ToNot(HaveOccurred())
 						Expect(alignDiskSize(npD.DiskSize)).To(Equal(expectedDiskSize))
 
-						if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+						if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 							By("Check V2 nodepool identity and disk size in JSON output")
 							rosaClient.Runner.JsonFormat()
 							output, err := machinePoolService.DescribeMachinePool(clusterID, nodePool.ID)
@@ -150,7 +150,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("the creation of rosa cluster with user tags will work - [id:ROSAENG-65293]",
-				labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
+				labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated,
 				func() {
 					By("Check the cluster was created with user tags")
 					if clusterConfig.Tags == "" {
@@ -183,10 +183,10 @@ var _ = Describe("Healthy check",
 				})
 
 			It("the scheduler profile configured during cluster creation is applied",
-				labels.High, labels.Runtime.Day1Post, labels.Hyperfleet.Validated,
+				labels.High, labels.Runtime.Day1Post, labels.Seaplane.Validated,
 				func() {
-					if !isHyperfleetMode() {
-						Skip("scheduler profile is currently supported only for V2 (Hyperfleet) clusters")
+					if !isSeaplaneMode() {
+						Skip("scheduler profile is currently supported only for V2 (Seaplane) clusters")
 					}
 					expectedProfile := profile.ClusterConfig.SchedulerProfile
 					if expectedProfile == "" {
@@ -205,9 +205,9 @@ var _ = Describe("Healthy check",
 				})
 
 			It("the creation of ROSA cluster with default-mp-labels option will succeed - [id:57056]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.NotApplicable,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("Default machinepool labels in this test apply only to classic clusters")
 					}
 
@@ -244,10 +244,10 @@ var _ = Describe("Healthy check",
 				})
 
 			It("the additional security groups are working well - [id:68172]",
-				labels.Critical, labels.Runtime.Day1Post, labels.Hyperfleet.Deferred,
+				labels.Critical, labels.Runtime.Day1Post, labels.Seaplane.Deferred,
 				labels.Exclude, //Exclude it until day1 refactor support this part. It cannot be run with current day1
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 cluster/nodepool describe does not expose additional security groups; " +
 							"day1 setup also excludes this case")
 					}
@@ -329,9 +329,9 @@ var _ = Describe("Healthy check",
 				})
 
 			It("bring your own kms key functionality works on cluster creation - [id:60082]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Deferred,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 cluster describe does not expose aws.kms_key_arn and " +
 							"day1 setup does not configure customer-managed keys")
 					}
@@ -354,9 +354,9 @@ var _ = Describe("Healthy check",
 				})
 
 			It("additional allowed principals work on cluster creation - [id:74408]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Deferred,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 cluster describe does not expose additional allowed principals")
 					}
 
@@ -379,9 +379,9 @@ var _ = Describe("Healthy check",
 				})
 
 			It("etcd encryption works on cluster creation - [id:42188]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Deferred,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 cluster describe does not expose etcd_encryption and day1 setup does not configure it")
 					}
 
@@ -402,12 +402,12 @@ var _ = Describe("Healthy check",
 				})
 
 			It("delete protection flag is available on cluster creation - [id:73163]",
-				labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
+				labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated,
 				func() {
 					By("Check the help message of 'rosa create cluster -h'")
 					output, err := clusterService.CreateDryRun(clusterID, "-h")
 					Expect(err).To(BeNil())
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Expect(output.String()).To(ContainSubstring("--delete-protection"))
 						By("Check V2 delete protection agrees between JSON and text output")
 						data, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -426,9 +426,9 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with private_link will work - [id:41549]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
-				labels.Hyperfleet.Deferred,
+				labels.Seaplane.Deferred,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 ingress describe is not implemented; API privacy alone cannot validate this case")
 					}
 
@@ -453,9 +453,9 @@ var _ = Describe("Healthy check",
 				})
 			It("with API private and ingress private works on hosted-cp cluster - [id:83155]",
 				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
-				labels.Hyperfleet.Deferred,
+				labels.Seaplane.Deferred,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 ingress list is not implemented; API privacy alone cannot validate this case")
 					}
 
@@ -491,11 +491,11 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with compute_machine_type will work - [id:75150]",
-				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Validated,
+				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Seaplane.Validated,
 				func() {
 					By("Check compute machine type")
 					var expectedInstanceType string
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						expectedInstanceType = profile.ClusterConfig.InstanceType
 					} else {
 						Expect(clusterConfig.Nodes).ToNot(BeNil())
@@ -509,13 +509,13 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with multiAZ will work - [id:75535]",
-				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
+				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Seaplane.Validated,
 				func() {
 					if !isHosted {
 						SkipNotHosted()
 					}
 					expectedMultiAZ := clusterConfig.MultiAZ
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						expectedMultiAZ = profile.ClusterConfig.MultiAZ
 					}
 					By("Retrieve cluster description")
@@ -560,9 +560,9 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with private will work - [id:75526]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
-				labels.Hyperfleet.Deferred,
+				labels.Seaplane.Deferred,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 ingress describe is not implemented; API privacy alone cannot validate this case")
 					}
 
@@ -585,9 +585,9 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with autoscaling will work - [id:75527]",
-				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Deferred,
+				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Seaplane.Deferred,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 nodepool passthrough and day1 setup do not support autoscaling")
 					}
 
@@ -605,9 +605,9 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with subnets will work - [id:37176]", labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP,
-				labels.Hyperfleet.Validated,
+				labels.Seaplane.Validated,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						By("Check V2 subnet flag is available")
 						output, _, err := clusterService.Create("cluster-37176", "-h")
 						Expect(err).ToNot(HaveOccurred())
@@ -710,7 +710,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with proxy set will work - [id:45502]",
-				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Hyperfleet.Validated,
+				labels.Runtime.Day1Post, labels.Critical, labels.FedRAMP, labels.Seaplane.Validated,
 				func() {
 
 					By("Check the help message of proxy")
@@ -737,7 +737,7 @@ var _ = Describe("Healthy check",
 						Expect(clusterConfig.Proxy.Https).To(Equal(clusterHTTPSProxy))
 						// Here is workaround in e2e_setup_test.go for HCP with proxy
 						Expect(clusterNoProxy).To(ContainSubstring(clusterConfig.Proxy.NoProxy))
-						if os.Getenv("HYPERFLEET_URL") == "" && !hyperfleet.Enabled() {
+						if os.Getenv("SEAPLANE_URL") == "" && !seaplane.Enabled() {
 							Expect(clusterDescription.AdditionalTrustBundle).To(Equal("REDACTED"))
 						}
 					} else {
@@ -749,9 +749,9 @@ var _ = Describe("Healthy check",
 		Context("without using cluster configuration file", func() {
 
 			It("the windows certificates expiration - [id:64040]",
-				labels.Medium, labels.Runtime.Day1Post, labels.Exclude, labels.Hyperfleet.NotApplicable,
+				labels.Medium, labels.Runtime.Day1Post, labels.Exclude, labels.Seaplane.NotApplicable,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("This test checks OCM and Red Hat SSO certificates, not Platform API v2")
 					}
 
@@ -783,9 +783,9 @@ var _ = Describe("Healthy check",
 
 			It("rosa hcp cluster creation support imdsv2 - [id:75114]",
 				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP,
-				labels.Hyperfleet.Deferred,
+				labels.Seaplane.Deferred,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 nodepool describe does not expose EC2 metadata HTTP tokens and day1 setup does not configure them")
 					}
 
@@ -824,7 +824,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("rosa cluster with fips enabled can be created successfully - [id:46312]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated,
 				func() {
 					output, err := clusterService.DescribeCluster(clusterID)
 					Expect(err).ToNot(HaveOccurred())
@@ -840,9 +840,9 @@ var _ = Describe("Healthy check",
 				})
 
 			It("cluster is multiarch - [id:75108]",
-				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Hyperfleet.Deferred,
+				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Seaplane.Deferred,
 				func() {
-					if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 						Skip("V2 cluster describe does not expose multi_arch_enabled; an absent field must not count as false validation")
 					}
 
@@ -861,7 +861,7 @@ var _ = Describe("Healthy check",
 					}
 				})
 			It("with use-local-credentials will work - [id:65900]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
-				labels.Hyperfleet.NotApplicable,
+				labels.Seaplane.NotApplicable,
 				func() {
 					By("Check that the 'use_local_credentials' property matches the profile")
 					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
@@ -871,7 +871,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with policy path will work - [id:75525]", labels.Runtime.Day1Post, labels.High, labels.FedRAMP,
-				labels.Hyperfleet.NotApplicable,
+				labels.Seaplane.NotApplicable,
 				func() {
 					if profile.AccountRoleConfig == nil || profile.AccountRoleConfig.Path == "" {
 						Skip("No account-role path defined. Skipping ...")
@@ -932,12 +932,12 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 		})
 
 		It("User can create cluster with channel group - [id:35420]",
-			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated,
 			func() {
 				profile := handler.LoadProfileYamlFileByENV()
 
 				By("Check if the cluster using right channel group")
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 					data, err := clusterService.GetJSONClusterDescription(clusterID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(data.DigString("version", "raw_id")).ToNot(BeEmpty())
@@ -984,7 +984,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 		})
 
 		It("to verifiy the byo oidc cluster is deleted successfully - [id:75210]",
-			labels.Critical, labels.Runtime.DestroyPost, labels.Hyperfleet.Validated,
+			labels.Critical, labels.Runtime.DestroyPost, labels.Seaplane.Validated,
 			func() {
 				By("Check if it is using oidc config")
 				if profile.ClusterConfig.OIDCConfig == "" {
@@ -997,7 +997,7 @@ var _ = Describe("Post-Check testing for cluster deletion",
 				rosaClient.Runner.UnsetFormat()
 				whoamiData := ocmResourceService.ReflectAccountsInfo(whoamiOutput)
 				AWSAccountID := whoamiData.AWSAccountID
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 					// whoami JSON uses display-name keys, including spaces.
 					data := rosaClient.Parser.JsonData.Input(whoamiOutput).Parse()
 					AWSAccountID = data.DigString("AWS Account ID")
@@ -1052,9 +1052,9 @@ var _ = Describe("Post-Check testing for cluster deletion",
 
 			})
 		It("to verify the sts cluster is deleted successfully - [id:75256]",
-			labels.High, labels.Runtime.DestroyPost, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
+			labels.High, labels.Runtime.DestroyPost, labels.FedRAMP, labels.Seaplane.NotApplicable,
 			func() {
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 					Skip("This cleanup check requires V1 account roles, which the V2 setup does not provision")
 				}
 
@@ -1131,14 +1131,14 @@ var _ = Describe("Post-Check testing for cluster creation",
 		})
 
 		It("to verify byo oidc cluster is created successfully - [id:59530]",
-			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated,
 			func() {
 				clusterConfig, err := config.ParseClusterProfile()
 				Expect(err).ToNot(HaveOccurred())
 				profile := handler.LoadProfileYamlFileByENV()
 				Expect(err).ToNot(HaveOccurred())
 
-				if (os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()) &&
+				if (os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled()) &&
 					profile.ClusterConfig.OIDCConfig == "unmanaged" {
 					Skip("V2 describe currently marks every OIDC config as managed; unmanaged parity is deferred")
 				}
@@ -1169,8 +1169,8 @@ var _ = Describe("Post-Check testing for cluster creation",
 				Expect(err).To(BeNil())
 
 				OidcUrl := CD.OIDCEndpointURL
-				isHyperfleet := os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled()
-				if isHyperfleet {
+				isSeaplane := os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled()
+				if isSeaplane {
 					Expect(oidcConfigID).ToNot(BeEmpty())
 					Expect(oidcConfigIssuerURL).ToNot(BeEmpty())
 					Expect(jsonData.DigString("spec", "oidc_issuer")).To(Equal(oidcConfigIssuerURL))
@@ -1189,7 +1189,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 					Expect(err).To(BeNil())
 					opRole, err := awsClient.GetRole(roleName)
 					Expect(err).To(BeNil())
-					if isHyperfleet {
+					if isSeaplane {
 						trustPolicy, err := url.QueryUnescape(*opRole.AssumeRolePolicyDocument)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(trustPolicy).To(
@@ -1203,7 +1203,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 				}
 			})
 		It("to verify sts cluster is created successfully - [id:41822]",
-			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.NotApplicable,
 			func() {
 				By("Check the cluster is STS cluster")
 				profile := handler.LoadProfileYamlFileByENV()
@@ -1234,7 +1234,7 @@ var _ = Describe("Post-Check testing for cluster creation",
 
 			})
 		It("to verify cluster with the operator-roles attaching managed policy is created successfully - [id:57410]",
-			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Validated,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated,
 			func() {
 				// Till now, only HCP clusters operator roles are attaching managed policies
 				By("Skip is the cluster is not HCP cluster")
@@ -1288,9 +1288,9 @@ var _ = Describe("Post-Check testing for cluster creation",
 				}
 			})
 		It("to verify shared-vpc hosted-cp cluster is created successfully and can be edited- [id:78240]",
-			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Deferred,
 			func() {
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 					Skip("V2 shared-VPC setup and additional allowed principals edit/describe parity are not implemented")
 				}
 
@@ -1337,9 +1337,9 @@ var _ = Describe("Post-Check testing for cluster creation",
 			})
 		It("to verify billing account settings- [id:73141]",
 			labels.Critical, labels.Runtime.Day1Post,
-			labels.Hyperfleet.Deferred,
+			labels.Seaplane.Deferred,
 			func() {
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 					Skip("V2 cluster describe does not expose AWS billing account settings")
 				}
 
@@ -1361,9 +1361,9 @@ var _ = Describe("Post-Check testing for cluster creation",
 				}
 			})
 		It("to verify log forward config - [id:86415]",
-			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			labels.High, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Deferred,
 			func() {
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 					Skip("V2 log-forwarder list is not implemented")
 				}
 
@@ -1412,9 +1412,9 @@ var _ = Describe("Post-Check testing for cluster clusters with the --disable-scp
 		})
 
 		It(" Create MOA clusters with the --disable-scp-check flag - [id:35894]",
-			labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP, labels.Hyperfleet.NotApplicable,
+			labels.Medium, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.NotApplicable,
 			func() {
-				if os.Getenv("HYPERFLEET_URL") != "" || hyperfleet.Enabled() {
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 					Skip("The disable-scp-checks post-check applies only to classic clusters")
 				}
 

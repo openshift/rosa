@@ -26,8 +26,8 @@ Use this file when adding or changing Cobra commands, flags, help text, prompt f
 
 ## Platform API Dispatch
 
-Each command that supports the Platform API (hyperfleet) path uses a `dispatch`
-function as its Cobra `Run:` entrypoint. It checks `hyperfleet.Enabled()` and
+Each command that supports the Platform API (seaplane) path uses a `dispatch`
+function as its Cobra `Run:` entrypoint. It checks `seaplane.Enabled()` and
 routes to the v2 runner, when implemented, or the original v1 `run()` function.
 Until a v2 runner exists, the enabled path reports an unsupported-command
 error and exits.
@@ -41,7 +41,7 @@ When adding Platform API support to a command:
 - Keep the original `run()` function intact and keep Platform API conditionals
   out of it.
 - Build the v2 runner's own runtime, for example with
-  `NewRuntime().WithHyperFleet()`, without affecting the v1 path.
+  `NewRuntime().WithSeaplane()`, without affecting the v1 path.
 
 ## Review Prompts
 

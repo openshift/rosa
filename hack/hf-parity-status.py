@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""ROSA HyperFleet v1 E2E Parity Scoreboard.
+"""ROSA Seaplane v1 E2E Parity Scoreboard.
 
 Source of truth: Ginkgo labels in tests/e2e/ (via ginkgo run --dry-run).
-- hyperfleet-validated : passing tests
-- hyperfleet-sanity    : standalone lifecycle spec
-- hyperfleet-deferred  : known gaps / blocked upstream
-- hyperfleet-na        : not applicable (classic/OCM/harness)
+- seaplane-validated : passing tests
+- seaplane-sanity    : standalone lifecycle spec
+- seaplane-deferred  : known gaps / blocked upstream
+- seaplane-na        : not applicable (classic/OCM/harness)
 - remaining to-do      : all other specs
 """
 
@@ -40,7 +40,7 @@ def get_specs() -> list[dict]:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="HyperFleet E2E Parity Scoreboard")
+    parser = argparse.ArgumentParser(description="Seaplane E2E Parity Scoreboard")
     parser.add_argument("--json", action="store_true", help="Output JSON")
     parser.add_argument("--details", action="store_true", help="Show test details")
     args = parser.parse_args()
@@ -59,13 +59,13 @@ def main():
             "id": m.group(1) if m else "",
         }
 
-        if "hyperfleet-validated" in labels:
+        if "seaplane-validated" in labels:
             buckets["validated"].append(item)
-        elif "hyperfleet-sanity" in labels:
+        elif "seaplane-sanity" in labels:
             buckets["sanity"].append(item)
-        elif "hyperfleet-deferred" in labels:
+        elif "seaplane-deferred" in labels:
             buckets["deferred"].append(item)
-        elif "hyperfleet-na" in labels:
+        elif "seaplane-na" in labels:
             buckets["na"].append(item)
         else:
             buckets["todo"].append(item)
@@ -92,15 +92,15 @@ def main():
         return
 
     print("\n=======================================================")
-    print("      ROSA HyperFleet v1 E2E Parity Scoreboard         ")
+    print("      ROSA Seaplane v1 E2E Parity Scoreboard         ")
     print("=======================================================")
     print(f" Total E2E Ginkgo Specs:       {summary['total_specs']}")
     print(f" Not Applicable (in code):     {summary['not_applicable']}")
     print(f" -----------------------------------------------------")
-    print(f" Viable HyperFleet Specs:      {summary['viable_specs']}")
-    print(f"   • Validated (passing):      {summary['validated']:3d}  [hyperfleet-validated]")
-    print(f"   • Sanity (standalone CRUD): {summary['sanity']:3d}  [hyperfleet-sanity]")
-    print(f"   • Deferred (known gap):     {summary['deferred']:3d}  [hyperfleet-deferred]")
+    print(f" Viable Seaplane Specs:      {summary['viable_specs']}")
+    print(f"   • Validated (passing):      {summary['validated']:3d}  [seaplane-validated]")
+    print(f"   • Sanity (standalone CRUD): {summary['sanity']:3d}  [seaplane-sanity]")
+    print(f"   • Deferred (known gap):     {summary['deferred']:3d}  [seaplane-deferred]")
     print(f"   • Remaining To-Do:          {summary['remaining_todo']:3d}  (pending / unlabeled)")
     print(f" -----------------------------------------------------")
     print(f" Parity Progress:              {summary['parity_percentage']}% ({summary['validated']}/{summary['viable_specs']} validated)")

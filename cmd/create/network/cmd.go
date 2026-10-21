@@ -28,9 +28,9 @@ const defaultTemplate = "rosa-quickstart-default-vpc"
 func NewNetworkCommand() *cobra.Command {
 	cmd, options := opts.BuildNetworkCommandWithOptions()
 	cmd.Run = func(cmd *cobra.Command, argv []string) {
-		// Dispatch to hyperfleet v2 if enabled
-		if hfEnabled() {
-			hfCreateNetwork(options, argv)
+		// Dispatch to seaplane v2 if enabled
+		if seaplaneEnabled() {
+			seaplaneCreateNetwork(options, argv)
 			return
 		}
 		// Otherwise use v1 flow with OCM

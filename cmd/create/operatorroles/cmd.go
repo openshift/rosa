@@ -162,8 +162,8 @@ func init() {
 
 // run creates operator roles using the topology selected by flags or cluster metadata.
 func run(cmd *cobra.Command, argv []string) {
-	if hfEnabled() {
-		hfCreateOperatorRoles()
+	if seaplaneEnabled() {
+		seaplaneCreateOperatorRoles()
 		return
 	}
 

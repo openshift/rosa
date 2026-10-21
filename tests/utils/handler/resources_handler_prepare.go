@@ -27,9 +27,9 @@ import (
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
 	rosaconfig "github.com/openshift/rosa/pkg/config"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
@@ -37,16 +37,16 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
-func usesHyperfleet() bool {
-	if hyperfleet.Enabled() {
+func usesSeaplane() bool {
+	if seaplane.Enabled() {
 		return true
 	}
 	cfg, err := rosaconfig.Load()
 	if err != nil || cfg == nil {
 		return false
 	}
-	hyperfleet.SetURL(cfg.HyperfleetURL)
-	return hyperfleet.Enabled()
+	seaplane.SetURL(cfg.SeaplaneURL)
+	return seaplane.Enabled()
 }
 
 func (rh *resourcesHandler) PrepareVersion(versionRequirement string,
@@ -518,8 +518,8 @@ func (rh *resourcesHandler) PrepareOCMRole(
 	admin bool,
 	path string) (
 	ocmRole *rosacli.OCMRole, err error) {
-	if usesHyperfleet() {
-		log.Logger.Info("Skipping OCM role prep: hyperfleet client active")
+	if usesSeaplane() {
+		log.Logger.Info("Skipping OCM role prep: seaplane client active")
 		return nil, nil
 	}
 	// Assemble flags
@@ -616,8 +616,8 @@ func (rh *resourcesHandler) PrepareUserRole(
 	userRolePrefix string,
 	path string) (
 	userole *rosacli.UserRole, err error) {
-	if usesHyperfleet() {
-		log.Logger.Info("Skipping user role prep: hyperfleet client active")
+	if usesSeaplane() {
+		log.Logger.Info("Skipping user role prep: seaplane client active")
 		return nil, nil
 	}
 	// Assemble creation flags

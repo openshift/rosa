@@ -35,13 +35,13 @@ import (
 	"github.com/openshift/rosa/pkg/helper/autonode"
 	"github.com/openshift/rosa/pkg/helper/roles"
 	urlHelper "github.com/openshift/rosa/pkg/helper/url"
-	"github.com/openshift/rosa/pkg/hyperfleet"
-	hfpathbind "github.com/openshift/rosa/pkg/hyperfleet/pathbind"
 	"github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/interactive/confirm"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
+	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
 )
 
 const enableDeleteProtectionFlagName = "enable-delete-protection"
@@ -276,12 +276,12 @@ func initFlags(cmd *cobra.Command) {
 
 	cmd.MarkFlagsMutuallyExclusive("channel", "channel-group")
 
-	// ── HyperFleet-specific flags ────────────────────────────────────────────
+	// ── Seaplane-specific flags ────────────────────────────────────────────
 	// Registers available Platform API update flags that do not conflict with OCM flags.
 	// Flags already registered by OCM (e.g. --expiration-time) are silently skipped.
-	hyperfleet.RegisterAndMarkPlatformAPIFlags(cmd,
-		func() { hfpathbind.RegisterClusterUpdateFlags(cmd, &hfClusterUpdateInput) },
-		hfpathbind.ClusterUpdatePlatformAPIFlags,
+	seaplane.RegisterAndMarkPlatformAPIFlags(cmd,
+		func() { seaplanepathbind.RegisterClusterUpdateFlags(cmd, &seaplaneClusterUpdateInput) },
+		seaplanepathbind.ClusterUpdatePlatformAPIFlags,
 	)
 	// AddPlatformAPIFlagSection is called from the edit parent after MarkRegionDeprecated,
 	// since MarkRegionDeprecated overwrites SetHelpFunc and would orphan the wrapper here.

@@ -78,9 +78,9 @@ func init() {
 
 // run lists operator roles after validating the requested version across supported topologies.
 func run(cmd *cobra.Command, _ []string) {
-	// Dispatch to hyperfleet v2 if enabled
-	if hfEnabled() {
-		hfListOperatorRoles()
+	// Dispatch to seaplane v2 if enabled
+	if seaplaneEnabled() {
+		seaplaneListOperatorRoles()
 		return
 	}
 

@@ -932,7 +932,7 @@ func (c *awsClient) ListAccountRoles(version string) ([]Role, error) {
 var prefixOperatorRoleRE = regexp.MustCompile(`(?i)(?P<Prefix>[\w+=,.@-]+)-(openshift|kube-system)`)
 
 // operatorRoleListPrefix returns the operator-roles prefix for OCM (openshift/kube-system suffix)
-// or hyperfleet v2 (HypershiftPolicies + role_prefix tags) roles.
+// or seaplane v2 (HypershiftPolicies + role_prefix tags) roles.
 func operatorRoleListPrefix(roleName string, roleTags []iamtypes.Tag) string {
 	if matches := prefixOperatorRoleRE.FindStringSubmatch(roleName); len(matches) > 0 {
 		return strings.ToLower(matches[prefixOperatorRoleRE.SubexpIndex("Prefix")])

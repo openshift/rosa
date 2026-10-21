@@ -43,8 +43,8 @@ func init() {
 }
 
 func run(_ *cobra.Command, _ []string) {
-	if hfEnabled() {
-		hfListOidcConfigs()
+	if seaplaneEnabled() {
+		seaplaneListOidcConfigs()
 		return
 	}
 	r := rosa.NewRuntime().WithAWS().WithOCM()

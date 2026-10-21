@@ -99,11 +99,11 @@ linters:
     paths:
       - '(.+)_test\.go'
     rules:
-      - path: pkg/hyperfleet/flaggroup.go
+      - path: pkg/seaplane/flaggroup.go
         linters:
           - depguard
           - forbidigo
-      - path: pkg/hyperfleet/pathbind
+      - path: pkg/seaplane/pathbind
         linters:
           - depguard
           - lll

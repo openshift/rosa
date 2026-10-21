@@ -24,7 +24,7 @@ import (
 )
 
 var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
-	// HyperFleet exposes observed replicas through the Platform API, so check
+	// Seaplane exposes observed replicas through the Platform API, so check
 	// node pool readiness automatically on that path. OCM remains opt-in.
 	shouldCheckNodePoolReplicas := config.ShouldCheckNodePoolReplicas()
 
@@ -58,76 +58,82 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	})
 
 	Describe("Create/delete/view a machine pool", func() {
-		It("should succeed with additional security group IDs [id:72195]", labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated, func() {
-			By("check the throttle version")
-			throttleVersion, _ := semver.NewVersion("4.15.0-a.0")
-			clusterDescription, err := rosaClient.Cluster.DescribeClusterAndReflect(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-			clusterVersion, err := semver.NewVersion(clusterDescription.OpenshiftVersion)
-			Expect(err).ToNot(HaveOccurred())
+		It(
+			"should succeed with additional security group IDs [id:72195]",
+			labels.Critical,
+			labels.Runtime.Day2,
+			labels.FedRAMP,
+			labels.Seaplane.Validated,
+			func() {
+				By("check the throttle version")
+				throttleVersion, _ := semver.NewVersion("4.15.0-a.0")
+				clusterDescription, err := rosaClient.Cluster.DescribeClusterAndReflect(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterVersion, err := semver.NewVersion(clusterDescription.OpenshiftVersion)
+				Expect(err).ToNot(HaveOccurred())
 
-			By("Load the vpc client of the machinepool")
-			mps, err := rosaClient.MachinePool.ListAndReflectNodePools(clusterID)
-			Expect(err).ToNot(HaveOccurred())
+				By("Load the vpc client of the machinepool")
+				mps, err := rosaClient.MachinePool.ListAndReflectNodePools(clusterID)
+				Expect(err).ToNot(HaveOccurred())
 
-			subnetID := mps.NodePools[0].Subnet
-			vpcClient, err := vpc_client.GenerateVPCBySubnet(subnetID, profile.Region)
-			Expect(err).ToNot(HaveOccurred())
+				subnetID := mps.NodePools[0].Subnet
+				vpcClient, err := vpc_client.GenerateVPCBySubnet(subnetID, profile.Region)
+				Expect(err).ToNot(HaveOccurred())
 
-			By("Prepare security groups")
-			// Configure with a random str, which can solve the rerun failure
-			sgPrefix := helper.GenerateRandomName("72195", 2)
-			sgIDs, err := vpcClient.CreateAdditionalSecurityGroups(3, sgPrefix, "testing for case 72195")
-			Expect(err).ToNot(HaveOccurred())
-			defer func(sgs []string) {
-				for _, sg := range sgs {
-					vpcClient.AWSClient.DeleteSecurityGroup(sg)
+				By("Prepare security groups")
+				// Configure with a random str, which can solve the rerun failure
+				sgPrefix := helper.GenerateRandomName("72195", 2)
+				sgIDs, err := vpcClient.CreateAdditionalSecurityGroups(3, sgPrefix, "testing for case 72195")
+				Expect(err).ToNot(HaveOccurred())
+				defer func(sgs []string) {
+					for _, sg := range sgs {
+						vpcClient.AWSClient.DeleteSecurityGroup(sg)
+					}
+				}(sgIDs)
+
+				By("Create machinepool with security groups set")
+				mpName := "mp-72195"
+				output, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					"--additional-security-group-ids", strings.Join(sgIDs, ","),
+					"--replicas", "1",
+					"-y",
+				)
+				if clusterVersion.LessThan(throttleVersion) {
+					// Low version cannot support security group set
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).Should(ContainSubstring(
+						"Additional security groups are not supported for '%s'",
+						clusterDescription.OpenshiftVersion))
+					return
 				}
-			}(sgIDs)
+				Expect(err).ToNot(HaveOccurred())
 
-			By("Create machinepool with security groups set")
-			mpName := "mp-72195"
-			output, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
-				"--additional-security-group-ids", strings.Join(sgIDs, ","),
-				"--replicas", "1",
-				"-y",
-			)
-			if clusterVersion.LessThan(throttleVersion) {
-				// Low version cannot support security group set
-				Expect(err).To(HaveOccurred())
-				Expect(output.String()).Should(ContainSubstring(
-					"Additional security groups are not supported for '%s'",
-					clusterDescription.OpenshiftVersion))
-				return
-			}
-			Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
-			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
+				By("Check the machinepool detail by describe")
+				mpDescription, err := rosaClient.MachinePool.DescribeAndReflectNodePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
 
-			By("Check the machinepool detail by describe")
-			mpDescription, err := rosaClient.MachinePool.DescribeAndReflectNodePool(clusterID, mpName)
-			Expect(err).ToNot(HaveOccurred())
+				Expect(mpDescription.AdditionalSecurityGroupIDs).To(Equal(strings.Join(sgIDs, ", ")))
 
-			Expect(mpDescription.AdditionalSecurityGroupIDs).To(Equal(strings.Join(sgIDs, ", ")))
-
-			By("Create another machinepool without security groups and describe it")
-			mpName = "mp-72195-nsg"
-			_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
-				"--replicas", "1",
-				"-y",
-			)
-			Expect(err).ToNot(HaveOccurred())
-			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
-			By("Check the machinepool detail by describe")
-			mpDescription, err = rosaClient.MachinePool.DescribeAndReflectNodePool(clusterID, mpName)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(mpDescription.AdditionalSecurityGroupIDs).To(BeEmpty())
-		})
+				By("Create another machinepool without security groups and describe it")
+				mpName = "mp-72195-nsg"
+				_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					"--replicas", "1",
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
+				By("Check the machinepool detail by describe")
+				mpDescription, err = rosaClient.MachinePool.DescribeAndReflectNodePool(clusterID, mpName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mpDescription.AdditionalSecurityGroupIDs).To(BeEmpty())
+			})
 	})
 
 	DescribeTable("create machinepool with volume size set - [id:66872]",
 		labels.Runtime.Day2, labels.FedRAMP,
-		labels.Critical, labels.Hyperfleet.Validated,
+		labels.Critical, labels.Seaplane.Validated,
 		func(diskSize, instanceType, expectedDiskSize string) {
 			npID := helper.GenerateRandomName("np-66872", 2)
 
@@ -171,7 +177,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	)
 
 	It("machinepool AWS preflight tag validation[id:73638]",
-		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+		labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated,
 		func() {
 
 			By("Check the help message of machinepool creation")
@@ -307,7 +313,12 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(description.Tags).Should(ContainSubstring("env=prod"))
 		})
 
-	DescribeTable("Scale up/down a machine pool", labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated,
+	DescribeTable(
+		"Scale up/down a machine pool",
+		labels.Critical,
+		labels.Runtime.Day2,
+		labels.FedRAMP,
+		labels.Seaplane.Validated,
 		func(instanceType string, amdOrArm string) {
 			if !isMultiArch && amdOrArm == constants.ARM {
 				SkipNotMultiArch()
@@ -366,7 +377,12 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	)
 
 	// TODO(cdoan): V2 defer for now until we add validation to the API
-	DescribeTable("Scale up/down a machine pool with invalid replica", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+	DescribeTable(
+		"Scale up/down a machine pool with invalid replica",
+		labels.Medium,
+		labels.Runtime.Day2,
+		labels.FedRAMP,
+		labels.Seaplane.Deferred,
 		func(instanceType string, updatedReplicas string, expectedErrMsg string) {
 			By("Create machinepool with instance " + instanceType)
 			mpName := helper.GenerateRandomName("mp-60278", 2)
@@ -392,128 +408,140 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 	)
 
 	Describe("Scale up/down a machine pool enabling autoscale", func() {
-		It("should succeed to scale with valid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated, func() {
-			instanceType := constants.M52XLarge
-			By("Create machinepool with " + " instance " + instanceType + " and enable autoscale")
+		It(
+			"should succeed to scale with valid parameters [id:60278]",
+			labels.Medium,
+			labels.Runtime.Day2,
+			labels.FedRAMP,
+			labels.Seaplane.Validated,
+			func() {
+				instanceType := constants.M52XLarge
+				By("Create machinepool with " + " instance " + instanceType + " and enable autoscale")
 
-			mpPrefix := "autoscale"
-			mpName := helper.GenerateRandomName(mpPrefix, 2)
-			minReplica := 1
-			maxReplica := 3
-			_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
-				"--instance-type", instanceType,
-				"--enable-autoscaling",
-				"--min-replicas", fmt.Sprintf("%v", minReplica),
-				"--max-replicas", fmt.Sprintf("%v", maxReplica),
-				"-y",
-			)
-			Expect(err).ToNot(HaveOccurred())
-			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
-
-			if shouldCheckNodePoolReplicas {
-				By("Check current replicas reach the min replicas after creating a autoscaled machine pool")
-				err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
-					clusterID,
-					mpName,
-					true,
-					constants.NodePoolCheckPoll,
-					constants.NodePoolCheckTimeout,
+				mpPrefix := "autoscale"
+				mpName := helper.GenerateRandomName(mpPrefix, 2)
+				minReplica := 1
+				maxReplica := 3
+				_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					"--instance-type", instanceType,
+					"--enable-autoscaling",
+					"--min-replicas", fmt.Sprintf("%v", minReplica),
+					"--max-replicas", fmt.Sprintf("%v", maxReplica),
+					"-y",
 				)
 				Expect(err).ToNot(HaveOccurred())
-			}
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
-			// TODO There's an issue here, uncomment when solved
-			//By("Scale a machine pool with unchanged parameters")
-			//err = rosaClient.MachinePool.ScaleAutoScaledNodePool(clusterID, mpName, minReplica, maxReplica, true)
-			//Expect(err).ToNot(HaveOccurred())
+				if shouldCheckNodePoolReplicas {
+					By("Check current replicas reach the min replicas after creating a autoscaled machine pool")
+					err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
+						clusterID,
+						mpName,
+						true,
+						constants.NodePoolCheckPoll,
+						constants.NodePoolCheckTimeout,
+					)
+					Expect(err).ToNot(HaveOccurred())
+				}
 
-			By("Scale up a machine pool replicas from 1~3 to 2~5")
-			upMinReplica := 2
-			upMaxReplica := 5
-			err = rosaClient.MachinePool.ScaleAutoScaledNodePool(clusterID, mpName, upMinReplica, upMaxReplica, true)
-			Expect(err).ToNot(HaveOccurred())
+				// TODO There's an issue here, uncomment when solved
+				//By("Scale a machine pool with unchanged parameters")
+				//err = rosaClient.MachinePool.ScaleAutoScaledNodePool(clusterID, mpName, minReplica, maxReplica, true)
+				//Expect(err).ToNot(HaveOccurred())
 
-			// Don't check the current replicas when scale down, because it won't change after reducing min_replica
-			// It only depends on the autoscale strategy when reducing min_replica
-			By("Scale down a machine pool replicas from 2~5 to 1~2")
-			downMinReplica := 1
-			downMaxReplica := 2
-			err = rosaClient.MachinePool.ScaleAutoScaledNodePool(clusterID, mpName, downMinReplica, downMaxReplica, false)
-			Expect(err).ToNot(HaveOccurred())
-		})
+				By("Scale up a machine pool replicas from 1~3 to 2~5")
+				upMinReplica := 2
+				upMaxReplica := 5
+				err = rosaClient.MachinePool.ScaleAutoScaledNodePool(clusterID, mpName, upMinReplica, upMaxReplica, true)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Don't check the current replicas when scale down, because it won't change after reducing min_replica
+				// It only depends on the autoscale strategy when reducing min_replica
+				By("Scale down a machine pool replicas from 2~5 to 1~2")
+				downMinReplica := 1
+				downMaxReplica := 2
+				err = rosaClient.MachinePool.ScaleAutoScaledNodePool(clusterID, mpName, downMinReplica, downMaxReplica, false)
+				Expect(err).ToNot(HaveOccurred())
+			})
 
 		// TODO(cdoan): defer because validation
-		It("should raise error message with the invalid parameters [id:60278]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred, func() {
-			instanceType := constants.M52XLarge
-			By("Create machinepool with" + " instance " + instanceType + " and enable autoscale")
+		It(
+			"should raise error message with the invalid parameters [id:60278]",
+			labels.Medium,
+			labels.Runtime.Day2,
+			labels.FedRAMP,
+			labels.Seaplane.Deferred,
+			func() {
+				instanceType := constants.M52XLarge
+				By("Create machinepool with" + " instance " + instanceType + " and enable autoscale")
 
-			mpPrefix := "autoscale"
-			mpName := helper.GenerateRandomName(mpPrefix, 2)
-			minReplica := 1
-			maxReplica := 2
-			_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
-				"--instance-type", instanceType,
-				"--enable-autoscaling",
-				"--min-replicas", fmt.Sprintf("%v", minReplica),
-				"--max-replicas", fmt.Sprintf("%v", maxReplica),
-				"-y",
-			)
-			Expect(err).ToNot(HaveOccurred())
-			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
+				mpPrefix := "autoscale"
+				mpName := helper.GenerateRandomName(mpPrefix, 2)
+				minReplica := 1
+				maxReplica := 2
+				_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					"--instance-type", instanceType,
+					"--enable-autoscaling",
+					"--min-replicas", fmt.Sprintf("%v", minReplica),
+					"--max-replicas", fmt.Sprintf("%v", maxReplica),
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
-			By("Scale down a machine pool min replica to 0")
-			zeroMinReplica := 0
-			_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
-				"--min-replicas", fmt.Sprintf("%v", zeroMinReplica),
-				"-y",
-			)
-			Expect(err).NotTo(HaveOccurred())
+				By("Scale down a machine pool min replica to 0")
+				zeroMinReplica := 0
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+					"--min-replicas", fmt.Sprintf("%v", zeroMinReplica),
+					"-y",
+				)
+				Expect(err).NotTo(HaveOccurred())
 
-			By("Try to set machine pool min replica to negative value - should fail")
-			negativeMinReplica := -1
-			_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
-				"--min-replicas", fmt.Sprintf("%v", negativeMinReplica),
-				"-y",
-			)
-			helper.ExpectErrorWithMessage(err, "min-replicas must be a non-negative number when autoscaling is enabled")
+				By("Try to set machine pool min replica to negative value - should fail")
+				negativeMinReplica := -1
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+					"--min-replicas", fmt.Sprintf("%v", negativeMinReplica),
+					"-y",
+				)
+				helper.ExpectErrorWithMessage(err, "min-replicas must be a non-negative number when autoscaling is enabled")
 
-			By("Scale up a machine pool max replica too large")
-			moreMaxReplica := 1000
-			_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
-				"--max-replicas", fmt.Sprintf("%v", moreMaxReplica),
-				"-y",
-			)
-			helper.ExpectErrorWithMessage(err, "exceeds the maximum allowed")
+				By("Scale up a machine pool max replica too large")
+				moreMaxReplica := 1000
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+					"--max-replicas", fmt.Sprintf("%v", moreMaxReplica),
+					"-y",
+				)
+				helper.ExpectErrorWithMessage(err, "exceeds the maximum allowed")
 
-			By("Scale a machine pool min replica > max replica")
-			_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
-				"--min-replicas", fmt.Sprintf("%v", "5"),
-				"--max-replicas", fmt.Sprintf("%v", "3"),
-				"-y",
-			)
-			helper.ExpectErrorWithMessage(err, "the number of machine pool min-replicas must not be greater than max-replicas")
+				By("Scale a machine pool min replica > max replica")
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+					"--min-replicas", fmt.Sprintf("%v", "5"),
+					"--max-replicas", fmt.Sprintf("%v", "3"),
+					"-y",
+				)
+				helper.ExpectErrorWithMessage(err, "the number of machine pool min-replicas must not be greater than max-replicas")
 
-			By("Scale down a machine pool min replica to -1")
-			downMinReplica := -1
-			_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
-				"--min-replicas", fmt.Sprintf("%v", downMinReplica),
-				"-y",
-			)
-			helper.ExpectErrorWithMessage(err, "min-replicas must be a non-negative number when autoscaling is enabled")
+				By("Scale down a machine pool min replica to -1")
+				downMinReplica := -1
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+					"--min-replicas", fmt.Sprintf("%v", downMinReplica),
+					"-y",
+				)
+				helper.ExpectErrorWithMessage(err, "min-replicas must be a non-negative number when autoscaling is enabled")
 
-			By("Scale a machine pool with min replica and max replica a char")
-			_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
-				"--min-replicas", fmt.Sprintf("%v", "a"),
-				"--max-replicas", fmt.Sprintf("%v", "b"),
-				"-y",
-			)
-			helper.ExpectErrorWithMessage(err, "invalid syntax")
-		})
+				By("Scale a machine pool with min replica and max replica a char")
+				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+					"--min-replicas", fmt.Sprintf("%v", "a"),
+					"--max-replicas", fmt.Sprintf("%v", "b"),
+					"-y",
+				)
+				helper.ExpectErrorWithMessage(err, "invalid syntax")
+			})
 	})
 
 	// TODO(cdoan): We don't have any field validation now, defer until this is ready to test
 	Describe("Validate machinepool", func() {
-		It("creation - [id:56786]", labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Validated, func() {
+		It("creation - [id:56786]", labels.Medium, labels.Runtime.Day2, labels.Seaplane.Validated, func() {
 			By("with negative replicas number")
 			_, err := machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "-9")
 			helper.ExpectErrorWithMessage(err, "replicas must be a non-negative integer")
@@ -628,36 +656,42 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 					ContainSubstring("setting `multi-availability-zone` flag is not supported for HCP clusters"))
 		})
 
-		It("deletion - [id:56783]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Validated, func() {
-			By("with no machinepool id")
-			_, err := machinePoolService.DeleteMachinePool(clusterID, "")
-			helper.ExpectErrorWithMessage(err, "you need to specify a machine pool name")
+		It(
+			"deletion - [id:56783]",
+			labels.Medium,
+			labels.Runtime.Day2,
+			labels.FedRAMP,
+			labels.Seaplane.Validated,
+			func() {
+				By("with no machinepool id")
+				_, err := machinePoolService.DeleteMachinePool(clusterID, "")
+				helper.ExpectErrorWithMessage(err, "you need to specify a machine pool name")
 
-			By("with non existing machinepool id")
-			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything")
-			helper.ExpectErrorWithMessage(err, "machine pool 'anything' does not exist")
+				By("with non existing machinepool id")
+				_, err = machinePoolService.DeleteMachinePool(clusterID, "anything")
+				helper.ExpectErrorWithMessage(err, "machine pool 'anything' does not exist")
 
-			By("with invalid machinepool id")
-			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything%^")
-			helper.ExpectErrorWithMessage(err, "expected a valid identifier for the machine pool")
+				By("with invalid machinepool id")
+				_, err = machinePoolService.DeleteMachinePool(clusterID, "anything%^")
+				helper.ExpectErrorWithMessage(err, "expected a valid identifier for the machine pool")
 
-			By("with unknown flag --interactive")
-			_, err = machinePoolService.DeleteMachinePool(clusterID, "anything", "--interactive")
-			helper.ExpectErrorWithMessage(err, "unknown flag: --interactive")
+				By("with unknown flag --interactive")
+				_, err = machinePoolService.DeleteMachinePool(clusterID, "anything", "--interactive")
+				helper.ExpectErrorWithMessage(err, "unknown flag: --interactive")
 
-			if !profile.ClusterConfig.MultiAZ {
-				By("Delete last remaining machinepool")
-				_, err = machinePoolService.DeleteMachinePool(clusterID, constants.DefaultHostedWorkerPool)
-				helper.ExpectErrorWithMessage(
-					err,
-					fmt.Sprintf("failed to delete machine pool '%s' on hosted cluster", constants.DefaultHostedWorkerPool),
-				)
-				helper.ExpectErrorWithMessage(err, "The last node pool can not be deleted from a cluster")
-			}
-		})
+				if !profile.ClusterConfig.MultiAZ {
+					By("Delete last remaining machinepool")
+					_, err = machinePoolService.DeleteMachinePool(clusterID, constants.DefaultHostedWorkerPool)
+					helper.ExpectErrorWithMessage(
+						err,
+						fmt.Sprintf("failed to delete machine pool '%s' on hosted cluster", constants.DefaultHostedWorkerPool),
+					)
+					helper.ExpectErrorWithMessage(err, "The last node pool can not be deleted from a cluster")
+				}
+			})
 
 		It("creation in local zone subnet - [id:71319]",
-			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Deferred,
 			func() {
 				if profile.ClusterConfig.SharedVPC {
 					Skip("This test only run on the cluster not using shared-vpc")
@@ -713,168 +747,174 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 							fmt.Sprintf("Creating a node pool a in local zone '%s' isn't supported", localZone)))
 			})
 
-		It("upgrade - [id:67419]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred, func() {
-			var err error
+		It(
+			"upgrade - [id:67419]",
+			labels.Medium,
+			labels.Runtime.Day2,
+			labels.FedRAMP,
+			labels.Seaplane.Deferred,
+			func() {
+				var err error
 
-			clusterService := rosaClient.Cluster
-			machinePoolUpgradeService := rosaClient.MachinePoolUpgrade
-			versionService := rosaClient.Version
+				clusterService := rosaClient.Cluster
+				machinePoolUpgradeService := rosaClient.MachinePoolUpgrade
+				versionService := rosaClient.Version
 
-			By("Retrieve cluster config")
-			clusterConfig, err := config.ParseClusterProfile()
-			Expect(err).ToNot(HaveOccurred())
+				By("Retrieve cluster config")
+				clusterConfig, err := config.ParseClusterProfile()
+				Expect(err).ToNot(HaveOccurred())
 
-			By("without machinepool")
-			_, err = machinePoolUpgradeService.CreateManualUpgrade(
-				clusterID,
-				"",
-				clusterConfig.Version.RawID,
-				"",
-				"")
-			helper.ExpectErrorWithMessage(err, "expected a valid identifier for the machine pool")
-
-			By("with wrong machinepool")
-			_, err = machinePoolUpgradeService.CreateManualUpgrade(
-				clusterID,
-				"anything",
-				clusterConfig.Version.RawID,
-				"",
-				"")
-			helper.ExpectErrorWithMessage(err, "machine pool 'anything' does not exist for hosted cluster")
-
-			By("for not-ready cluster")
-			var notReadyClusterID string
-			rosaClient.Runner.UnsetArgs()
-			output, err := clusterService.List()
-			Expect(err).To(BeNil())
-			clusterList, err := clusterService.ReflectClusterList(output)
-			Expect(err).To(BeNil())
-			for _, c := range clusterList.Clusters {
-				if c.State != constants.Ready && c.Topology == constants.HostedCP {
-					notReadyClusterID = c.ID
-					break
-				}
-			}
-			if notReadyClusterID != "" {
+				By("without machinepool")
 				_, err = machinePoolUpgradeService.CreateManualUpgrade(
-					notReadyClusterID,
+					clusterID,
+					"",
+					clusterConfig.Version.RawID,
+					"",
+					"")
+				helper.ExpectErrorWithMessage(err, "expected a valid identifier for the machine pool")
+
+				By("with wrong machinepool")
+				_, err = machinePoolUpgradeService.CreateManualUpgrade(
+					clusterID,
 					"anything",
 					clusterConfig.Version.RawID,
 					"",
 					"")
-				helper.ExpectErrorWithMessage(err, fmt.Sprintf("cluster '%s' is not yet ready", notReadyClusterID))
-			} else {
-				Logger.Info("No cluster found in state not-ready. Skipping this step")
-			}
+				helper.ExpectErrorWithMessage(err, "machine pool 'anything' does not exist for hosted cluster")
 
-			By("Find a version has available upgrade versions")
-			clusterVersionInfo, err := clusterService.GetClusterVersion(clusterID)
-			Expect(err).ToNot(HaveOccurred())
-			clusterVersion := clusterVersionInfo.RawID
-			clusterChannelGroup := clusterVersionInfo.ChannelGroup
-			versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, false)
-			Expect(err).ToNot(HaveOccurred())
+				By("for not-ready cluster")
+				var notReadyClusterID string
+				rosaClient.Runner.UnsetArgs()
+				output, err := clusterService.List()
+				Expect(err).To(BeNil())
+				clusterList, err := clusterService.ReflectClusterList(output)
+				Expect(err).To(BeNil())
+				for _, c := range clusterList.Clusters {
+					if c.State != constants.Ready && c.Topology == constants.HostedCP {
+						notReadyClusterID = c.ID
+						break
+					}
+				}
+				if notReadyClusterID != "" {
+					_, err = machinePoolUpgradeService.CreateManualUpgrade(
+						notReadyClusterID,
+						"anything",
+						clusterConfig.Version.RawID,
+						"",
+						"")
+					helper.ExpectErrorWithMessage(err, fmt.Sprintf("cluster '%s' is not yet ready", notReadyClusterID))
+				} else {
+					Logger.Info("No cluster found in state not-ready. Skipping this step")
+				}
 
-			upgradableVersion, err := versionList.FindZStreamUpgradableVersion(clusterVersion, 1)
-			Expect(err).ToNot(HaveOccurred())
+				By("Find a version has available upgrade versions")
+				clusterVersionInfo, err := clusterService.GetClusterVersion(clusterID)
+				Expect(err).ToNot(HaveOccurred())
+				clusterVersion := clusterVersionInfo.RawID
+				clusterChannelGroup := clusterVersionInfo.ChannelGroup
+				versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, false)
+				Expect(err).ToNot(HaveOccurred())
 
-			By("Create a machinepool with the upgradable version")
-			nodePoolAutoName := helper.GenerateRandomName("np-67419", 2)
-			_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolAutoName,
-				"--replicas", "0",
-				"--version", upgradableVersion.Version)
-			Expect(err).ToNot(HaveOccurred())
+				upgradableVersion, err := versionList.FindZStreamUpgradableVersion(clusterVersion, 1)
+				Expect(err).ToNot(HaveOccurred())
 
-			By("with wrong schedule value")
-			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
-				clusterID,
-				nodePoolAutoName,
-				"anything")
-			helper.ExpectErrorWithMessage(err, "Schedule 'anything' is not a valid cron expression")
+				By("Create a machinepool with the upgradable version")
+				nodePoolAutoName := helper.GenerateRandomName("np-67419", 2)
+				_, err = machinePoolService.CreateMachinePool(clusterID, nodePoolAutoName,
+					"--replicas", "0",
+					"--version", upgradableVersion.Version)
+				Expect(err).ToNot(HaveOccurred())
 
-			By("with wrong schedule-time value")
-			_, err = machinePoolUpgradeService.CreateManualUpgrade(
-				clusterID,
-				nodePoolAutoName,
-				clusterConfig.Version.RawID,
-				"2154-12-31",
-				"wrong")
-			helper.ExpectErrorWithMessage(err, "schedule date should use the format 'yyyy-mm-dd'")
+				By("with wrong schedule value")
+				_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					"anything")
+				helper.ExpectErrorWithMessage(err, "Schedule 'anything' is not a valid cron expression")
 
-			By("with wrong schedule-date value")
-			_, err = machinePoolUpgradeService.CreateManualUpgrade(
-				clusterID,
-				nodePoolAutoName,
-				clusterConfig.Version.RawID,
-				"wrong",
-				"10:34")
-			helper.ExpectErrorWithMessage(err, "Schedule time should use the format 'HH:mm'")
+				By("with wrong schedule-time value")
+				_, err = machinePoolUpgradeService.CreateManualUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					clusterConfig.Version.RawID,
+					"2154-12-31",
+					"wrong")
+				helper.ExpectErrorWithMessage(err, "schedule date should use the format 'yyyy-mm-dd'")
 
-			By("with wrong version value")
-			_, err = machinePoolUpgradeService.CreateManualUpgrade(
-				clusterID,
-				nodePoolAutoName,
-				"wrong",
-				"",
-				"")
-			helper.ExpectErrorWithMessage(err, "expected a valid machine pool version")
+				By("with wrong schedule-date value")
+				_, err = machinePoolUpgradeService.CreateManualUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					clusterConfig.Version.RawID,
+					"wrong",
+					"10:34")
+				helper.ExpectErrorWithMessage(err, "Schedule time should use the format 'HH:mm'")
 
-			By("with schedule and version")
-			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
-				clusterID,
-				nodePoolAutoName,
-				"2 5 * * *",
-				"--version", clusterConfig.Version.RawID)
-			helper.ExpectErrorWithMessage(err, "the '--schedule' option is mutually exclusive with '--version'")
+				By("with wrong version value")
+				_, err = machinePoolUpgradeService.CreateManualUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					"wrong",
+					"",
+					"")
+				helper.ExpectErrorWithMessage(err, "expected a valid machine pool version")
 
-			By("with schedule and schedule-date")
-			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
-				clusterID,
-				nodePoolAutoName,
-				"2 5 * * *",
-				"--schedule-date", "2154-12-31")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(
-				ContainSubstring(
-					"the '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+				By("with schedule and version")
+				_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					"2 5 * * *",
+					"--version", clusterConfig.Version.RawID)
+				helper.ExpectErrorWithMessage(err, "the '--schedule' option is mutually exclusive with '--version'")
 
-			By("with schedule and schedule-time")
-			_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
-				clusterID,
-				nodePoolAutoName,
-				"2 5 * * *",
-				"--schedule-time", "10:34")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(
-				ContainSubstring(
-					"the '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
+				By("with schedule and schedule-date")
+				_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					"2 5 * * *",
+					"--schedule-date", "2154-12-31")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(
+					ContainSubstring(
+						"the '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
 
-			By("with already existing upgrade")
-			availableUpgradeVersions := helper.ParseCommaSeparatedStrings(upgradableVersion.AvailableUpgrades)
-			Expect(len(availableUpgradeVersions)).NotTo(BeEquivalentTo(0))
+				By("with schedule and schedule-time")
+				_, err = machinePoolUpgradeService.CreateAutomaticUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					"2 5 * * *",
+					"--schedule-time", "10:34")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(
+					ContainSubstring(
+						"the '--schedule-date' and '--schedule-time' options are mutually exclusive with '--schedule'"))
 
-			_, err = machinePoolUpgradeService.CreateManualUpgrade(
-				clusterID,
-				nodePoolAutoName,
-				availableUpgradeVersions[0],
-				"",
-				"")
-			Expect(err).ToNot(HaveOccurred())
-			defer machinePoolUpgradeService.DeleteUpgrade(clusterID, nodePoolAutoName)
+				By("with already existing upgrade")
+				availableUpgradeVersions := helper.ParseCommaSeparatedStrings(upgradableVersion.AvailableUpgrades)
+				Expect(len(availableUpgradeVersions)).NotTo(BeEquivalentTo(0))
 
-			output, err = machinePoolUpgradeService.CreateManualUpgrade(
-				clusterID,
-				nodePoolAutoName,
-				availableUpgradeVersions[0],
-				"",
-				"")
-			Expect(err).ToNot(HaveOccurred())
-			textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
-			Expect(textData).To(ContainSubstring("WARN: There is already a"))
-		})
+				_, err = machinePoolUpgradeService.CreateManualUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					availableUpgradeVersions[0],
+					"",
+					"")
+				Expect(err).ToNot(HaveOccurred())
+				defer machinePoolUpgradeService.DeleteUpgrade(clusterID, nodePoolAutoName)
+
+				output, err = machinePoolUpgradeService.CreateManualUpgrade(
+					clusterID,
+					nodePoolAutoName,
+					availableUpgradeVersions[0],
+					"",
+					"")
+				Expect(err).ToNot(HaveOccurred())
+				textData := rosaClient.Parser.TextData.Input(output).Parse().Tip()
+				Expect(textData).To(ContainSubstring("WARN: There is already a"))
+			})
 
 		It("will validate root volume size - [id:66874]",
-			labels.Runtime.Day2, labels.Medium, labels.FedRAMP, labels.Hyperfleet.Deferred,
+			labels.Runtime.Day2, labels.Medium, labels.FedRAMP, labels.Seaplane.Deferred,
 			func() {
 				npName := helper.GenerateRandomName("np-66874", 2)
 				By("Create with too small disk size will fail")
@@ -923,97 +963,103 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			})
 
 		// TODO(cdoan): validation check
-		It("validate maximum number of nodes - [id:78277]", labels.Medium, labels.Runtime.Day2, labels.FedRAMP, labels.Hyperfleet.Deferred, func() {
-			By("Prepare testing machinepool")
-			instanceType := constants.M5XLarge
-			mpPrefix := "mp78277na"
-			autoScaleMpPrefix := "mp78277a"
-			mpName := helper.GenerateRandomName(mpPrefix, 2)
-			autoScaleMpName := helper.GenerateRandomName(autoScaleMpPrefix, 2)
-			minReplica := 3
-			maxReplica := 6
-			testReplicas := 3
-			_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
-				"--instance-type", instanceType,
-				"--replicas", fmt.Sprintf("%v", testReplicas),
-				"-y",
-			)
-			Expect(err).ToNot(HaveOccurred())
-			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
+		It(
+			"validate maximum number of nodes - [id:78277]",
+			labels.Medium,
+			labels.Runtime.Day2,
+			labels.FedRAMP,
+			labels.Seaplane.Deferred,
+			func() {
+				By("Prepare testing machinepool")
+				instanceType := constants.M5XLarge
+				mpPrefix := "mp78277na"
+				autoScaleMpPrefix := "mp78277a"
+				mpName := helper.GenerateRandomName(mpPrefix, 2)
+				autoScaleMpName := helper.GenerateRandomName(autoScaleMpPrefix, 2)
+				minReplica := 3
+				maxReplica := 6
+				testReplicas := 3
+				_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
+					"--instance-type", instanceType,
+					"--replicas", fmt.Sprintf("%v", testReplicas),
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
-			_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, autoScaleMpName,
-				"--instance-type", instanceType,
-				"--enable-autoscaling",
-				"--min-replicas", fmt.Sprintf("%v", minReplica),
-				"--max-replicas", fmt.Sprintf("%v", maxReplica),
-				"-y",
-			)
-			Expect(err).ToNot(HaveOccurred())
-			defer rosaClient.MachinePool.DeleteMachinePool(clusterID, autoScaleMpName)
+				_, err = rosaClient.MachinePool.CreateMachinePool(clusterID, autoScaleMpName,
+					"--instance-type", instanceType,
+					"--enable-autoscaling",
+					"--min-replicas", fmt.Sprintf("%v", minReplica),
+					"--max-replicas", fmt.Sprintf("%v", maxReplica),
+					"-y",
+				)
+				Expect(err).ToNot(HaveOccurred())
+				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, autoScaleMpName)
 
-			By("Edit node pool mini and max replicas with the numner execceed maximum number")
-			out, err := rosaClient.MachinePool.EditMachinePool(clusterID, autoScaleMpName,
-				"--min-replicas", fmt.Sprintf("%v", 6000),
-				"--max-replicas", fmt.Sprintf("%v", 6001),
-				"-y",
-			)
-			Expect(err).To(HaveOccurred())
-			Expect(out.String()).To(ContainSubstring("Replicas+Autoscaling.Min: The total number of compute nodes"))
-			Expect(out.String()).To(ContainSubstring("Reduce the total compute nodes requested to be within the maximum allowed"))
+				By("Edit node pool mini and max replicas with the numner execceed maximum number")
+				out, err := rosaClient.MachinePool.EditMachinePool(clusterID, autoScaleMpName,
+					"--min-replicas", fmt.Sprintf("%v", 6000),
+					"--max-replicas", fmt.Sprintf("%v", 6001),
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("Replicas+Autoscaling.Min: The total number of compute nodes"))
+				Expect(out.String()).To(ContainSubstring("Reduce the total compute nodes requested to be within the maximum allowed"))
 
-			out, err = rosaClient.MachinePool.EditMachinePool(clusterID, autoScaleMpName,
-				"--min-replicas", fmt.Sprintf("%v", 1),
-				"--max-replicas", fmt.Sprintf("%v", 6001),
-				"-y",
-			)
-			Expect(err).To(HaveOccurred())
-			Expect(out.String()).To(ContainSubstring(" Replicas+Autoscaling.Max: The total number of compute nodes"))
-			Expect(out.String()).To(ContainSubstring("Reduce the total compute nodes requested to be within the maximum allowed"))
+				out, err = rosaClient.MachinePool.EditMachinePool(clusterID, autoScaleMpName,
+					"--min-replicas", fmt.Sprintf("%v", 1),
+					"--max-replicas", fmt.Sprintf("%v", 6001),
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring(" Replicas+Autoscaling.Max: The total number of compute nodes"))
+				Expect(out.String()).To(ContainSubstring("Reduce the total compute nodes requested to be within the maximum allowed"))
 
-			By("Edit node pool replicas with the numner execceed maximum number")
-			out, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
-				"--replicas", fmt.Sprintf("%v", 6001),
-				"-y",
-			)
-			Expect(out.String()).To(ContainSubstring("Reduce the total compute nodes requested to be within the maximum allowed"))
+				By("Edit node pool replicas with the numner execceed maximum number")
+				out, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+					"--replicas", fmt.Sprintf("%v", 6001),
+					"-y",
+				)
+				Expect(out.String()).To(ContainSubstring("Reduce the total compute nodes requested to be within the maximum allowed"))
 
-			By("Create node pool mini and max replicas with the numner execceed maximum number")
+				By("Create node pool mini and max replicas with the numner execceed maximum number")
 
-			mpNameNegative := helper.GenerateRandomName("mp78277n", 2)
-			out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
-				"--instance-type", instanceType,
-				"--enable-autoscaling",
-				"--min-replicas", fmt.Sprintf("%v", 1),
-				"--max-replicas", fmt.Sprintf("%v", 6000),
-				"-y",
-			)
-			Expect(err).To(HaveOccurred())
-			Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
+				mpNameNegative := helper.GenerateRandomName("mp78277n", 2)
+				out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
+					"--instance-type", instanceType,
+					"--enable-autoscaling",
+					"--min-replicas", fmt.Sprintf("%v", 1),
+					"--max-replicas", fmt.Sprintf("%v", 6000),
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
 
-			out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
-				"--instance-type", instanceType,
-				"--enable-autoscaling",
-				"--min-replicas", fmt.Sprintf("%v", 6000),
-				"--max-replicas", fmt.Sprintf("%v", 6001),
-				"-y",
-			)
-			Expect(err).To(HaveOccurred())
-			Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
+				out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
+					"--instance-type", instanceType,
+					"--enable-autoscaling",
+					"--min-replicas", fmt.Sprintf("%v", 6000),
+					"--max-replicas", fmt.Sprintf("%v", 6001),
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
 
-			By("Create node pool replicas with the numner execceed maximum number")
-			out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
-				"--instance-type", instanceType,
-				"--replicas", fmt.Sprintf("%v", 6000),
-				"-y",
-			)
-			Expect(err).To(HaveOccurred())
-			Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
-		})
+				By("Create node pool replicas with the numner execceed maximum number")
+				out, err = rosaClient.MachinePool.CreateMachinePool(clusterID, mpNameNegative,
+					"--instance-type", instanceType,
+					"--replicas", fmt.Sprintf("%v", 6000),
+					"-y",
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(out.String()).To(ContainSubstring("should provide an integer number less than or equal to"))
+			})
 	})
 
 	Describe("Spot instance node pool lifecycle", func() {
 		It("should create, describe, edit, and delete a Spot node pool [id:spot-hcp-np]",
-			labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day2, labels.Seaplane.Deferred,
 			func() {
 				By("Create a node pool with spot instances enabled")
 				mpName := helper.GenerateRandomName("spot-np", 2)
@@ -1056,7 +1102,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			})
 
 		It("should create a Spot node pool with on-demand fallback (no max price) [id:spot-hcp-np-ondemand]",
-			labels.Medium, labels.Runtime.Day2, labels.Hyperfleet.Deferred,
+			labels.Medium, labels.Runtime.Day2, labels.Seaplane.Deferred,
 			func() {
 				By("Create a node pool with spot instances but no max price (on-demand price)")
 				mpName := helper.GenerateRandomName("spot-od", 2)

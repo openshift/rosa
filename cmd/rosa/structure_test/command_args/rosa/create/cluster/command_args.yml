@@ -121,8 +121,8 @@
 - name: infra-machine-type
 - name: log-fwd-config
 
-# hyperfleet only commands
-# currently manually set, maybe generate as part of generate-hyperfleet?
+# seaplane only commands
+# currently manually set, maybe generate as part of generate-seaplane?
 - name: "additional-trust-bundle"
 - name: "dns-reservation-id"
 - name: "platform"

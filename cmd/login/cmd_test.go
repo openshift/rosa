@@ -27,9 +27,9 @@ import (
 	"github.com/openshift/rosa/pkg/config"
 	"github.com/openshift/rosa/pkg/constants"
 	"github.com/openshift/rosa/pkg/fedramp"
-	"github.com/openshift/rosa/pkg/hyperfleet"
 	"github.com/openshift/rosa/pkg/properties"
 	"github.com/openshift/rosa/pkg/rosa"
+	"github.com/openshift/rosa/pkg/seaplane"
 	"github.com/openshift/rosa/pkg/test"
 )
 
@@ -38,9 +38,9 @@ func TestCluster(t *testing.T) {
 	RunSpecs(t, "Login Suite")
 }
 
-func parseHyperfleetFlag(url string) {
-	hyperfleet.Reset()
-	hyperfleet.SetFromFlag(url)
+func parseSeaplaneFlag(url string) {
+	seaplane.Reset()
+	seaplane.SetFromFlag(url)
 }
 
 func clearOCMCredentials() {
@@ -202,7 +202,7 @@ var _ = Describe("Login Configuration", Ordered, func() {
 			args.token = ""
 			args.clientID = ""
 			args.clientSecret = ""
-			hyperfleet.Reset()
+			seaplane.Reset()
 			os.Unsetenv(constants.RosaToken)
 			os.Unsetenv(constants.OcmToken)
 
@@ -212,11 +212,11 @@ var _ = Describe("Login Configuration", Ordered, func() {
 		})
 	})
 
-	When("Using --hyperfleet-url without OCM credentials", func() {
-		It("saves HyperfleetURL to config and returns without an OCM token", func() {
-			hfURL := "https://test.execute-api.us-east-1.amazonaws.com/prod"
-			parseHyperfleetFlag(hfURL)
-			DeferCleanup(hyperfleet.Reset)
+	When("Using --seaplane-url without OCM credentials", func() {
+		It("saves SeaplaneURL to config and returns without an OCM token", func() {
+			seaplaneURL := "https://test.execute-api.us-east-1.amazonaws.com/prod"
+			parseSeaplaneFlag(seaplaneURL)
+			DeferCleanup(seaplane.Reset)
 			clearOCMCredentials()
 
 			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
@@ -225,13 +225,13 @@ var _ = Describe("Login Configuration", Ordered, func() {
 			cfg, loadErr := config.Load()
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(cfg).NotTo(BeNil())
-			Expect(cfg.HyperfleetURL).To(Equal(hfURL))
+			Expect(cfg.SeaplaneURL).To(Equal(seaplaneURL))
 		})
 
 		It("rejects a non-HTTPS URL and does not write it to config", func() {
 			Expect(config.Save(&config.Config{})).To(Succeed())
-			parseHyperfleetFlag("http://insecure.example.com")
-			DeferCleanup(hyperfleet.Reset)
+			parseSeaplaneFlag("http://insecure.example.com")
+			DeferCleanup(seaplane.Reset)
 			clearOCMCredentials()
 
 			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
@@ -240,15 +240,15 @@ var _ = Describe("Login Configuration", Ordered, func() {
 
 			cfg, loadErr := config.Load()
 			Expect(loadErr).NotTo(HaveOccurred())
-			Expect(cfg.HyperfleetURL).To(BeEmpty())
+			Expect(cfg.SeaplaneURL).To(BeEmpty())
 		})
 	})
 
-	When("Using --hyperfleet-url with an OCM token", func() {
+	When("Using --seaplane-url with an OCM token", func() {
 		It("rejects a non-HTTPS URL and does not persist it", func() {
 			Expect(config.Save(&config.Config{})).To(Succeed())
-			parseHyperfleetFlag("http://insecure.example.com")
-			DeferCleanup(hyperfleet.Reset)
+			parseSeaplaneFlag("http://insecure.example.com")
+			DeferCleanup(seaplane.Reset)
 
 			claims := MakeClaims()
 			claims["username"] = "test"
@@ -262,18 +262,18 @@ var _ = Describe("Login Configuration", Ordered, func() {
 
 			cfg, loadErr := config.Load()
 			Expect(loadErr).NotTo(HaveOccurred())
-			Expect(cfg.HyperfleetURL).To(BeEmpty())
+			Expect(cfg.SeaplaneURL).To(BeEmpty())
 		})
 	})
 
-	When("HyperfleetURL is seeded from config without --hyperfleet-url", func() {
+	When("SeaplaneURL is seeded from config without --seaplane-url", func() {
 		It("does not skip OCM login", func() {
 			invalidCfg := &config.Config{AccessToken: "not-a-jwt"}
 			Expect(config.Save(invalidCfg)).To(Succeed())
 
-			hyperfleet.Reset()
-			hyperfleet.SetURL("https://test.execute-api.us-east-1.amazonaws.com/prod")
-			DeferCleanup(hyperfleet.Reset)
+			seaplane.Reset()
+			seaplane.SetURL("https://test.execute-api.us-east-1.amazonaws.com/prod")
+			DeferCleanup(seaplane.Reset)
 			clearOCMCredentials()
 
 			_, _, err := test.RunWithOutputCaptureAndArgv(runWithRuntime, testRuntime.RosaRuntime, Cmd, &[]string{})
