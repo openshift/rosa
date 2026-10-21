@@ -27,8 +27,9 @@ Management upgrade:
  - Type:                               Replace
  - Max surge:                          1
  - Max unavailable:                    0
-Message:                               * Machine rosa-hcppl-f3-q-workers-0-5tg6x-l8pbz:
-  * NodeHealthy: Waiting for a Node with spec.providerID aws:///us-west-2a/i-00dfda71eb9b2bc65 to exist
+Messages:                              
+  - Machine rosa-hcppl-f3-q-workers-0-5tg6x-l8pbz:
+    - NodeHealthy: Waiting for a Node with spec.providerID aws:///us-west-2a/i-00dfda71eb9b2bc65 to exist
 `
 		m := &machinepoolService{ResourcesService: ResourcesService{client: &Client{Parser: NewParser()}}}
 		var buf bytes.Buffer
@@ -40,18 +41,19 @@ Message:                               * Machine rosa-hcppl-f3-q-workers-0-5tg6x
 		Expect(npd.ID).To(Equal("workers-0"))
 		Expect(npd.InstanceType).To(Equal("m7i.xlarge"))
 		Expect(npd.DiskSize).To(Equal("300 GiB"))
-		Expect(npd.Message).To(ContainSubstring("Machine rosa-hcppl-f3-q-workers-0-5tg6x-l8pbz"))
-		Expect(npd.Message).To(ContainSubstring("NodeHealthy: Waiting for a Node"))
+		Expect(npd.Messages).To(ContainSubstring("Machine rosa-hcppl-f3-q-workers-0-5tg6x-l8pbz"))
+		Expect(npd.Messages).To(ContainSubstring("NodeHealthy: Waiting for a Node"))
 	})
 
-	It("preserves Message content that looks like CLI log noise", func() {
+	It("preserves Messages content that looks like CLI log noise", func() {
 		output := `
 ID:                                    workers-0
 Cluster ID:                            2t63qi7a1shbrbh9etlq1kjcia07ib9t
 Autoscaling:                           No
 Instance type:                         m7i.xlarge
-Message:                               * Machine foo:
-  * Error: something went Wrong with multiple words here
+Messages:                              
+  - Machine foo:
+    - Error: something went Wrong with multiple words here
 `
 		m := &machinepoolService{ResourcesService: ResourcesService{client: &Client{Parser: NewParser()}}}
 		var buf bytes.Buffer
@@ -60,16 +62,17 @@ Message:                               * Machine foo:
 		npd, err := m.ReflectNodePoolDescription(buf)
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(npd.Message).To(ContainSubstring("Error: something went Wrong with multiple words here"))
+		Expect(npd.Messages).To(ContainSubstring("Error: something went Wrong with multiple words here"))
 	})
 
-	It("does not corrupt a Message line containing multiple colons", func() {
+	It("does not corrupt a Messages line containing multiple colons", func() {
 		output := `
 ID:                                    workers-0
 Cluster ID:                            2t63qi7a1shbrbh9etlq1kjcia07ib9t
 Autoscaling:                           No
 Instance type:                         m7i.xlarge
-Message:                               * foo: bar: baz
+Messages:                              
+  - foo: bar: baz
 `
 		m := &machinepoolService{ResourcesService: ResourcesService{client: &Client{Parser: NewParser()}}}
 		var buf bytes.Buffer
@@ -78,16 +81,16 @@ Message:                               * foo: bar: baz
 		npd, err := m.ReflectNodePoolDescription(buf)
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(npd.Message).To(Equal("* foo: bar: baz"))
+		Expect(npd.Messages).To(Equal("- foo: bar: baz"))
 	})
 
-	It("leaves a healthy node pool's empty Message untouched", func() {
+	It("leaves a healthy node pool's empty Messages field untouched", func() {
 		output := `
 ID:                                    workers-0
 Cluster ID:                            2t63qi7a1shbrbh9etlq1kjcia07ib9t
 Autoscaling:                           No
 Instance type:                         m7i.xlarge
-Message:
+Messages:                              
 `
 		m := &machinepoolService{ResourcesService: ResourcesService{client: &Client{Parser: NewParser()}}}
 		var buf bytes.Buffer
@@ -96,6 +99,6 @@ Message:
 		npd, err := m.ReflectNodePoolDescription(buf)
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(npd.Message).To(BeEmpty())
+		Expect(npd.Messages).To(BeEmpty())
 	})
 })

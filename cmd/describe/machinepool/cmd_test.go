@@ -51,7 +51,7 @@ Management upgrade:
  - Type:                               Replace
  - Max surge:                          1
  - Max unavailable:                    0
-Message:                               
+Messages:                              
 `
 	describeStringWithCapacityReservationOutput = `
 ID:                                    nodepool85
@@ -82,7 +82,7 @@ Management upgrade:
  - Type:                               Replace
  - Max surge:                          1
  - Max unavailable:                    0
-Message:                               
+Messages:                              
 `
 	describeStringWithCapacityReservationPreferenceOutput = `
 ID:                                    nodepool85
@@ -112,7 +112,7 @@ Management upgrade:
  - Type:                               Replace
  - Max surge:                          1
  - Max unavailable:                    0
-Message:                               
+Messages:                              
 `
 	describeStringWithUpgradeOutput = `
 ID:                                    nodepool85
@@ -141,7 +141,7 @@ Management upgrade:
  - Type:                               Replace
  - Max surge:                          1
  - Max unavailable:                    0
-Message:                               
+Messages:                              
 Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
 `
 	describeStringWithTagsOutput = `
@@ -171,8 +171,39 @@ Management upgrade:
  - Type:                               Replace
  - Max surge:                          1
  - Max unavailable:                    0
-Message:                               
+Messages:                              
 Scheduled upgrade:                     scheduled 4.12.25 on 2023-08-07 15:22 UTC
+`
+	describeStringWithMessageOutput = `
+ID:                                    nodepool85
+Cluster ID:                            24vf9iitg3p6tlml88iml6j6mu095mh8
+Autoscaling:                           No
+Desired replicas:                      0
+Current replicas:                      0
+Instance type:                         m5.xlarge
+Image type:                            
+Labels:                                
+Tags:                                  
+Taints:                                
+Availability zone:                     us-east-1a
+Subnet:                                
+Spot instances:                        No
+Disk Size:                             300 GiB
+Version:                               4.12.24
+EC2 Metadata Http Tokens:              required
+Autorepair:                            No
+Tuning configs:                        
+Kubelet configs:                       
+Additional security group IDs:         
+Node drain grace period:               1 minute
+Capacity Reservation:                  
+Management upgrade:                    
+ - Type:                               Replace
+ - Max surge:                          1
+ - Max unavailable:                    0
+Messages:                              
+  - Machine rosa-hcppl-f3-q-workers-0-5tg6x-l8pbz:
+    - NodeHealthy: Waiting for a Node with spec.providerID aws:///us-west-2a/i-00dfda71eb9b2bc65 to exist
 `
 
 	describeYamlWithUpgradeOutput = `availability_zone: us-east-1a
@@ -255,6 +286,7 @@ var _ = Describe("Upgrade machine pool", func() {
 
 		nodePoolResponse := formatNodePool()
 		npResponseAwsTags := formatNodePoolWithTags()
+		npResponseWithMessage := formatNodePoolWithMessage()
 		npResponseCapacityReservation := formatNodePoolWithCapacityReservation()
 		npResponseCapacityReservationPreference := formatNodePoolWithCapacityReservationPreference()
 		mpResponse := formatMachinePool()
@@ -405,6 +437,27 @@ var _ = Describe("Upgrade machine pool", func() {
 				stdout, err := t.StdOutReader.Read()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(stdout).To(Equal(describeStringWithTagsOutput))
+			})
+			It("Pass a machine pool name through parameter and it is found. Has a status message", func() {
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
+				// First get
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseWithMessage))
+				// Second get for upgrades
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, npResponseWithMessage))
+				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, noNodePoolUpgradePolicy))
+				err := t.StdOutReader.Record()
+				Expect(err).ToNot(HaveOccurred())
+				args := NewDescribeMachinepoolUserOptions()
+				args.machinepool = nodePoolName
+				runner := DescribeMachinePoolRunner(args)
+				cmd := NewDescribeMachinePoolCommand()
+				_ = cmd.Flag("cluster").Value.Set(clusterId)
+				err = runner(context.Background(), t.RosaRuntime, cmd,
+					[]string{"--machinepool", nodePoolName})
+				Expect(err).To(BeNil())
+				stdout, err := t.StdOutReader.Read()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(stdout).To(Equal(describeStringWithMessageOutput))
 			})
 			It("Pass a machine pool name through parameter and it is found. Has Capacity Reservation", func() {
 				t.ApiServer.AppendHandlers(RespondWithJSON(http.StatusOK, hypershiftClusterReady))
@@ -567,6 +620,24 @@ func formatNodePoolWithTags() string {
 	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
 		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).
 		ManagementUpgrade(mgmtUpgrade).Build()
+	Expect(err).To(BeNil())
+	return test.FormatResource(np)
+}
+
+// formatNodePoolWithMessage simulates the output of APIs for a fake node pool with a multi-line status message
+func formatNodePoolWithMessage() string {
+	version := cmv1.NewVersion().ID("4.12.24").RawID("openshift-4.12.24")
+	awsNodePool := cmv1.NewAWSNodePool().InstanceType("m5.xlarge").
+		Ec2MetadataHttpTokens(cmv1.Ec2MetadataHttpTokensRequired).
+		RootVolume(cmv1.NewAWSVolume().Size(300))
+	nodeDrain := cmv1.NewValue().Value(1).Unit("minute")
+	mgmtUpgrade := cmv1.NewNodePoolManagementUpgrade().Type("Replace").MaxSurge("1").MaxUnavailable("0")
+	status := cmv1.NewNodePoolStatus().Message("* Machine rosa-hcppl-f3-q-workers-0-5tg6x-l8pbz:\n" +
+		"    * NodeHealthy: Waiting for a Node with spec.providerID " +
+		"aws:///us-west-2a/i-00dfda71eb9b2bc65 to exist")
+	np, err := cmv1.NewNodePool().ID(nodePoolName).Version(version).
+		AWSNodePool(awsNodePool).AvailabilityZone("us-east-1a").NodeDrainGracePeriod(nodeDrain).
+		ManagementUpgrade(mgmtUpgrade).Status(status).Build()
 	Expect(err).To(BeNil())
 	return test.FormatResource(np)
 }

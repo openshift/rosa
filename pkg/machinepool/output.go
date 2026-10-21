@@ -36,7 +36,7 @@ var nodePoolOutputString string = "\n" +
 	"Node drain grace period:               %s\n" +
 	"Capacity Reservation:                  %s\n" +
 	"Management upgrade:                    %s\n" +
-	"Message:                               %s\n"
+	"Messages:                              %s\n"
 
 var machinePoolOutputString = "\n" +
 	"ID:                                    %s\n" +

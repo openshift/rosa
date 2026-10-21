@@ -17,12 +17,12 @@ import (
 	. "github.com/openshift/rosa/tests/utils/log"
 )
 
-// reMessageField matches the start of a node pool's "Message:" field in
+// reMessageField matches the start of a node pool's "Messages:" field in
 // 'rosa describe machinepool'/nodepool output (see pkg/machinepool/output.go).
 // It's free-form text passed through verbatim from the service, so it gets
 // special handling in both textData.Parse (to avoid being misclassified as
 // CLI tip output) and blockScalarizeMessageField (to survive YAML parsing).
-var reMessageField = regexp.MustCompile(`(?m)^Message:[ \t]*`)
+var reMessageField = regexp.MustCompile(`(?m)^Messages:[ \t]*`)
 
 type Parser struct {
 	JsonData  *jsonData
@@ -117,7 +117,7 @@ func (td *textData) Parse() *textData {
 			inMessage = true
 		}
 		if inMessage {
-			// "Message:" (a node pool's free-form status message, see
+			// "Messages:" (a node pool's free-form status message, see
 			// pkg/machinepool/output.go) is passed through verbatim from the
 			// service and can legitimately contain text like "Error: ..." or
 			// "Warning: ..."; once it begins, keep it and everything after it

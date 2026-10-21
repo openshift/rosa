@@ -149,7 +149,7 @@ type NodePoolDescription struct {
 	AutoRepair                 string              `yaml:"Autorepair,omitempty"`
 	TuningConfigs              string              `yaml:"Tuning configs,omitempty"`
 	ManagementUpgrade          []map[string]string `yaml:"Management upgrade,omitempty"`
-	Message                    string              `yaml:"Message,omitempty"`
+	Messages                   string              `yaml:"Messages,omitempty"`
 	ScheduledUpgrade           string              `yaml:"Scheduled upgrade,omitempty"`
 	AdditionalSecurityGroupIDs string              `yaml:"Additional security group IDs,omitempty"`
 	NodeDrainGracePeriod       string              `yaml:"Node drain grace period,omitempty"`
@@ -354,15 +354,15 @@ func (m *machinepoolService) ReflectNodePoolDescription(result bytes.Buffer) (*N
 	return npd, err
 }
 
-// blockScalarizeMessageField rewrites the "Message:" field of a 'rosa describe
+// blockScalarizeMessageField rewrites the "Messages:" field of a 'rosa describe
 // machinepool'/nodepool output into a YAML literal block scalar. The node pool
-// status Message is passed through verbatim from the service and can be
-// free-form, multi-line text (e.g. bullet-point health conditions like
-// "* Machine foo:\n  * NodeHealthy: ..."), which otherwise breaks the line-based
-// YAML escaping in escapeYamlStringValues (e.g. a value starting with "*" is
-// parsed as a YAML alias). "Message:" is always the last field in
-// nodePoolOutputString (pkg/machinepool/output.go), so everything after it
-// belongs to the message and is safe to re-indent uniformly as block content.
+// status message is rendered as a flat YAML-style list (e.g.
+// "  - Machine foo:\n    - NodeHealthy: ..."), which otherwise breaks the
+// line-based YAML escaping in escapeYamlStringValues (e.g. a line starting
+// with "-" is parsed as a YAML sequence item). "Messages:" is always the last
+// field in nodePoolOutputString (pkg/machinepool/output.go), so everything
+// after it belongs to the message and is safe to re-indent uniformly as block
+// content.
 func blockScalarizeMessageField(str string) string {
 	loc := reMessageField.FindStringIndex(str)
 	if loc == nil {
@@ -374,13 +374,16 @@ func blockScalarizeMessageField(str string) string {
 	}
 
 	lines := strings.Split(value, "\n")
+	if len(lines) > 0 && lines[0] == "" {
+		lines = lines[1:]
+	}
 	if len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
 
 	var body strings.Builder
 	body.WriteString(before)
-	body.WriteString("Message: |-\n")
+	body.WriteString("Messages: |-\n")
 	for _, line := range lines {
 		body.WriteString("  ")
 		body.WriteString(line)
