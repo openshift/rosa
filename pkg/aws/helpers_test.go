@@ -1166,6 +1166,33 @@ var _ = Describe("GetOCMRoleName", func() {
 	})
 })
 
+var _ = Describe("OCMRoleNameSuffix", func() {
+	It("should build the suffix cluster-service requires for the organization's external ID", func() {
+		Expect(OCMRoleNameSuffix("1223456778")).To(
+			Equal("-OCM-Role-1223456778"), "expected the suffix to embed the given external ID")
+	})
+})
+
+var _ = Describe("OCMRoleNameMatchesConvention", func() {
+	It("returns true when the role name ends with the organization's external ID suffix", func() {
+		roleArn := "arn:aws:iam::123456789012:role/ManagedOpenShift-OCM-Role-1223456778"
+		Expect(OCMRoleNameMatchesConvention(roleArn, "1223456778")).To(
+			BeTrue(), "expected ARN '%s' to match the OCM role naming convention", roleArn)
+	})
+
+	It("returns false when the role name omits the external ID suffix", func() {
+		roleArn := "arn:aws:iam::123456789012:role/ManagedOpenShift-OCM-Role"
+		Expect(OCMRoleNameMatchesConvention(roleArn, "1223456778")).To(
+			BeFalse(), "expected ARN '%s' without a suffix to not match the convention", roleArn)
+	})
+
+	It("returns false when the role name carries a different organization's external ID", func() {
+		roleArn := "arn:aws:iam::123456789012:role/ManagedOpenShift-OCM-Role-9999999999"
+		Expect(OCMRoleNameMatchesConvention(roleArn, "1223456778")).To(
+			BeFalse(), "expected ARN '%s' with a mismatched external ID to not match the convention", roleArn)
+	})
+})
+
 var _ = Describe("GetUserRoleName", func() {
 	It("should build the correct user role name", func() {
 		result := GetUserRoleName("ManagedOpenShift", "User", "testuser")
