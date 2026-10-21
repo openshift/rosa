@@ -25,6 +25,7 @@ import (
 	"github.com/openshift-online/rosa-seaplane-api/clientset/platform"
 	"github.com/spf13/cobra"
 
+	rosainput "github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/ocm"
 	seaplanemocks "github.com/openshift/rosa/pkg/seaplane/mocks"
 	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
@@ -454,6 +455,64 @@ var _ = Describe("runSeaplaneEdit (cluster)", func() {
 			MatchError(ContainSubstring("unsupported scheduler profile")))
 	})
 
+	It("updates additional allowed principals on the success path", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, clusters := newEditClusterMocks(ctrl)
+
+		cluster := &v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+			Spec:       v1alpha1.ClusterSpec{HostedCluster: v1alpha1.HostedClusterSpecPassthrough{}},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
+		clusters.EXPECT().Patch(gomock.Any(), "cluster1", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ interface{}) (*v1alpha1.Cluster, error) {
+				var body map[string]any
+				Expect(json.Unmarshal(data, &body)).To(Succeed())
+				spec := body["spec"].(map[string]any)
+				hostedCluster := spec["hostedCluster"].(map[string]any)
+				platform := hostedCluster["platform"].(map[string]any)
+				aws := platform["aws"].(map[string]any)
+				Expect(aws["additionalAllowedPrincipals"]).To(Equal([]any{
+					"arn:aws:iam::123456789012:role/one",
+					"arn:aws:iam::123456789012:role/two",
+				}))
+				return cluster, nil
+			})
+
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+		runSeaplaneEdit(t.RosaRuntime, makeAdditionalPrincipalsCmd(
+			"arn:aws:iam::123456789012:role/one,arn:aws:iam::123456789012:role/two"))
+	})
+
+	It("can clear additional allowed principals", func() {
+		cmd := makeAdditionalPrincipalsCmd(rosainput.DoubleQuotesToRemove)
+		handler := &seaplaneClusterUpdate{cmd: cmd}
+
+		input := seaplanepathbindZeroInput()
+		patch, err := handler.buildSpecPatch(&input)
+
+		Expect(err).NotTo(HaveOccurred())
+		var body map[string]any
+		Expect(json.Unmarshal(patch, &body)).To(Succeed())
+		spec := body["spec"].(map[string]any)
+		hostedCluster := spec["hostedCluster"].(map[string]any)
+		platform := hostedCluster["platform"].(map[string]any)
+		aws := platform["aws"].(map[string]any)
+		Expect(aws["additionalAllowedPrincipals"]).To(BeEmpty())
+	})
+
+	It("rejects invalid additional allowed principals", func() {
+		cmd := makeAdditionalPrincipalsCmd("zzzz")
+		handler := &seaplaneClusterUpdate{cmd: cmd}
+
+		input := seaplanepathbindZeroInput()
+		_, err := handler.buildSpecPatch(&input)
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("Expected valid ARNs for additional allowed principals list"))
+	})
+
 	It("rejects unsupported channel group", func() {
 		Expect(validateSeaplaneChannelArgsFor("fakecg")).To(MatchError(ContainSubstring("Unsupported channel group")))
 	})
@@ -469,6 +528,16 @@ func makeChannelGroupCmd(group string) *cobra.Command {
 	cmd.SetContext(context.Background())
 	cmd.Flags().StringVar(&args.channelGroup, "channel-group", "", "")
 	if err := cmd.Flags().Set("channel-group", group); err != nil {
+		panic(err)
+	}
+	return cmd
+}
+
+func makeAdditionalPrincipalsCmd(principals string) *cobra.Command {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.SetContext(context.Background())
+	cmd.Flags().StringSliceVar(&args.additionalAllowedPrincipals, "additional-allowed-principals", nil, "")
+	if err := cmd.Flags().Set("additional-allowed-principals", principals); err != nil {
 		panic(err)
 	}
 	return cmd

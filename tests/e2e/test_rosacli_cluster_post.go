@@ -354,12 +354,8 @@ var _ = Describe("Healthy check",
 				})
 
 			It("additional allowed principals work on cluster creation - [id:74408]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Deferred,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated,
 				func() {
-					if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
-						Skip("V2 cluster describe does not expose additional allowed principals")
-					}
-
 					By("Confirm current cluster profile uses additional allowed principals")
 					if !profile.ClusterConfig.AdditionalPrincipals {
 						SkipTestOnFeature("additional allowed principals")
@@ -375,6 +371,10 @@ var _ = Describe("Healthy check",
 					By("Confirm additional principals is present")
 					out, err := clusterService.DescribeClusterAndReflect(clusterID)
 					Expect(err).To(BeNil())
+					if clusterConfig.AdditionalPrincipals == "" {
+						clusterConfig.AdditionalPrincipals = out.AdditionalPrincipals
+					}
+					Expect(clusterConfig.AdditionalPrincipals).ToNot(BeEmpty())
 					Expect(out.AdditionalPrincipals).To(ContainSubstring(clusterConfig.AdditionalPrincipals))
 				})
 

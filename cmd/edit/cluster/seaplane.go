@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/helper/roles"
 	rosainput "github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -121,15 +122,18 @@ func (h *seaplaneClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtime,
 
 	channelChanged := h.cmd.Flags().Changed("channel-group") || h.cmd.Flags().Changed("channel")
 	schedulerProfileChanged := h.cmd.Flags().Changed("scheduler-profile")
-	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") && !tagsChanged &&
+	additionalPrincipalsChanged := h.cmd.Flags().Changed("additional-allowed-principals")
+	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") &&
+		!tagsChanged &&
 		!h.cmd.Flags().Changed("delete-protection") &&
 		!channelChanged && !schedulerProfileChanged && !h.cmd.Flags().Changed("no-proxy") &&
 		!h.cmd.Flags().Changed("http-proxy") && !h.cmd.Flags().Changed("https-proxy") &&
-		!h.cmd.Flags().Changed("additional-trust-bundle-file") {
+		!h.cmd.Flags().Changed("additional-trust-bundle-file") && !additionalPrincipalsChanged {
 		return fmt.Errorf(
 			"specify at least one supported flag: --expiration, --expiration-time, " +
 				"--tags, --delete-protection, --channel-group, --channel, --scheduler-profile, " +
-				"--http-proxy, --https-proxy, --no-proxy, --additional-trust-bundle-file",
+				"--http-proxy, --https-proxy, --no-proxy, --additional-trust-bundle-file, " +
+				"--additional-allowed-principals",
 		)
 	}
 
@@ -150,6 +154,11 @@ func (h *seaplaneClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtime,
 
 	if channelChanged {
 		if err := validateSeaplaneChannelArgs(); err != nil {
+			return err
+		}
+	}
+	if additionalPrincipalsChanged {
+		if _, err := additionalAllowedPrincipalsForSeaplaneEdit(); err != nil {
 			return err
 		}
 	}
@@ -285,6 +294,15 @@ func (h *seaplaneClusterUpdate) buildSpecPatch(input *seaplanepathbind.ClusterUp
 		hc["channel"] = args.channel
 		spec["hostedCluster"] = hc
 	}
+	if h.cmd.Flags().Changed("additional-allowed-principals") {
+		principals, err := additionalAllowedPrincipalsForSeaplaneEdit()
+		if err != nil {
+			return nil, err
+		}
+		hostedClusterPatch(spec)["platform"] = map[string]any{
+			"aws": map[string]any{"additionalAllowedPrincipals": principals},
+		}
+	}
 	configuration := map[string]any{}
 	if h.cmd.Flags().Changed("scheduler-profile") {
 		configuration["scheduler"] = map[string]any{"profile": input.SchedulerProfile}
@@ -321,6 +339,29 @@ func (h *seaplaneClusterUpdate) buildSpecPatch(input *seaplanepathbind.ClusterUp
 		return nil, fmt.Errorf("no supported fields to update")
 	}
 	return json.Marshal(map[string]any{"spec": spec})
+}
+
+func hostedClusterPatch(spec map[string]any) map[string]any {
+	hostedCluster, _ := spec["hostedCluster"].(map[string]any)
+	if hostedCluster == nil {
+		hostedCluster = map[string]any{}
+		spec["hostedCluster"] = hostedCluster
+	}
+	return hostedCluster
+}
+
+func additionalAllowedPrincipalsForSeaplaneEdit() ([]string, error) {
+	principals := args.additionalAllowedPrincipals
+	if len(principals) == 1 &&
+		(principals[0] == rosainput.DoubleQuotesToRemove || principals[0] == "") {
+		return []string{}, nil
+	}
+	if len(principals) > 0 {
+		if err := roles.ValidateAdditionalAllowedPrincipals(principals); err != nil {
+			return nil, err
+		}
+	}
+	return principals, nil
 }
 
 func (h *seaplaneClusterUpdate) PostResponse(_ context.Context, r *rosa.Runtime, _ *v1alpha1.Cluster) error {
