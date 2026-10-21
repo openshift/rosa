@@ -751,6 +751,26 @@ func GetOCMRoleName(prefix string, role string, postfix string) string {
 	return awsCommonUtils.TruncateRoleName(name)
 }
 
+// OCMRoleNameSuffix returns the role-name suffix OCM requires in order to authorize an
+// OCM role's AWS account for cluster creation, as documented at
+// https://access.redhat.com/articles/7137057.
+func OCMRoleNameSuffix(externalID string) string {
+	return fmt.Sprintf("-%s-Role-%s", OCMRole, externalID)
+}
+
+// OCMRoleNameMatchesConvention reports whether roleArn ends in the organization's required
+// "-OCM-Role-<externalID>" suffix. A role ARN that does not match this convention can link
+// successfully but is later rejected by OCM during AWS account authorization. An empty
+// externalID means the organization's external ID could not be determined, so the ARN can't
+// be verified; this is treated as non-compliant rather than matching any ARN ending in
+// "-OCM-Role-".
+func OCMRoleNameMatchesConvention(roleArn string, externalID string) bool {
+	if externalID == "" {
+		return false
+	}
+	return strings.HasSuffix(roleArn, OCMRoleNameSuffix(externalID))
+}
+
 func GetUserRoleName(prefix string, role string, userName string) string {
 	name := fmt.Sprintf("%s-%s-%s-Role", prefix, role, userName)
 	return awsCommonUtils.TruncateRoleName(name)
