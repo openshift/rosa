@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 """ROSA Seaplane v1 E2E Parity Scoreboard.
 
 Source of truth: Ginkgo labels in tests/e2e/ (via ginkgo run --dry-run).
