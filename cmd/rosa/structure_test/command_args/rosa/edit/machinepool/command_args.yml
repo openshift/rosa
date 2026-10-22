@@ -21,7 +21,8 @@
 - name: "yes"
 
 # seaplane only commands
-# currently manually set, maybe generate as part of generate-seaplane?- name: "additional-security-group-ids"
+# currently manually set, maybe generate as part of generate-seaplane?
+- name: "additional-security-group-ids"
 - name: "ami"
 - name: "auto-repair"
 - name: "capacity-reservation-market-type"
