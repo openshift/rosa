@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	v1alpha1 "github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-seaplane-api/clientset/platform"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
@@ -91,15 +93,16 @@ func runSeaplaneEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions, c
 // seaplaneNodePoolUpdate implements seaplanepathbind.NodePoolUpdateHandler for rosa edit machinepool.
 type seaplaneNodePoolUpdate struct {
 	seaplanepathbind.GeneratedNodePoolUpdatePrompt
-	clusterKey   string
-	nodePoolKey  string
-	nodePoolName string
-	userOptions  *EditMachinepoolUserOptions
-	cmd          *cobra.Command
-	labels       map[string]string
-	taints       []hypershiftv1beta1.Taint
-	imageType    string
-	tags         map[string]string
+	clusterKey               string
+	nodePoolKey              string
+	nodePoolName             string
+	userOptions              *EditMachinepoolUserOptions
+	cmd                      *cobra.Command
+	labels                   map[string]string
+	taints                   []hypershiftv1beta1.Taint
+	imageType                string
+	tags                     map[string]string
+	nodeDrainGracePeriod     *metav1.Duration
 }
 
 func (h *seaplaneNodePoolUpdate) PreRequest(
@@ -115,15 +118,16 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 	autoscalingChanged := h.cmd.Flags().Changed("enable-autoscaling") ||
 		minReplicasChanged || maxReplicasChanged
 	imageTypeChanged := h.cmd.Flags().Changed("image-type")
+	nodeDrainChanged := h.cmd.Flags().Changed("node-drain-grace-period")
 
 	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged &&
 		!h.cmd.Flags().Changed("labels") && !h.cmd.Flags().Changed("taints") &&
 		!h.cmd.Flags().Changed("autorepair") && !h.cmd.Flags().Changed("additional-security-group-ids") &&
-		!imageTypeChanged && !tagsChanged {
+		!imageTypeChanged && !tagsChanged && !nodeDrainChanged {
 		return fmt.Errorf(
 			"specify at least one supported flag: --replicas, --enable-autoscaling, " +
 				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair, " +
-				"--additional-security-group-ids, --image-type, --tags",
+				"--additional-security-group-ids, --image-type, --tags, --node-drain-grace-period",
 		)
 	}
 	if tagsChanged {
@@ -171,6 +175,15 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 			return err
 		}
 		h.imageType = imageType
+	}
+
+	if nodeDrainChanged {
+		nodeDrainVal := h.userOptions.nodeDrainGracePeriod
+		nodeDrainGracePeriod, err := mpHelpers.ParseSeaplaneNodeDrainGracePeriod(nodeDrainVal)
+		if err != nil {
+			return fmt.Errorf("invalid --node-drain-grace-period: %w", err)
+		}
+		h.nodeDrainGracePeriod = nodeDrainGracePeriod
 	}
 
 	// Validate autoscaling and replicas are mutually exclusive
@@ -318,6 +331,10 @@ func (h *seaplaneNodePoolUpdate) PostExpand(
 			return fmt.Errorf("cannot update the image type on a non-AWS node pool")
 		}
 		merged.Spec.NodePool.Platform.AWS.ImageType = hypershiftv1beta1.ImageType(h.imageType)
+	}
+
+	if h.cmd.Flags().Changed("node-drain-grace-period") {
+		merged.Spec.NodePool.NodeDrainTimeout = h.nodeDrainGracePeriod
 	}
 
 	// Security groups - convert comma-separated string to []AWSResourceReference
