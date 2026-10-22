@@ -589,7 +589,7 @@ Optional environment variables:
 |----------|---------|-------------|
 | `SEAPLANE_URL` | — (required) | Platform API v2 base URL |
 | `LABEL_FILTER` | `seaplane-validated` | Set to `seaplane-sanity` for this spec |
-| `CLUSTER_NAME` | `seaplane-e2e-<unix timestamp>` | Cluster name (≤ 18 chars — namespace constraint) |
+| `CLUSTER_NAME` | `sp-e2e-<unix timestamp>` | Cluster name (≤ 18 chars — namespace constraint) |
 | `OPERATOR_ROLES_PREFIX` | same as `CLUSTER_NAME` | IAM roles prefix |
 | `AWS_DEFAULT_REGION` | derived from URL | Fallback region when URL has no region in hostname |
 | `SEAPLANE_VERSION` | empty (server picks default) | OCP version string for cluster creation |
