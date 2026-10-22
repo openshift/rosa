@@ -1069,25 +1069,10 @@ var _ = Describe("hosted-cp cluster creation",
 			It("should edit cluster with spot-termination-queue-url and verify enhanced mode [id:spot-hcp-cluster]",
 				labels.Medium, labels.Runtime.Day2, labels.Seaplane.Validated,
 				func() {
-					isSeaplane := isSeaplaneMode()
-					queueURL := "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-termination-queue"
-
-					if isSeaplane {
-						By("V2: --spot-termination-queue-url edit is rejected until Seaplane edit wiring")
-						out, err := clusterService.EditCluster(
-							clusterID,
-							"--spot-termination-queue-url", queueURL,
-							"-y",
-						)
-						Expect(err).To(HaveOccurred())
-						Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
-						return
-					}
-
 					By("Get the cluster region")
 					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
 					Expect(err).ToNot(HaveOccurred())
-					queueURL = fmt.Sprintf("https://sqs.%s.amazonaws.com/123456789012/rosa-spot-termination-queue",
+					queueURL := fmt.Sprintf("https://sqs.%s.amazonaws.com/123456789012/rosa-spot-termination-queue",
 						clusterDescription.Region)
 
 					By("Edit the cluster with a spot-termination-queue-url")

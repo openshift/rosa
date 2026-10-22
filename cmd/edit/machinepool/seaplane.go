@@ -17,6 +17,7 @@ import (
 
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/ocm"
+	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/seaplane"
 	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
@@ -277,7 +278,11 @@ func (h *seaplaneNodePoolUpdate) PostExpand(
 		if merged.Spec.NodePool.Platform.AWS.Placement == nil {
 			return fmt.Errorf("cannot update spot-max-price on a node pool that is not using spot instances")
 		}
-		merged.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice = h.userOptions.spotMaxPrice
+		if h.userOptions.spotMaxPrice != mpOpts.SpotPriceOnDemand {
+			merged.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice = h.userOptions.spotMaxPrice
+		} else {
+			merged.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice = ""
+		}
 	}
 
 	if h.cmd.Flags().Changed("autorepair") {

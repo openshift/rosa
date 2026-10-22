@@ -1059,20 +1059,26 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 	Describe("Spot instance node pool lifecycle", func() {
 		It("should create, describe, edit, and delete a Spot node pool [id:spot-hcp-np]",
-			labels.Medium, labels.Runtime.Day2, labels.Seaplane.Deferred,
+			labels.Medium, labels.Runtime.Day2, labels.Seaplane.Validated,
 			func() {
+				seaplaneEndpoint := seaplaneEndpointForTests()
+				isSeaplane := seaplaneEndpoint != ""
+				if isSeaplane {
+					machinePoolService.SetPlatformAPIEndpoint(seaplaneEndpoint)
+				}
+
 				By("Create a node pool with spot instances enabled")
 				mpName := helper.GenerateRandomName("spot-np", 2)
 				_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,
 					"--use-spot-instances",
-					"--spot-max-price", "0.05",
+					"--spot-max-price", "on-demand",
 					"--replicas", "1",
 					"-y",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
-				if shouldCheckNodePoolReplicas {
+				if isSeaplane || shouldCheckNodePoolReplicas {
 					err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
 						clusterID, mpName, false, constants.NodePoolCheckPoll, constants.NodePoolCheckTimeout)
 					Expect(err).ToNot(HaveOccurred())
@@ -1081,29 +1087,45 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				By("Describe the node pool and verify spot info")
 				description, err := rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(description.String()).To(ContainSubstring("Yes (max $0.05)"))
-				if shouldCheckNodePoolReplicas {
+				Expect(description.String()).To(ContainSubstring("Yes (on-demand)"))
+				if isSeaplane || shouldCheckNodePoolReplicas {
 					nodePoolDescription, err := rosaClient.MachinePool.ReflectNodePoolDescription(description)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(nodePoolDescription.CurrentReplicas).To(Equal("1"))
 				}
 
 				By("Edit the node pool spot-max-price")
-				_, err = rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
-					"--spot-max-price", "0.10",
+				output, err := rosaClient.MachinePool.EditMachinePool(clusterID, mpName,
+					"--spot-max-price", "0.20",
 					"-y",
 				)
-				Expect(err).ToNot(HaveOccurred())
+				if isSeaplane {
+					Expect(err).ToNot(HaveOccurred(), output.String())
 
-				By("Verify the updated spot-max-price in describe")
-				description, err = rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(description.String()).To(ContainSubstring("Yes (max $0.10)"))
+					By("Verify the updated spot-max-price in describe")
+					description, err = rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(description.String()).To(ContainSubstring("Yes (max $0.20)"))
+				} else {
+					Expect(err).To(HaveOccurred())
+					Expect(output.String()).To(ContainSubstring(
+						"modifying spot configuration on an existing machine pool is not supported"))
+
+					By("Verify the spot-max-price remains unchanged in describe")
+					description, err = rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(description.String()).To(ContainSubstring("Yes (on-demand)"))
+				}
 			})
 
 		It("should create a Spot node pool with on-demand fallback (no max price) [id:spot-hcp-np-ondemand]",
-			labels.Medium, labels.Runtime.Day2, labels.Seaplane.Deferred,
+			labels.Medium, labels.Runtime.Day2, labels.Seaplane.Validated,
 			func() {
+				seaplaneEndpoint := seaplaneEndpointForTests()
+				if seaplaneEndpoint != "" {
+					machinePoolService.SetPlatformAPIEndpoint(seaplaneEndpoint)
+				}
+
 				By("Create a node pool with spot instances but no max price (on-demand price)")
 				mpName := helper.GenerateRandomName("spot-od", 2)
 				_, err := rosaClient.MachinePool.CreateMachinePool(clusterID, mpName,

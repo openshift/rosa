@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	rosainput "github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -119,15 +120,17 @@ func (h *seaplaneClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtime,
 
 	channelChanged := h.cmd.Flags().Changed("channel-group") || h.cmd.Flags().Changed("channel")
 	schedulerProfileChanged := h.cmd.Flags().Changed("scheduler-profile")
+	spotTerminationQueueChanged := h.cmd.Flags().Changed("spot-termination-queue-url")
 	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") &&
 		!h.cmd.Flags().Changed("delete-protection") &&
 		!channelChanged && !schedulerProfileChanged && !h.cmd.Flags().Changed("no-proxy") &&
 		!h.cmd.Flags().Changed("http-proxy") && !h.cmd.Flags().Changed("https-proxy") &&
-		!h.cmd.Flags().Changed("additional-trust-bundle-file") {
+		!h.cmd.Flags().Changed("additional-trust-bundle-file") && !spotTerminationQueueChanged {
 		return fmt.Errorf(
 			"specify at least one supported flag: --expiration, --expiration-time, " +
 				"--delete-protection, --channel-group, --channel, --scheduler-profile, " +
-				"--http-proxy, --https-proxy, --no-proxy, --additional-trust-bundle-file",
+				"--http-proxy, --https-proxy, --no-proxy, --additional-trust-bundle-file, " +
+				"--spot-termination-queue-url",
 		)
 	}
 
@@ -150,6 +153,15 @@ func (h *seaplaneClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtime,
 		if err := validateSeaplaneChannelArgs(); err != nil {
 			return err
 		}
+	}
+	if spotTerminationQueueChanged {
+		queueURL := h.cmd.Flag("spot-termination-queue-url").Value.String()
+		if queueURL != "" {
+			if err := urlHelper.ValidateHTTPSQueueURL(queueURL); err != nil {
+				return fmt.Errorf("invalid value for '--spot-termination-queue-url': %w", err)
+			}
+		}
+		input.TerminationHandlerQueueURL = queueURL
 	}
 	if schedulerProfileChanged {
 		switch input.SchedulerProfile {
@@ -278,6 +290,24 @@ func (h *seaplaneClusterUpdate) buildSpecPatch(input *seaplanepathbind.ClusterUp
 			hc = map[string]any{}
 		}
 		hc["channel"] = args.channel
+		spec["hostedCluster"] = hc
+	}
+	if h.cmd.Flags().Changed("spot-termination-queue-url") {
+		hc, _ := spec["hostedCluster"].(map[string]any)
+		if hc == nil {
+			hc = map[string]any{}
+		}
+		platform, _ := hc["platform"].(map[string]any)
+		if platform == nil {
+			platform = map[string]any{}
+		}
+		aws, _ := platform["aws"].(map[string]any)
+		if aws == nil {
+			aws = map[string]any{}
+		}
+		aws["terminationHandlerQueueURL"] = input.TerminationHandlerQueueURL
+		platform["aws"] = aws
+		hc["platform"] = platform
 		spec["hostedCluster"] = hc
 	}
 	configuration := map[string]any{}
