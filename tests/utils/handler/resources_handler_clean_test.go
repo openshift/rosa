@@ -5,6 +5,7 @@ package handler
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"go.uber.org/mock/gomock"
@@ -15,6 +16,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
+
+	"github.com/openshift/rosa/pkg/seaplane"
 )
 
 var _ = Describe("isAWSAuthorizationError", func() {
@@ -216,5 +219,17 @@ var _ = Describe("deleteForeignOwnedSecurityGroupsWithClient", func() {
 
 		err := deleteForeignOwnedSecurityGroupsWithClient(awsclient, "vpc-123")
 		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("DeleteAdditionalPrincipalsRole", func() {
+	It("uses the primary account for Seaplane", func() {
+		seaplane.Reset()
+		GinkgoT().Setenv("OCM_CONFIG", filepath.Join(GinkgoT().TempDir(), "missing-ocm-config.json"))
+		rh := &resourcesHandler{
+			resources: &Resources{AdditionalPrincipals: "arn:aws:iam::123456789012:role/test-role"},
+		}
+		err := rh.DeleteAdditionalPrincipalsRole(false)
+		Expect(err).To(MatchError("the shared aws account credential file is empty. Please set it by export "))
 	})
 })

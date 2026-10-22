@@ -325,6 +325,9 @@ func seaplaneClusterToMap(
 		if len(c.Spec.Tags) > 0 {
 			awsMap["tags"] = c.Spec.Tags
 		}
+		if len(aws.AdditionalAllowedPrincipals) > 0 {
+			awsMap["additional_allowed_principals"] = aws.AdditionalAllowedPrincipals
+		}
 		m["aws"] = awsMap
 	}
 
@@ -447,6 +450,10 @@ func seaplaneClusterToString(
 		if tokens := c.Spec.Properties["ec2_metadata_http_tokens"]; tokens != "" {
 			s += fmt.Sprintf("EC2 Metadata Http Tokens:   %s\n", tokens)
 		}
+	}
+	if aws != nil && len(aws.AdditionalAllowedPrincipals) > 0 {
+		s += fmt.Sprintf("Additional Principals:      %s\n",
+			strings.Join(aws.AdditionalAllowedPrincipals, ","))
 	}
 	s += fmt.Sprintf("Created:                    %s\n",
 		c.CreationTimestamp.UTC().Format("2006-01-02 15:04:05 UTC"))
