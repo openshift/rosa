@@ -2,7 +2,7 @@ module github.com/openshift/rosa
 
 go 1.26.0
 
-toolchain go1.26.9
+toolchain go1.26.10
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
