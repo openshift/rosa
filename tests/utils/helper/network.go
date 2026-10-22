@@ -6,8 +6,13 @@ package helper
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 func ExtractVPCIDFromNetworkOutput(output bytes.Buffer) (string, error) {
@@ -905,4 +910,79 @@ Outputs:
       Name: !Sub "${Name}-EcrDkrVPCEndpointId"
 `
 	return templateContent
+}
+
+// TemplateForSingleVPCWithoutNATGateways loads the production CloudFormation
+// template and strips NAT gateway, Elastic IP, and private route resources
+// along with their outputs. This produces a cost-effective template for tests
+// that only need subnet creation without NAT gateway side-effects.
+func TemplateForSingleVPCWithoutNATGateways() (string, error) {
+	_, thisFile, _, _ := runtime.Caller(0)
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
+	templatePath := filepath.Join(repoRoot, "cmd", "create", "network", "templates",
+		"rosa-quickstart-default-vpc", "cloudformation.yaml")
+
+	templateBody, err := os.ReadFile(templatePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read production template: %w", err)
+	}
+
+	var doc yaml.Node
+	if err := yaml.Unmarshal(templateBody, &doc); err != nil {
+		return "", fmt.Errorf("failed to parse template YAML: %w", err)
+	}
+
+	resourcesToRemove := map[string]bool{
+		"ElasticIP1":    true,
+		"ElasticIP2":    true,
+		"ElasticIP3":    true,
+		"ElasticIP4":    true,
+		"NATGateway1":   true,
+		"NATGateway2":   true,
+		"NATGateway3":   true,
+		"NATGateway4":   true,
+		"PrivateRoute1": true,
+		"PrivateRoute2": true,
+		"PrivateRoute3": true,
+		"PrivateRoute4": true,
+	}
+
+	outputsToRemove := map[string]bool{
+		"EIP1AllocationId": true,
+		"EIP2AllocationId": true,
+		"EIP3AllocationId": true,
+		"EIP4AllocationId": true,
+		"NatGatewayId":     true,
+	}
+
+	topMap := doc.Content[0]
+	for i := 0; i < len(topMap.Content)-1; i += 2 {
+		key := topMap.Content[i]
+		value := topMap.Content[i+1]
+
+		if key.Value == "Resources" && value.Kind == yaml.MappingNode {
+			removeYAMLMappingKeys(value, resourcesToRemove)
+		}
+		if key.Value == "Outputs" && value.Kind == yaml.MappingNode {
+			removeYAMLMappingKeys(value, outputsToRemove)
+		}
+	}
+
+	result, err := yaml.Marshal(&doc)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal modified template: %w", err)
+	}
+
+	return string(result), nil
+}
+
+// removeYAMLMappingKeys removes the specified keys from a YAML mapping node.
+func removeYAMLMappingKeys(mapping *yaml.Node, keysToRemove map[string]bool) {
+	newContent := make([]*yaml.Node, 0, len(mapping.Content))
+	for i := 0; i < len(mapping.Content)-1; i += 2 {
+		if !keysToRemove[mapping.Content[i].Value] {
+			newContent = append(newContent, mapping.Content[i], mapping.Content[i+1])
+		}
+	}
+	mapping.Content = newContent
 }
