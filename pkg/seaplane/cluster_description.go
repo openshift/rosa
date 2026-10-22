@@ -47,7 +47,8 @@ func clusterDescriptionFromCluster(cluster *v1alpha1.Cluster) *ClusterDescriptio
 			HTTPSProxy: cluster.Proxy.HTTPSProxy,
 			NoProxy:    cluster.Proxy.NoProxy,
 		}
-	} else if configuration := cluster.Spec.HostedCluster.Configuration; configuration != nil && configuration.Proxy != nil {
+	} else if configuration := cluster.Spec.HostedCluster.Configuration; configuration != nil &&
+		configuration.Proxy != nil {
 		description.Proxy = &ClusterProxy{
 			HTTPProxy:  configuration.Proxy.HTTPProxy,
 			HTTPSProxy: configuration.Proxy.HTTPSProxy,

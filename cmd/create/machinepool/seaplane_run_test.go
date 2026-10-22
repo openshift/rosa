@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	seaplanemocks "github.com/openshift/rosa/pkg/seaplane/mocks"
+	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
 	"github.com/openshift/rosa/pkg/test"
 )
 
@@ -321,7 +322,7 @@ var _ = Describe("runSeaplaneCreate (machinepool)", func() {
 		cluster := makeCluster("cluster1", "cluster-uid")
 		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
 			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
-		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
+		// Note: Get() is not expected because validation fails in PreRequest before PostExpand
 
 		t.RosaRuntime.SeaplaneClient = seaplaneClient
 		Expect(func() {
@@ -333,34 +334,23 @@ var _ = Describe("runSeaplaneCreate (machinepool)", func() {
 		}).To(Panic())
 	})
 
-	It("returns error when --disk-size and --size conflict", func() {
+	It("bridges --disk-size to input.Size field", func() {
 		h := &seaplaneNodePoolCreate{
 			userOptions: &mpOpts.CreateMachinepoolUserOptions{
+				Name:         "my-np",
 				RootDiskSize: "75GiB",
+				Subnet:       "subnet-abc123",
 			},
 			clusterKey:  "cluster1",
 			clusterName: "cluster1",
 			clusterUID:  "cluster-uid",
 		}
-		obj := &v1alpha1.NodePool{
-			Spec: v1alpha1.NodePoolSpec{
-				NodePool: v1alpha1.NodePoolSpecPassthrough{
-					Platform: v1alpha1.NodePoolPlatform{
-						AWS: &v1alpha1.AWSNodePoolPlatform{
-							RootVolume: &v1alpha1.Volume{Size: 50},
-						},
-					},
-				},
-			},
-		}
-		ctrl := gomock.NewController(GinkgoT())
-		seaplaneClient, clusters, _ := newCreateMPMocks(ctrl)
-		cluster := makeCluster("cluster1", "cluster-uid")
-		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
-		t.RosaRuntime.SeaplaneClient = seaplaneClient
+		input := &seaplanepathbind.NodePoolCreateInput{}
 
-		err := h.PostExpand(context.Background(), t.RosaRuntime, nil, obj)
-		Expect(err).To(MatchError(ContainSubstring("--disk-size and --size cannot be used together")))
+		err := h.PreRequest(context.Background(), t.RosaRuntime, input)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(input.Size).ToNot(BeNil())
+		Expect(*input.Size).To(Equal(int64(75)))
 	})
 
 	It("bridges --additional-security-group-ids into AWS.SecurityGroups", func() {

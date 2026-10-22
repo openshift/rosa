@@ -43,5 +43,4 @@
 - name: "placement-market-type"
 - name: "preference"
 - name: "resource-tags"
-- name: "size"
 - name: "tenancy"
