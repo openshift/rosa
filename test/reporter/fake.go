@@ -1,3 +1,6 @@
+// Copyright Red Hat
+// SPDX-License-Identifier: Apache-2.0
+
 package reportertest
 
 import "github.com/openshift/rosa/pkg/reporter"
