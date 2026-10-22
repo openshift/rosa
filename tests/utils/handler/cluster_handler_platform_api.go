@@ -30,8 +30,12 @@ func (ch *clusterHandler) generateSeaplaneCreateFlags() ([]string, error) {
 		return nil, errors.New(seaplaneCustomKMSError)
 	}
 	clusterName := strings.TrimSpace(os.Getenv("CLUSTER_NAME"))
-	if clusterName == "" || len(clusterName) > 18 {
-		return nil, fmt.Errorf("CLUSTER_NAME is required and must be ≤18 chars")
+	if clusterName == "" {
+		return nil, errors.New("CLUSTER_NAME is required and must be ≤18 chars")
+	}
+	if len(clusterName) > 18 {
+		return nil, fmt.Errorf("CLUSTER_NAME %q is %d chars, exceeding the 18-char Platform API limit",
+			clusterName, len(clusterName))
 	}
 	ch.profile.ClusterConfig.Name = clusterName
 	ch.clusterConfig.Name = clusterName

@@ -5,7 +5,7 @@
 # Day1 create uses the seaplane handler (oidc_config: managed).
 profiles:
   - as: rosa-seaplane-basic
-    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
     region: "us-east-1"
     cluster:
       multi_az: true
@@ -43,7 +43,7 @@ profiles:
       path: ""
       permission_boundary: ""
   - as: rosa-seaplane-fips
-    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
     region: "us-east-1"
     cluster:
       multi_az: true
@@ -145,7 +145,7 @@ profiles:
       path: ""
       permission_boundary: ""
   - as: rosa-seaplane-nocni
-    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+    version: "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
     region: "us-east-1"
     cluster:
       multi_az: true
