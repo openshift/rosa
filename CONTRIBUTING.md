@@ -56,7 +56,7 @@ Do not disable existing hooks or bypass checks. Install `pre-commit` to run chec
 The hooks are configured in `.pre-commit-config.yaml` and perform:
 - `pre-commit`: checks merge conflicts and YAML syntax, runs gitleaks, formats staged Go files (imports + gofmt), and adds Apache 2.0 license headers to staged files missing them
 - `commit-msg`: validates the commit message format
-- `pre-push`: runs format-check, build, lint, documentation lint (Vale), license checks, changed-files coverage, and unit/integration tests
+- `pre-push`: runs format-check, build, version env isolation, lint, documentation lint (Vale), license checks, changed-files coverage, and unit/integration tests
 - Installing Vale locally requires a C compiler because the Makefile builds it with `CGO_ENABLED=1`.
 - `pre-push` runs against committed content and blocks when staged/unstaged tracked changes are present
 - Prow re-runs these checks as required presubmits, so merges are blocked until they pass
@@ -85,7 +85,7 @@ Use the same validated message for the commit. Keep any existing environment hoo
 
 Use this aggregated command before pushing:
 ```shell
-make basic-checks                 # format + format-check + build + lint + changed-files coverage + unit/integration tests
+make basic-checks                 # format + format-check + build + version-env-isolation + lint + changed-files coverage + unit/integration tests
 ```
 
 `basic-checks` forces fresh test execution (no Go test cache) for test steps.
