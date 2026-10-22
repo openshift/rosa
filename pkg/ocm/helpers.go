@@ -647,7 +647,7 @@ func (c *Client) isOCMRoleCompliant(reporter reporter.Logger, awsAccountID strin
 		reporter.Debugf("Failed to check OCM role linkage for account '%s': %v", awsAccountID, err)
 		return false, false
 	}
-	return linked && strings.HasSuffix(selectedARN, fmt.Sprintf("-%s-Role-%s", aws.OCMRole, externalID)), true
+	return linked && aws.OCMRoleNameMatchesConvention(selectedARN, externalID), true
 }
 
 // WarnIfOCMRoleNotLinked prints a non-fatal warning, phrased for an action on an existing
