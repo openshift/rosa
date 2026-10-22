@@ -274,8 +274,9 @@ var _ = Describe("Network Resources",
 				_, err = networkResourcesService.CreateNetworkResources(false, "--help")
 				Expect(err).ToNot(HaveOccurred())
 
-				By("Create template dir for template file creating single vpc")
-				templateContent := helper.TemplateForSingleVPC()
+				By("Create template dir for template file creating single vpc without NAT gateways")
+				templateContent, err := helper.TemplateForSingleVPCWithoutNATGateways()
+				Expect(err).ToNot(HaveOccurred())
 				templatePath, err := helper.CreateTemplateDirForNetworkResources("single-vpc", templateContent)
 				defer func() {
 					os.Remove(templatePath)
@@ -681,8 +682,9 @@ var _ = Describe("Network Resources",
 				}()
 				Expect(err).ToNot(HaveOccurred())
 
-				By("Create template dir for template file creating single vpc")
-				templateContent = helper.TemplateForSingleVPC()
+				By("Create template dir for template file creating single vpc without NAT gateways")
+				templateContent, err = helper.TemplateForSingleVPCWithoutNATGateways()
+				Expect(err).ToNot(HaveOccurred())
 				templatePath_4, err := helper.CreateTemplateDirForNetworkResources("single-vpc", templateContent)
 				templateDir = filepath.Dir(templatePath_4)
 				tdpSingleVPC := filepath.Dir(templateDir)
