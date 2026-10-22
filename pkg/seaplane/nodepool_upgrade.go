@@ -38,10 +38,9 @@ const (
 // only maxUnavailable; the maxSurge returned is an empty string even when the
 // defaults are reported, since an InPlace upgrade cannot surge.
 func NodePoolUpgradeSettings(np *v1alpha1.NodePool) (string, NodePoolUpgrade) {
-	upgradeType := "Replace"
-	if np.Spec.NodePool.Management.UpgradeType == hypershiftv1beta1.UpgradeTypeInPlace {
-		upgradeType = "InPlace"
-	}
+	management := np.Spec.NodePool.Management
+	upgradeType := string(management.UpgradeType)
+	isInPlace := management.UpgradeType == hypershiftv1beta1.UpgradeTypeInPlace
 
 	settings := NodePoolUpgrade{}
 
@@ -53,24 +52,25 @@ func NodePoolUpgradeSettings(np *v1alpha1.NodePool) (string, NodePoolUpgrade) {
 		settings.MaxUnavailable = FormatUpgradeValue(np.Spec.MaxUnavailable)
 	}
 
-	// If spec held nothing, read the rendered management upgrade the operator
-	// writes back. The Platform API echoes the customer spec here, so empty
-	// means the customer never set it and the API default is in effect.
-	if settings.MaxSurge == "" &&
-		np.Spec.NodePool.Management.Replace != nil &&
-		np.Spec.NodePool.Management.Replace.RollingUpdate != nil {
-		if np.Spec.NodePool.Management.Replace.RollingUpdate.MaxSurge != nil {
-			settings.MaxSurge = FormatUpgradeValue(np.Spec.NodePool.Management.Replace.RollingUpdate.MaxSurge)
+	// For each value spec left unset, read the rendered management upgrade the
+	// operator writes back. The Platform API echoes the customer spec here, so
+	// empty means the customer never set it and the API default is in effect.
+	if rolling := management.Replace; rolling != nil && rolling.RollingUpdate != nil {
+		if settings.MaxSurge == "" && rolling.RollingUpdate.MaxSurge != nil {
+			settings.MaxSurge = FormatUpgradeValue(rolling.RollingUpdate.MaxSurge)
 		}
-		if np.Spec.NodePool.Management.Replace.RollingUpdate.MaxUnavailable != nil {
-			settings.MaxUnavailable = FormatUpgradeValue(np.Spec.NodePool.Management.Replace.RollingUpdate.MaxUnavailable)
+		if settings.MaxUnavailable == "" && rolling.RollingUpdate.MaxUnavailable != nil {
+			settings.MaxUnavailable = FormatUpgradeValue(rolling.RollingUpdate.MaxUnavailable)
 		}
+	}
+	if settings.MaxUnavailable == "" && management.InPlace != nil && management.InPlace.MaxUnavailable != nil {
+		settings.MaxUnavailable = FormatUpgradeValue(management.InPlace.MaxUnavailable)
 	}
 
 	// Report documented defaults when the API stored nothing. InPlace pools
 	// omit maxSurge even when reporting defaults, since an InPlace upgrade
 	// cannot surge.
-	if settings.MaxSurge == "" && upgradeType == "Replace" {
+	if settings.MaxSurge == "" && !isInPlace {
 		settings.MaxSurge = defaultMaxSurge
 	}
 	if settings.MaxUnavailable == "" {
