@@ -43,12 +43,32 @@ export CGO_ENABLED=0
 unexport GOFLAGS
 
 # Version from the exact tag on HEAD; empty (uses the fallback in pkg/info/info.go)
-# when HEAD is not tagged.
-VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null | sed 's/^v//')
+# when HEAD is not tagged. Named ROSA_VERSION (not VERSION) because base images such as
+# ubi9/go-toolset export a VERSION environment variable that would otherwise shadow this
+# via `?=`, silently baking the Go toolset version into the CLI (see ROSAENG-67768).
+ROSA_VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null | sed 's/^v//')
+
+# Belt-and-suspenders guard for the same problem: if ROSA_VERSION itself ever ends up
+# inherited from the environment rather than set explicitly on the `make` command line,
+# ignore it and fall back to the git-derived value instead of silently building with it.
+ifneq ($(filter environment,$(origin ROSA_VERSION)),)
+$(warning ROSA_VERSION ("$(ROSA_VERSION)") came from the environment; ignoring it and using the git-derived version. Pass ROSA_VERSION=... on the make command line to override explicitly.)
+override ROSA_VERSION := $(shell git describe --tags --exact-match 2>/dev/null | sed 's/^v//')
+endif
+
+ROSA_LDFLAGS = -X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD) $(if $(ROSA_VERSION),-X github.com/openshift/rosa/pkg/info.DefaultVersion=$(ROSA_VERSION),)
 
 .PHONY: rosa
 rosa:
-	go build -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD) $(if $(VERSION),-X github.com/openshift/rosa/pkg/info.DefaultVersion=$(VERSION),)" ./cmd/rosa
+	go build -ldflags="$(ROSA_LDFLAGS)" ./cmd/rosa
+
+.PHONY: print-ldflags
+print-ldflags:
+	@echo "$(ROSA_LDFLAGS)"
+
+.PHONY: check-version-env-isolation
+check-version-env-isolation:
+	./hack/check-version-env-isolation.sh
 
 .PHONY: test
 test:
@@ -64,7 +84,7 @@ coverage-changed-files:
 
 .PHONY: install
 install:
-	go install -ldflags="-X github.com/openshift/rosa/pkg/info.Build=$(shell git rev-parse --short HEAD) $(if $(VERSION),-X github.com/openshift/rosa/pkg/info.DefaultVersion=$(VERSION),)" ./cmd/rosa
+	go install -ldflags="$(ROSA_LDFLAGS)" ./cmd/rosa
 
 .PHONY: fmt
 fmt: $(GCI)
