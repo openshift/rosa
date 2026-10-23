@@ -5,6 +5,7 @@ package seaplane
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"go.uber.org/mock/gomock"
@@ -70,7 +71,11 @@ var _ = Describe("DecodeClusterDescription", func() {
 
 	It("rejects a bundle response of the wrong type", func() {
 		_, err := DecodeClusterDescription([]byte(`{"spec":{"additionalTrustBundle":true}}`))
-		Expect(err).To(MatchError(ContainSubstring("cannot unmarshal bool")))
+		Expect(err).To(MatchError(ContainSubstring("failed to decode cluster response")))
+		var typeError *json.UnmarshalTypeError
+		Expect(errors.As(err, &typeError)).To(BeTrue())
+		Expect(typeError.Field).To(Equal("spec.additionalTrustBundle"))
+		Expect(typeError.Value).To(Equal("bool"))
 	})
 
 	It("reports malformed cluster JSON", func() {

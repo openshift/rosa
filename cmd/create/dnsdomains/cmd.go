@@ -37,7 +37,7 @@ var Cmd = &cobra.Command{
 	Long:    "Create a Domain Name System (DNS) domain for your cluster.",
 	Example: `  # Create DNS Domain
 	rosa create dns-domain`,
-	Run:  run,
+	Run:  dispatch,
 	Args: cobra.NoArgs,
 }
 

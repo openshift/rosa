@@ -107,3 +107,27 @@ func HasClusterUsingOidcConfigID(
 	}
 	return false, nil
 }
+
+// ClusterIDsByDNSBaseDomain maps each in-use DNS base domain to its cluster UID.
+// The DNS-domain endpoint does not return cluster ownership, so list output uses
+// this cluster-side association to show why a reservation cannot be deleted.
+func ClusterIDsByDNSBaseDomain(
+	ctx context.Context, client seaplaneclientset.Interface,
+) (map[string]string, error) {
+	list, err := client.SeaplaneV1alpha1().Clusters().List(ctx, platform.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list clusters: %w", err)
+	}
+
+	clusterIDs := make(map[string]string)
+	for _, cluster := range list.Items {
+		baseDomain := cluster.Spec.HostedCluster.DNS.BaseDomain
+		if baseDomain == "" {
+			continue
+		}
+		if _, found := clusterIDs[baseDomain]; !found {
+			clusterIDs[baseDomain] = string(cluster.UID)
+		}
+	}
+	return clusterIDs, nil
+}
