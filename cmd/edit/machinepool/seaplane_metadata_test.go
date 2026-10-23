@@ -78,4 +78,43 @@ var _ = Describe("Seaplane label and taint editing", func() {
 		Entry("invalid taint effect", map[string]string{"taints": "key=value:Invalid"}, "invalid taint effect"),
 		Entry("invalid taint format", map[string]string{"taints": "key=value"}, "expected key=value:scheduleType format"),
 	)
+	DescribeTable("node drain grace period editing", func(nodedrainInput string, shouldErr bool) {
+		t := test.NewTestRuntime()
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, _, pools := newEditMPMocks(ctrl)
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+		replicas := int32(3)
+		current := &v1alpha1.NodePool{ObjectMeta: metav1.ObjectMeta{Name: "cluster1.workers", UID: "pool-uid"}, Spec: v1alpha1.NodePoolSpec{
+			NodePool: v1alpha1.NodePoolSpecPassthrough{
+				Replicas:   &replicas,
+				Management: hypershiftv1beta1.NodePoolManagement{AutoRepair: true},
+				Platform:   v1alpha1.NodePoolPlatform{AWS: &v1alpha1.AWSNodePoolPlatform{InstanceType: "c5.xlarge"}},
+			},
+		}}
+		original := current.DeepCopy()
+		// Only set up Get expectation if the test should succeed (skip validation error)
+		if !shouldErr {
+			pools.EXPECT().Get(gomock.Any(), "cluster1.workers", gomock.Any()).Return(current, nil)
+		}
+		opts := &EditMachinepoolUserOptions{nodeDrainGracePeriod: nodedrainInput}
+		cmd := &cobra.Command{Use: "test"}
+		cmd.Flags().StringVar(&opts.nodeDrainGracePeriod, "node-drain-grace-period", "", "")
+		Expect(cmd.Flags().Set("node-drain-grace-period", nodedrainInput)).To(Succeed())
+		handler := &seaplaneNodePoolUpdate{clusterKey: "cluster1", nodePoolKey: "workers", nodePoolName: "cluster1.workers", userOptions: opts, cmd: cmd}
+		input := &seaplanepathbind.NodePoolUpdateInput{}
+		if shouldErr {
+			Expect(handler.PreRequest(context.Background(), t.RosaRuntime, input)).To(HaveOccurred())
+		} else {
+			Expect(handler.PreRequest(context.Background(), t.RosaRuntime, input)).To(Succeed())
+			updated := &v1alpha1.NodePool{}
+			Expect(handler.PostExpand(context.Background(), t.RosaRuntime, input, updated)).To(Succeed())
+			Expect(current).To(Equal(original))
+		}
+	},
+		Entry("valid 30 minutes", "30 minutes", false),
+		Entry("valid 1 hour", "1 hour", false),
+		Entry("valid 0 minutes", "0 minutes", false),
+		Entry("invalid unit", "1 days", true),
+		Entry("exceeds max", "169 hours", true),
+	)
 })
