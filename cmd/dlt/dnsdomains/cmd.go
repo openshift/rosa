@@ -32,11 +32,11 @@ var Cmd = &cobra.Command{
 	Long:    "Delete a specific DNS domain.",
 	Example: `  # Delete a DNS domain with ID github-1
   rosa delete dns-domain github-1`,
-	Run: run,
+	Run: dispatch,
 	Args: func(_ *cobra.Command, argv []string) error {
 		if len(argv) != 1 {
 			return fmt.Errorf(
-				"Expected exactly one command line parameter containing the ID of the DNS domain",
+				"expected exactly one command line parameter containing the ID of the DNS domain",
 			)
 		}
 		return nil

@@ -308,6 +308,10 @@ func (h *seaplaneClusterCreate) PostExpand(
 	obj *v1alpha1.Cluster,
 ) error {
 	obj.Spec.HostedCluster.Platform.Type = hypershiftv1beta1.AWSPlatform
+	// The current SDK marks DNS as service-set and has no generated create inputs.
+	// The custom DNS API allows a reserved domain and its private hosted zone.
+	obj.Spec.HostedCluster.DNS.BaseDomain = strings.TrimSpace(args.baseDomain)
+	obj.Spec.HostedCluster.DNS.PrivateZoneID = args.privateHostedZoneID
 	obj.Spec.HostedCluster.Platform.AWS.RolesRef =
 		seaplane.ComputeRolesRef(input.OperatorRolesPrefix, r.Creator.AccountID, r.Creator.Partition)
 

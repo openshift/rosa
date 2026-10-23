@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 
 	"go.uber.org/mock/gomock"
 
@@ -27,6 +28,7 @@ import (
 	v1alpha1 "github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public"
 	seaplanescheme "github.com/openshift-online/rosa-seaplane-api/clientset/generated/scheme"
 	"github.com/openshift-online/rosa-seaplane-api/clientset/platform"
+	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
 	pkgaws "github.com/openshift/rosa/pkg/aws"
@@ -529,4 +531,22 @@ var _ = Describe("parseSeaplaneClusterTags", func() {
 		_, err := parseSeaplaneClusterTags([]string{"no-delimiter"})
 		Expect(err).To(HaveOccurred())
 	})
+})
+
+var _ = Describe("Platform API custom DNS cluster inputs", func() {
+	DescribeTable("maps existing DNS flags into the cluster specification", func(baseDomain, privateZone string) {
+		originalDomain, originalZone := args.baseDomain, args.privateHostedZoneID
+		DeferCleanup(func() { args.baseDomain, args.privateHostedZoneID = originalDomain, originalZone })
+		args.baseDomain, args.privateHostedZoneID = baseDomain, privateZone
+		r := rosa.NewRuntime()
+		r.Creator = &pkgaws.Creator{AccountID: "123456789012", Partition: "aws"}
+		obj := &v1alpha1.Cluster{}
+		obj.Spec.HostedCluster.Platform.AWS = &hypershiftv1beta1.AWSPlatformSpec{}
+		handler := &seaplaneClusterCreate{}
+		Expect(handler.PostExpand(context.Background(), r, &seaplanepathbind.ClusterCreateInput{OperatorRolesPrefix: "test"}, obj)).To(Succeed())
+		Expect(obj.Spec.HostedCluster.DNS.BaseDomain).To(Equal(strings.TrimSpace(baseDomain)))
+		Expect(obj.Spec.HostedCluster.DNS.PrivateZoneID).To(Equal(privateZone))
+		Expect(obj.Spec.HostedCluster.DNS.BaseDomainPrefix).To(BeNil())
+		Expect(obj.Spec.HostedCluster.DNS.PublicZoneID).To(BeEmpty())
+	}, Entry("reserved custom domain", " abcd.0.example.com ", "Z012345"), Entry("service-assigned domain", "", ""))
 })
