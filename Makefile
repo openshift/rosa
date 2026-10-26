@@ -273,7 +273,7 @@ e2e_test: install
 #   TEST_PROFILE    — e.g. rosa-seaplane-basic (for seaplane-validated only)
 #
 # Optional:
-#   CLUSTER_NAME       — defaults to seaplane-e2e-<unix timestamp> (≤18 chars)
+#   CLUSTER_NAME       — defaults to sp-e2e-<unix timestamp> (≤18 chars)
 #   AWS_DEFAULT_REGION — fallback when region cannot be derived from SEAPLANE_URL
 #   LABEL_FILTER       — defaults to seaplane-validated; use seaplane-sanity for sanity
 .PHONY: e2e-seaplane
@@ -282,7 +282,7 @@ e2e-seaplane: install
 		echo "SEAPLANE_URL is required (see guidelines/seaplane-guidelines.md)"; \
 		exit 1; \
 	}; \
-	name=$${CLUSTER_NAME:-seaplane-e2e-$$(date +%s)}; \
+	name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
 	filter=$${LABEL_FILTER:-seaplane-validated}; \
 	SEAPLANE_URL="$${SEAPLANE_URL}" \
 	TEST_PROFILE="$(TEST_PROFILE)" \
