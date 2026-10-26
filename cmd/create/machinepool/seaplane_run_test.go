@@ -52,7 +52,7 @@ func makeCluster(name, uid string) *v1alpha1.Cluster {
 		Spec: v1alpha1.ClusterSpec{
 			HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 				Platform: v1alpha1.PlatformSpec{
-					AWS: &hypershiftv1beta1.AWSPlatformSpec{
+					AWS: &v1alpha1.AWSPlatformSpec{
 						CloudProviderConfig: &hypershiftv1beta1.AWSCloudProviderConfig{VPC: "vpc-cluster"},
 						RolesRef: hypershiftv1beta1.AWSRolesRef{
 							NodePoolManagementARN: "arn:aws:iam::123456789:role/cluster1-node-pool-management",
@@ -93,10 +93,10 @@ var _ = Describe("runSeaplaneCreate (machinepool)", func() {
 				Expect(*np.Spec.NodePool.Platform.AWS.Subnet.ID).To(Equal("subnet-abc123"))
 				Expect(np.Spec.NodePool.Platform.AWS.RootVolume.Size).To(Equal(int64(75)))
 				Expect(string(np.Spec.EC2InstanceMetadataHttpTokens)).To(Equal("optional"))
-				Expect(np.Spec.NodePool.Platform.AWS.ResourceTags).To(ConsistOf(
-					hypershiftv1beta1.AWSResourceTag{Key: "test", Value: "testvalue"},
-					hypershiftv1beta1.AWSResourceTag{Key: "test2", Value: "testValue/openshift"},
-				))
+				Expect(np.Spec.Tags).To(Equal(map[string]string{
+					"test":  "testvalue",
+					"test2": "testValue/openshift",
+				}))
 				return created, nil
 			})
 

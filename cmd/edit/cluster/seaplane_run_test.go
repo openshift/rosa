@@ -311,26 +311,28 @@ var _ = Describe("runSeaplaneEdit (cluster)", func() {
 		Expect(func() { runSeaplaneEdit(t.RosaRuntime, makeExpirationCmd(false)) }).To(Panic())
 	})
 
-	It("rejects --tags because AWS tags are immutable after creation", func() {
-		var exitCode int
-		orig := exitFn
-		exitFn = func(code int) { exitCode = code; panic("exit") }
-		DeferCleanup(func() { exitFn = orig })
-
+	It("updates root AWS tags", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		seaplaneClient, clusters := newEditClusterMocks(ctrl)
-		// ResolveClusterName is called before PreRequest validates flags.
-		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+		cluster := &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
-		}}}, nil)
+			Spec:       v1alpha1.ClusterSpec{HostedCluster: v1alpha1.HostedClusterSpecPassthrough{}},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{*cluster}}, nil)
+		clusters.EXPECT().Patch(gomock.Any(), "cluster1", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ interface{}) (*v1alpha1.Cluster, error) {
+				Expect(data).To(MatchJSON(`{"spec":{"tags":{"environment":"production","owner":"platform"}}}`))
+				return cluster, nil
+			})
 		t.RosaRuntime.SeaplaneClient = seaplaneClient
 
-		cmd := makeExpirationCmd(true)
-		cmd.Flags().String("tags", "", "")
-		Expect(cmd.Flags().Set("tags", `{"owner":"platform"}`)).To(Succeed())
+		cmd := makeExpirationCmd(false)
+		seaplaneClusterUpdateInput = seaplanepathbindZeroInput()
+		seaplanepathbind.RegisterClusterUpdateFlags(cmd, &seaplaneClusterUpdateInput)
+		Expect(cmd.Flags().Set("tags", "environment:production,owner:platform")).To(Succeed())
 
-		Expect(func() { runSeaplaneEdit(t.RosaRuntime, cmd) }).To(Panic())
-		Expect(exitCode).To(Equal(1))
+		runSeaplaneEdit(t.RosaRuntime, cmd)
 	})
 
 	It("fails when cluster cannot be resolved", func() {

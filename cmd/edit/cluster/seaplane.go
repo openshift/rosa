@@ -105,28 +105,30 @@ type seaplaneClusterUpdate struct {
 	clusterName           string
 	cmd                   *cobra.Command
 	additionalTrustBundle *string
+	tags                  map[string]string
 }
 
 func (h *seaplaneClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtime,
 	input *seaplanepathbind.ClusterUpdateInput) error {
-	// spec.tags is applied at provisioning time only — AWS resources created by
-	// OpenShift cannot be retagged afterwards — so the Platform API treats it as
-	// immutable. Reject the flag explicitly instead of silently dropping it.
-	if f := h.cmd.Flags().Lookup("tags"); f != nil && f.Changed {
-		return fmt.Errorf("AWS tags cannot be changed after the cluster is created; " +
-			"set --tags when running 'rosa create cluster'")
+	tagsChanged := h.cmd.Flags().Changed("tags")
+	if tagsChanged {
+		tags, err := aws.ParseUserTags([]string{input.Tags}, aws.UserTagOptions{})
+		if err != nil {
+			return fmt.Errorf("invalid cluster AWS tags: %w", err)
+		}
+		h.tags = tags
 	}
 
 	channelChanged := h.cmd.Flags().Changed("channel-group") || h.cmd.Flags().Changed("channel")
 	schedulerProfileChanged := h.cmd.Flags().Changed("scheduler-profile")
-	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") &&
+	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") && !tagsChanged &&
 		!h.cmd.Flags().Changed("delete-protection") &&
 		!channelChanged && !schedulerProfileChanged && !h.cmd.Flags().Changed("no-proxy") &&
 		!h.cmd.Flags().Changed("http-proxy") && !h.cmd.Flags().Changed("https-proxy") &&
 		!h.cmd.Flags().Changed("additional-trust-bundle-file") {
 		return fmt.Errorf(
 			"specify at least one supported flag: --expiration, --expiration-time, " +
-				"--delete-protection, --channel-group, --channel, --scheduler-profile, " +
+				"--tags, --delete-protection, --channel-group, --channel, --scheduler-profile, " +
 				"--http-proxy, --https-proxy, --no-proxy, --additional-trust-bundle-file",
 		)
 	}
@@ -265,6 +267,9 @@ func (h *seaplaneClusterUpdate) buildSpecPatch(input *seaplanepathbind.ClusterUp
 			return nil, fmt.Errorf("delete-protection flag is set but value is missing")
 		}
 		spec["deleteProtection"] = *input.DeleteProtection
+	}
+	if h.cmd.Flags().Changed("tags") {
+		spec["tags"] = h.tags
 	}
 	if h.cmd.Flags().Changed("channel-group") {
 		// Keep OCM-style property for describe parity and set HostedCluster.Channel

@@ -15,7 +15,7 @@ import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/rosa/pkg/aws"
+	rosaaws "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -55,7 +55,7 @@ func deriveNodePoolAvailabilityZones(
 	awsClient := r.AWSClient
 	if r.AWSClient != nil && r.AWSClient.GetRegion() != clusterRegion {
 		// Create a new AWS client for the cluster's region
-		regionClient, err := aws.NewClient().
+		regionClient, err := rosaaws.NewClient().
 			Logger(r.Logger).
 			Region(clusterRegion).
 			Build()
@@ -390,6 +390,7 @@ func seaplaneClusterToString(
 	}
 
 	apiURL := seaplaneAPIURL(c)
+	tags := rosaaws.FormatUserTagsList(c.Spec.Tags)
 	oidcLine := c.Spec.HostedCluster.IssuerURL
 	if c.Spec.OidcConfigID != "" && oidcLine != "" {
 		oidcLine += " (Managed)"
@@ -425,6 +426,7 @@ func seaplaneClusterToString(
 		"Region:                     %s\n"+
 		"VPC:                        %s\n"+
 		"Subnet:                     %s\n"+
+		"Tags:                       %s\n"+
 		"OIDC Endpoint URL:          %s\n"+
 		"State:                      %s\n"+
 		"Private:                    %s\n"+
@@ -440,6 +442,7 @@ func seaplaneClusterToString(
 		region,
 		vpc,
 		subnet,
+		tags,
 		oidcLine,
 		strings.ToLower(string(c.Status.Phase)), // Normalize to lowercase to match V1 (OCM)
 		output.PrintBool(seaplaneAPIListening(aws) == "internal"),
@@ -588,7 +591,7 @@ func seaplaneAPIURL(c *v1alpha1.Cluster) string {
 		c.Status.ControlPlaneEndpoint.Port)
 }
 
-func seaplaneAPIListening(aws *hypershiftv1beta1.AWSPlatformSpec) string {
+func seaplaneAPIListening(aws *v1alpha1.AWSPlatformSpec) string {
 	if aws != nil && aws.EndpointAccess == hypershiftv1beta1.Private {
 		return "internal"
 	}

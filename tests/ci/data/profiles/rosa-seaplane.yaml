@@ -23,8 +23,8 @@ profiles:
       networking: false
       proxy_enabled: false
       label_enabled: false
-      zones: ""
-      tag_enabled: false
+      zones: "us-east-1a,us-east-1b"
+      tag_enabled: true
       etcd_kms: false
       fips: false
       oidc_config: managed

@@ -96,6 +96,41 @@ var _ = Describe("runSeaplaneEdit (machinepool)", func() {
 			makeEditCmd("5"), nil)
 	})
 
+	It("updates root AWS tags on the success path", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, clusters, nodePools := newEditMPMocks(ctrl)
+		replicas := int32(3)
+		np := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
+			Spec: v1alpha1.NodePoolSpec{
+				Tags: map[string]string{"owner": "old"},
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas: &replicas,
+					Platform: v1alpha1.NodePoolPlatform{Type: hypershiftv1beta1.AWSPlatform},
+					Management: hypershiftv1beta1.NodePoolManagement{
+						UpgradeType: hypershiftv1beta1.UpgradeTypeReplace,
+					},
+				},
+			},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil).Times(2)
+		nodePools.EXPECT().Patch(gomock.Any(), "cluster1.my-np", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ platform.PatchOptions) (*v1alpha1.NodePool, error) {
+				Expect(string(data)).To(MatchJSON(`{"spec":{"tags":{"environment":"production","owner":"platform"}}}`))
+				return np, nil
+			})
+
+		cmd := makeEditCmd("")
+		Expect(cmd.Flags().Set("tags", "owner:platform,environment:production")).To(Succeed())
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+		runSeaplaneEdit(t.RosaRuntime, &EditMachinepoolUserOptions{machinepool: "my-np"}, cmd, nil)
+	})
+
 	DescribeTable("forwards explicit autorepair edits", func(enabled, autoscaling bool) {
 		ctrl := gomock.NewController(GinkgoT())
 		seaplaneClient, clusters, pools := newEditMPMocks(ctrl)

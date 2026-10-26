@@ -258,7 +258,9 @@ Flow:
 2. Call EC2 `DescribeSubnets` to derive VPC ID and availability zone from the
    first provided subnet.
 3. Compute roles ref via `ComputeRolesRef`.
-4. Build HyperShift `HostedCluster` spec and submit via
+4. Parse the existing ROSA `--tags` format (comma-separated `key:value` pairs,
+   with the existing quote rules) into the root-level `Cluster.spec.tags` map,
+   then build the HyperShift `HostedCluster` spec and submit via
    `client.SeaplaneV1alpha1().Clusters().Create()`.
 
 ### Create node pool (`cmd/create/machinepool/seaplane.go`)
@@ -268,7 +270,9 @@ Required flags: `--name` (or positional arg), `--cluster`, `--subnet`.
 Flow:
 1. Resolve cluster name → UID; fetch cluster to extract roles ref.
 2. Derive instance profile via `InstanceProfileFromRolesRef`.
-3. Build `NodePool` spec with replicas, instance type, instance profile, subnet.
+3. Parse `--tags` using the existing ROSA tag syntax into the root-level
+   `NodePool.spec.tags` map and build the `NodePool` spec with replicas,
+   instance type, instance profile, and subnet.
 4. Submit via `client.SeaplaneV1alpha1().NodePools(clusterUID).Create()`.
 
 The release image is managed server-side by the Platform API; do not require
@@ -276,16 +280,20 @@ or send `--version` for node pool creation.
 
 ### Edit cluster (`cmd/edit/cluster/seaplane.go`)
 
-Only `--expiration` and `--expiration-time` are supported. All other OCM edit
-flags are not applicable to the Platform API spec.
+Root AWS tags can be replaced in place with `--tags`; expiration, delete
+protection, channel, scheduler, proxy, and trust-bundle edits use their supported
+Platform API fields.
 
-Flow: resolve name → UID → fetch → copy spec → patch expiration → update.
+Flow: resolve name → UID → parse changed flags → patch only changed fields.
 
 ### Edit node pool (`cmd/edit/machinepool/seaplane.go`)
 
-Only `--replicas` is supported.
+Root AWS tags can be replaced in place with `--tags`, alongside the supported
+replica, autoscaling, labels, taints, autorepair, security-group, spot-price,
+and image-type edits.
 
-Flow: resolve cluster UID, resolve node pool UID → fetch → update replica count.
+Flow: resolve cluster UID, resolve node pool UID → fetch → merge changed fields
+into the current NodePool and patch it.
 
 ### Describe / list
 
@@ -382,7 +390,7 @@ Use this to plan future additions to the Seaplane path.
 | `--machine-cidr` / `--service-cidr` / `--pod-cidr` | Not used | Optional |
 | `--audit-log-arn` | Not used | Optional |
 | `--create-admin-user` / `--cluster-admin-*` | Not used | Optional |
-| `--tags` | Not used | Optional |
+| `--tags` | Supported on create/edit as root `Cluster.spec.tags` | Optional |
 
 ### Node Pool / Machinepool Creation
 
@@ -404,7 +412,7 @@ Use this to plan future additions to the Seaplane path.
 | `--tuning-configs` / `--kubelet-configs` | Not used | Optional |
 | `--ec2-metadata-http-tokens` | Supported; when omitted, the API defaults to `required` | Supported; when omitted, the CLI defaults to `optional` |
 | `--capacity-reservation-id` / `--capacity-reservation-preference` | Not used | Optional |
-| `--tags` | Not used | Optional |
+| `--tags` | Supported on create/edit as root `NodePool.spec.tags` | Optional |
 
 ### Cluster Edit
 

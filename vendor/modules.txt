@@ -546,10 +546,10 @@ github.com/openshift-online/ocm-sdk-go/statusboard/v1
 github.com/openshift-online/ocm-sdk-go/testing
 github.com/openshift-online/ocm-sdk-go/webrca
 github.com/openshift-online/ocm-sdk-go/webrca/v1
-# github.com/openshift-online/rosa-seaplane-api/api v0.1.23-0.20261019145519-f59b0034c13c
+# github.com/openshift-online/rosa-seaplane-api/api v0.1.25
 ## explicit; go 1.26.3
 github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public
-# github.com/openshift-online/rosa-seaplane-api/clientset v0.1.21-0.20261019145519-f59b0034c13c
+# github.com/openshift-online/rosa-seaplane-api/clientset v0.1.23
 ## explicit; go 1.26.5
 github.com/openshift-online/rosa-seaplane-api/clientset
 github.com/openshift-online/rosa-seaplane-api/clientset/generated

@@ -159,7 +159,6 @@
 - name: "zone"
 - name: "endpoint-access"
 - name: "multi-arch"
-- name: "resource-tags"
 - name: "control-plane-operator-arn"
 - name: "image-registry-arn"
 - name: "aws-roles-ref-ingress-arn"

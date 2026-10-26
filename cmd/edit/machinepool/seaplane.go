@@ -5,6 +5,7 @@ package machinepool
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -15,6 +16,7 @@ import (
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
+	rosaaws "github.com/openshift/rosa/pkg/aws"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -97,6 +99,7 @@ type seaplaneNodePoolUpdate struct {
 	labels       map[string]string
 	taints       []hypershiftv1beta1.Taint
 	imageType    string
+	tags         map[string]string
 }
 
 func (h *seaplaneNodePoolUpdate) PreRequest(
@@ -108,6 +111,7 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 	spotMaxPriceChanged := h.cmd.Flags().Changed("spot-max-price")
 	minReplicasChanged := h.cmd.Flags().Changed("min-replicas")
 	maxReplicasChanged := h.cmd.Flags().Changed("max-replicas")
+	tagsChanged := h.cmd.Flags().Changed("tags")
 	autoscalingChanged := h.cmd.Flags().Changed("enable-autoscaling") ||
 		minReplicasChanged || maxReplicasChanged
 	imageTypeChanged := h.cmd.Flags().Changed("image-type")
@@ -115,12 +119,24 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged &&
 		!h.cmd.Flags().Changed("labels") && !h.cmd.Flags().Changed("taints") &&
 		!h.cmd.Flags().Changed("autorepair") && !h.cmd.Flags().Changed("additional-security-group-ids") &&
-		!imageTypeChanged {
+		!imageTypeChanged && !tagsChanged {
 		return fmt.Errorf(
 			"specify at least one supported flag: --replicas, --enable-autoscaling, " +
 				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair, " +
-				"--additional-security-group-ids, --image-type",
+				"--additional-security-group-ids, --image-type, --tags",
 		)
+	}
+	if tagsChanged {
+		tags, err := rosaaws.ParseUserTags([]string{input.Tags}, rosaaws.UserTagOptions{})
+		if err != nil {
+			return fmt.Errorf("invalid machine pool AWS tags: %w", err)
+		}
+		h.tags = tags
+		encodedTags, err := json.Marshal(tags)
+		if err != nil {
+			return fmt.Errorf("failed to encode --tags: %w", err)
+		}
+		input.Tags = string(encodedTags)
 	}
 
 	if h.cmd.Flags().Changed("labels") {
@@ -291,6 +307,9 @@ func (h *seaplaneNodePoolUpdate) PostExpand(
 	}
 	if h.cmd.Flags().Changed("taints") {
 		merged.Spec.NodePool.Taints = h.taints
+	}
+	if h.cmd.Flags().Changed("tags") {
+		merged.Spec.Tags = h.tags
 	}
 
 	// The merge starts from the current node pool, so carry over the updated image type.

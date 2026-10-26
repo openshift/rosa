@@ -65,13 +65,6 @@ type AWSNodePoolPlatform struct {
 	// +seaplane:write-mode=mutable
 	// +optional
 	RootVolume *Volume `json:"rootVolume,omitempty"`
-	// resourceTags is an optional list of additional tags to apply to AWS node
-	// instances.
-	// +k8s:openapi-gen=true
-	// +seaplane:write-mode=mutable
-	// +kubebuilder:validation:MaxItems=25
-	// +optional
-	ResourceTags []hypershiftv1beta1.AWSResourceTag `json:"resourceTags,omitempty"`
 	// placement specifies the placement options for the EC2 instances.
 	// +k8s:openapi-gen=true
 	// +seaplane:write-mode=mutable

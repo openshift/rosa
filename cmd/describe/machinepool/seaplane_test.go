@@ -92,6 +92,14 @@ var _ = Describe("seaplaneNodePoolToMap", func() {
 		Expect(m["created_at"]).To(Equal("2026-06-15T10:30:00Z"))
 	})
 
+	It("maps root-level customer tags", func() {
+		np := buildTestNodePool()
+		np.Spec.Tags = map[string]string{"environment": "production", "team": "compute"}
+
+		m := seaplaneNodePoolToMap(np, "my-cluster")
+		Expect(m["tags"]).To(Equal(np.Spec.Tags))
+	})
+
 	It("maps an explicitly optional EC2 metadata token requirement", func() {
 		np := buildTestNodePool()
 		np.Spec.EC2InstanceMetadataHttpTokens = v1alpha1.EC2InstanceMetadataHttpTokensOptional
@@ -191,6 +199,15 @@ var _ = Describe("seaplaneNodePoolToString", func() {
 		Expect(s).To(ContainSubstring("v4.17.0-ec.2"))
 		Expect(s).To(ContainSubstring("EC2 Metadata Http Tokens:              required"))
 		Expect(s).To(ContainSubstring("2026-06-15"))
+	})
+
+	It("includes root-level customer tags in output", func() {
+		np := buildTestNodePool()
+		np.Spec.Tags = map[string]string{"team": "compute"}
+
+		Expect(seaplaneNodePoolToString(np, "my-cluster")).To(
+			ContainSubstring("Tags:                                  team:compute"),
+		)
 	})
 
 	It("includes conditions in output", func() {

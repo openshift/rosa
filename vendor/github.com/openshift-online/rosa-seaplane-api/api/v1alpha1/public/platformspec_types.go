@@ -21,5 +21,5 @@ type PlatformSpec struct {
 	// +k8s:openapi-gen=true
 	// +seaplane:write-mode=mutable
 	// +optional
-	AWS *hypershiftv1beta1.AWSPlatformSpec `json:"aws,omitempty"`
+	AWS *AWSPlatformSpec `json:"aws,omitempty"`
 }
