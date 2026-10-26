@@ -29,9 +29,11 @@ type runtimeLabels struct {
 	DestroyOnKonflux Labels
 
 	// Test cases beyond the cluster created by profiles.
-	Day1Supplemental Labels
-	Day1Negative     Labels
-	OCMResources     Labels
+	Day1Supplemental    Labels
+	Day1SupplementalSTS Labels
+	Day1SupplementalHCP Labels
+	Day1Negative        Labels
+	OCMResources        Labels
 
 	// Test case for hibernation full cycle
 	Hibernate Labels
@@ -53,6 +55,8 @@ func initRuntime() *runtimeLabels {
 	rLabels.DestroyOnKonflux = Label("destroy-on-konflux")
 
 	rLabels.Day1Supplemental = Label("day1-supplemental")
+	rLabels.Day1SupplementalSTS = Label("day1-supplemental-sts")
+	rLabels.Day1SupplementalHCP = Label("day1-supplemental-hcp")
 	rLabels.OCMResources = Label("ocm-resources")
 	rLabels.Day1Negative = Label("day1-negative")
 	rLabels.Hibernate = Label("hibernate")

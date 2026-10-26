@@ -911,7 +911,7 @@ var _ = Describe("hosted-cp cluster creation",
 		})
 
 		It("to create cluster withskip_inflight property - [id:85689]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalHCP,
 			func() {
 				By("Prepare creation command")
 				var command string

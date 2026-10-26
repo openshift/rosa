@@ -698,7 +698,7 @@ var _ = Describe("Edit cluster help text validation", labels.Feature.Cluster, fu
 
 	// Test that UWM example was removed from help text
 	It("does not show UWM example in edit cluster help text - [id:UWM-HELP-001]",
-		labels.Low, labels.Runtime.Day1Supplemental,
+		labels.Low, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 		func() {
 			By("Check edit cluster help text for UWM example")
 			helpOutput, err := clusterService.EditCluster("", "-h")
@@ -1418,7 +1418,7 @@ var _ = Describe("Classic cluster creation validation",
 			})
 
 		It("can allow sts cluster installation with compatible policies - [id:45161]",
-			labels.High, labels.Runtime.Day1Supplemental,
+			labels.High, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 			func() {
 				By("Prepare creation command")
 				var command string
@@ -2017,7 +2017,7 @@ var _ = Describe("Create cluster delete protection",
 			setupAndTeardown()
 
 			It("can verify delete protection on HCP cluster creation - [id:73162]",
-				labels.High, labels.Runtime.Day1Supplemental,
+				labels.High, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalHCP,
 				verifyDeleteProtection,
 			)
 		})
@@ -2045,7 +2045,7 @@ var _ = Describe("Create cluster delete protection",
 			setupAndTeardown()
 
 			It("can verify delete protection on classic cluster creation - [id:73162]",
-				labels.High, labels.Runtime.Day1Supplemental,
+				labels.High, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 				verifyDeleteProtection,
 			)
 		})
@@ -3824,7 +3824,7 @@ var _ = Describe("Create cluster with existing operator-roles prefix which roles
 		})
 
 		It("to validate to create cluster with existing operator roles prefix - [id:45742]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 			func() {
 				By("Create acount-roles")
 				accountRolePrefix = helper.GenerateRandomName("ar45742", 2)
@@ -3938,7 +3938,7 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 		})
 
 		It("to create/delete operator-roles and oidc-provider to cluster in manual mode - [id:43053]",
-			labels.Critical, labels.Runtime.Day1Supplemental,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 			func() {
 				By("Create acount-roles")
 				accountRolePrefix = helper.GenerateRandomName("ar43053", 2)
@@ -4287,7 +4287,7 @@ var _ = Describe("Sts cluster creation with external id",
 		})
 
 		It("Creating cluster with sts external id should succeed - [id:75603]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 			func() {
 				By("Create classic cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75603", 2)
@@ -4497,7 +4497,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 		})
 
 		It("Check the output of the STS cluster creation with new oidc flow - [id:75925]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalHCP,
 			func() {
 				By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75925", 2)
@@ -4528,7 +4528,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 
 		It("ROSA CLI cluster creation should show install/uninstall logs - [id:75534]",
 			labels.Critical,
-			labels.Runtime.Day1Supplemental,
+			labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalHCP,
 			func() {
 				testingClusterName = helper.GenerateRandomName("ocp-75534", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
@@ -4581,7 +4581,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			})
 
 		It("Check single AZ hosted cluster can be created - [id:54413]",
-			labels.Critical, labels.Runtime.Day1Supplemental,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalHCP,
 			func() {
 				testingClusterName = helper.GenerateRandomName("c54413", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
@@ -4624,7 +4624,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 			})
 
 		It("Create hosted cluster in manual mode - [id:75536]",
-			labels.High, labels.Runtime.Day1Supplemental,
+			labels.High, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalHCP,
 			func() {
 				customProfile.ClusterConfig.ManualCreationMode = true
 				By("Prepare command for testing")
@@ -4723,7 +4723,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 		})
 
 		It("Check the trust policy attaching during hosted-cp cluster creation - [id:75927]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 			func() {
 				By("Create hcp cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c75927", 2)
@@ -4757,7 +4757,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			})
 
 		It("User can set availability zones to create rosa multi-az STS cluster - [id:56224]",
-			labels.Critical, labels.Runtime.Day1Supplemental,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 			func() {
 				By("Create classic sts cluster in auto mode")
 				customProfile.ClusterConfig.Zones = "us-east-2a,us-east-2b,us-east-2c"
@@ -4796,7 +4796,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 			})
 
 		It("rosacli makes STS cluster by default - [id:55701]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 			func() {
 				By("Check the help message of 'rosa describe upgrade -h'")
 				output, _, err := clusterService.Create("ocp55701", "--help")
@@ -4962,7 +4962,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 		})
 
 		It("Create STS cluster with oidc config id but no oidc provider via rosacli in auto mode - [id:76093]",
-			labels.Critical, labels.Runtime.Day1Supplemental,
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 			func() {
 				By("Prepare command for custom cluster creation")
 				testingClusterName = helper.GenerateRandomName("c76093", 2)
@@ -5082,7 +5082,7 @@ var _ = Describe("Non-STS cluster with local credentials",
 		})
 
 		It("Creating cluster with non-sts use-local-credentials should succeed - [id:65900]",
-			labels.Medium, labels.Runtime.Day1Supplemental,
+			labels.Medium, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS,
 			func() {
 				By("Create classic cluster in auto mode")
 				testingClusterName = helper.GenerateRandomName("c65900", 2)

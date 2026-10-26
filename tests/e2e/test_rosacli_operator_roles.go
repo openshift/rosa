@@ -1030,7 +1030,7 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 		})
 
 		It("to create and delete operatorroles attaching managed policies in manual mode - [id:75504]",
-			labels.Critical, labels.Runtime.Day1Supplemental, func() {
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalHCP, func() {
 				By("Create hcp cluster in manual mode")
 				testingClusterName = helper.GenerateRandomName("c75504", 2)
 				testOperatorRolePrefix := helper.GenerateRandomName("opp75504", 2)
@@ -1140,7 +1140,7 @@ var _ = Describe("Upgrade operator roles in auto mode",
 		})
 
 		It("to create and upgrade operator roles in auto mode - [id:45745]",
-			labels.Critical, labels.Runtime.Day1Supplemental, func() {
+			labels.Critical, labels.Runtime.Day1Supplemental, labels.Runtime.Day1SupplementalSTS, func() {
 				By("Create classic STS cluster")
 				clusterName = helper.GenerateRandomName("c45745", 2)
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
