@@ -44,7 +44,7 @@ type NodePoolCreateInput struct {
 	SecurityGroupIds              string `hfsdk:"spec.nodePool.platform.aws.securityGroups"`
 	Filters                       string `hfsdk:"spec.nodePool.platform.aws.subnet.filters"`
 	SubnetID                      string `hfsdk:"spec.nodePool.platform.aws.subnet.id"`
-	Type                          string `hfsdk:"spec.nodePool.platform.type"`
+	PlatformType                  string `hfsdk:"spec.nodePool.platform.type"`
 	Image                         string `hfsdk:"spec.nodePool.release.image"`
 	Replicas                      *int32 `hfsdk:"spec.nodePool.replicas"`
 	Taints                        string `hfsdk:"spec.nodePool.taints"`
@@ -77,6 +77,7 @@ var NodePoolCreatePlatformAPIFlags = []string{
 	"additional-security-group-ids",
 	"filters",
 	"subnet",
+	"platform-type",
 	"image",
 	"replicas",
 	"tags",
@@ -109,6 +110,7 @@ func RegisterNodePoolCreateFlags(cmd *cobra.Command, input *NodePoolCreateInput)
 	})
 	registerIfNew(f, "filters", func() { f.StringVar(&input.Filters, "filters", "", "") })
 	registerIfNew(f, "subnet", func() { f.StringVar(&input.SubnetID, "subnet", "", "Subnet ID for the node pool.") })
+	registerIfNew(f, "platform-type", func() { f.StringVar(&input.PlatformType, "platform-type", "", "") })
 	registerIfNew(f, "image", func() { f.StringVar(&input.Image, "image", "", "") })
 	registerIfNew(f, "replicas", func() {
 		input.Replicas = new(int32)

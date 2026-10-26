@@ -38,6 +38,7 @@ type ClusterConfig struct {
 	OIDCConfig                    string `yaml:"oidc_config,omitempty" json:"oidc_config,omitempty"`
 	ProvisionShard                string `yaml:"provision_shard,omitempty" json:"provision_shard,omitempty"`
 	Zones                         string `yaml:"zones,omitempty" json:"zones,omitempty"`
+	DisableCapabilities           string `yaml:"disable_capabilities,omitempty" json:"disable_capabilities,omitempty"`
 	AdditionalSGNumber            int    `yaml:"additional_sg_number,omitempty" json:"additional_sg_number,omitempty"`
 	ExpirationTime                int    `yaml:"expiration_time,omitempty" json:"expiration_time,omitempty"`
 	NameLength                    int    `default:"15" yaml:"name_length,omitempty" json:"name_length,omitempty"`

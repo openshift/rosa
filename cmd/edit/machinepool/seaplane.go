@@ -96,16 +96,16 @@ func runSeaplaneEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions, c
 // seaplaneNodePoolUpdate implements seaplanepathbind.NodePoolUpdateHandler for rosa edit machinepool.
 type seaplaneNodePoolUpdate struct {
 	seaplanepathbind.GeneratedNodePoolUpdatePrompt
-	clusterKey               string
-	nodePoolKey              string
-	nodePoolName             string
-	userOptions              *EditMachinepoolUserOptions
-	cmd                      *cobra.Command
-	labels                   map[string]string
-	taints                   []hypershiftv1beta1.Taint
-	imageType                string
-	tags                     map[string]string
-	nodeDrainGracePeriod     *metav1.Duration
+	clusterKey           string
+	nodePoolKey          string
+	nodePoolName         string
+	userOptions          *EditMachinepoolUserOptions
+	cmd                  *cobra.Command
+	labels               map[string]string
+	taints               []hypershiftv1beta1.Taint
+	imageType            string
+	tags                 map[string]string
+	nodeDrainGracePeriod *metav1.Duration
 }
 
 func (h *seaplaneNodePoolUpdate) PreRequest(

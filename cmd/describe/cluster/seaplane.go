@@ -261,6 +261,10 @@ func seaplaneClusterToMap(
 	// The test expects DNS to be a string, not a nested object
 	// Use Status.BaseDomain which is populated by the operator
 	dnsString := c.Status.BaseDomain
+	spec := map[string]interface{}{
+		"oidc_issuer": c.Spec.HostedCluster.IssuerURL,
+		"roles_ref":   rolesRef,
+	}
 
 	m := map[string]interface{}{
 		"id":            string(c.UID),
@@ -271,12 +275,21 @@ func seaplaneClusterToMap(
 		"hypershift": map[string]interface{}{
 			"enabled": true,
 		},
-		"spec": map[string]interface{}{
-			"oidc_issuer": c.Spec.HostedCluster.IssuerURL,
-			"roles_ref":   rolesRef,
-		},
+		"spec":              spec,
 		"private":           apiListening == "internal",
 		"delete_protection": seaplaneDeleteProtectionEnabled(c),
+	}
+	if capabilities := c.Spec.HostedCluster.Capabilities; capabilities != nil {
+		capabilitiesMap := map[string]interface{}{}
+		if len(capabilities.Disabled) > 0 {
+			capabilitiesMap["disabled"] = capabilities.Disabled
+		}
+		if len(capabilities.Enabled) > 0 {
+			capabilitiesMap["enabled"] = capabilities.Enabled
+		}
+		if len(capabilitiesMap) > 0 {
+			m["capabilities"] = capabilitiesMap
+		}
 	}
 	if configuration := c.Spec.HostedCluster.Configuration; configuration != nil && configuration.Scheduler != nil &&
 		configuration.Scheduler.Profile != "" {

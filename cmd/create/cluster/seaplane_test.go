@@ -716,3 +716,52 @@ var _ = Describe("Platform API custom DNS cluster inputs", func() {
 		Expect(obj.Spec.HostedCluster.DNS.PublicZoneID).To(BeEmpty())
 	}, Entry("reserved custom domain", " abcd.0.example.com ", "Z012345"), Entry("service-assigned domain", "", ""))
 })
+
+var _ = Describe("encodeSeaplaneClusterCapabilities", func() {
+	DescribeTable("encodes valid capability lists",
+		func(value string, expected []string) {
+			encoded, err := encodeSeaplaneClusterCapabilities("disable-cluster-capabilities", value)
+			Expect(err).NotTo(HaveOccurred())
+			var decoded []string
+			Expect(json.Unmarshal([]byte(encoded), &decoded)).To(Succeed())
+			Expect(decoded).To(Equal(expected))
+		},
+		Entry("single capability", "ImageRegistry", []string{"ImageRegistry"}),
+		Entry("comma-separated capabilities", "ImageRegistry,Console", []string{"ImageRegistry", "Console"}),
+		Entry("whitespace around entries is trimmed", " ImageRegistry , Console ",
+			[]string{"ImageRegistry", "Console"}),
+		Entry("duplicates are deduplicated", "ImageRegistry,ImageRegistry",
+			[]string{"ImageRegistry"}),
+		Entry("duplicates after trimming are deduplicated", "ImageRegistry, ImageRegistry,Console",
+			[]string{"ImageRegistry", "Console"}),
+	)
+
+	DescribeTable("rejects invalid input",
+		func(value string, expectedErrSubstring string) {
+			_, err := encodeSeaplaneClusterCapabilities("disable-cluster-capabilities", value)
+			Expect(err).To(MatchError(ContainSubstring(expectedErrSubstring)))
+		},
+		Entry("unknown capability", "ImageRegistry,Bogus", `invalid capability "Bogus"`),
+		Entry("empty entry from trailing comma", "ImageRegistry,", "must be a comma-separated list"),
+		Entry("empty entry from lone comma", ",", "must be a comma-separated list"),
+		Entry("whitespace-only entry", "ImageRegistry, ", "must be a comma-separated list"),
+	)
+
+	It("returns an empty string for empty input", func() {
+		encoded, err := encodeSeaplaneClusterCapabilities("disable-cluster-capabilities", "")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(encoded).To(BeEmpty())
+	})
+
+	It("returns an empty string for whitespace-only input", func() {
+		encoded, err := encodeSeaplaneClusterCapabilities("disable-cluster-capabilities", "   ")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(encoded).To(BeEmpty())
+	})
+
+	It("includes valid values in the error message", func() {
+		_, err := encodeSeaplaneClusterCapabilities("disable-cluster-capabilities", "Bogus")
+		Expect(err).To(MatchError(ContainSubstring("valid values are:")))
+		Expect(err).To(MatchError(ContainSubstring("ImageRegistry")))
+	})
+})

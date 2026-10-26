@@ -5,14 +5,17 @@ package operatorroles
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
 
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
+	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/seaplane"
@@ -32,17 +35,9 @@ var (
 
 // getOidcConfigIssuerUrl retrieves the OIDC config issuer URL from the Platform API.
 // This is used in the seaplane v2 flow when creating operator roles with --oidc-config-id.
+// The config is resolved by its client-chosen metadata.name or its server-assigned UID,
+// matching the Platform API resource identity model.
 func getOidcConfigIssuerUrl(r *rosa.Runtime, oidcKey string) (string, error) {
-	if !seaplane.Enabled() {
-		// Fall back to OCM API for v1 flow
-		oidcConfig, err := r.OCMClient.GetOidcConfig(oidcKey)
-		if err != nil {
-			return "", err
-		}
-		return oidcConfig.IssuerUrl(), nil
-	}
-
-	// Platform API v2 flow
 	ctx := context.Background()
 	r.Reporter.Debugf("Retrieving OIDC config '%s' from Platform API", oidcKey)
 
@@ -63,51 +58,71 @@ func getOidcConfigIssuerUrl(r *rosa.Runtime, oidcKey string) (string, error) {
 // operatorRoleSpec defines an operator role to be created
 type operatorRoleSpec struct {
 	Name              string
-	ServiceAccount    string // Empty for worker role (uses EC2 trust policy)
+	ServiceAccounts   []string // Empty for worker role (uses EC2 trust policy)
 	ManagedPolicyArns []string
 	Description       string
 	IsWorkerRole      bool // True for worker node role
 }
 
+func operatorRoleOIDCSubject(serviceAccounts []string) (string, error) {
+	var subject any
+	switch len(serviceAccounts) {
+	case 0:
+		return "", fmt.Errorf("no service accounts configured")
+	case 1:
+		subject = serviceAccounts[0]
+	default:
+		subject = serviceAccounts
+	}
+
+	encodedSubject, err := json.Marshal(subject)
+	if err != nil {
+		return "", err
+	}
+	return string(encodedSubject), nil
+}
+
 func getHCPOperatorRoles() []operatorRoleSpec {
 	specs := map[string]operatorRoleSpec{
 		seaplane.SuffixIngress: {
-			ServiceAccount:    "system:serviceaccount:openshift-ingress-operator:ingress-operator",
+			ServiceAccounts:   []string{"system:serviceaccount:openshift-ingress-operator:ingress-operator"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAIngressOperatorPolicy"},
 			Description:       "Manages AWS ELBs/NLBs for OpenShift routes",
 		},
 		seaplane.SuffixCloudControllerManager: {
-			ServiceAccount:    "system:serviceaccount:kube-system:kube-controller-manager",
+			ServiceAccounts:   []string{"system:serviceaccount:kube-system:kube-controller-manager"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAKubeControllerPolicy"},
 			Description:       "Manages load balancers and node lifecycle",
 		},
 		seaplane.SuffixEBSCSI: {
-			ServiceAccount:    "system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa",
+			ServiceAccounts:   []string{"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAAmazonEBSCSIDriverOperatorPolicy"},
 			Description:       "Creates and attaches EBS volumes",
 		},
 		seaplane.SuffixImageRegistry: {
-			ServiceAccount:    "system:serviceaccount:openshift-image-registry:registry",
+			ServiceAccounts: []string{
+				"system:serviceaccount:openshift-image-registry:cluster-image-registry-operator",
+				"system:serviceaccount:openshift-image-registry:registry",
+			},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAImageRegistryOperatorPolicy"},
 			Description:       "S3 access for the internal container image registry",
 		},
 		seaplane.SuffixNetworkConfig: {
-			ServiceAccount:    "system:serviceaccount:openshift-cloud-network-config-controller:cloud-credentials",
+			ServiceAccounts:   []string{"system:serviceaccount:openshift-cloud-network-config-controller:cloud-credentials"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSACloudNetworkConfigOperatorPolicy"},
 			Description:       "Manages ENIs and cloud networking configuration",
 		},
 		seaplane.SuffixControlPlaneOperator: {
-			ServiceAccount:    "system:serviceaccount:kube-system:control-plane-operator",
+			ServiceAccounts:   []string{"system:serviceaccount:kube-system:control-plane-operator"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAControlPlaneOperatorPolicy"},
 			Description:       "Control plane operator managing hosted cluster lifecycle",
 		},
 		seaplane.SuffixNodePoolManagement: {
-			ServiceAccount:    "system:serviceaccount:kube-system:capa-controller-manager",
+			ServiceAccounts:   []string{"system:serviceaccount:kube-system:capa-controller-manager"},
 			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSANodePoolManagementPolicy"},
 			Description:       "Manages worker node pools",
 		},
 		seaplane.SuffixWorkerRole: {
-			ServiceAccount: "",
 			ManagedPolicyArns: []string{
 				"arn:aws:iam::aws:policy/service-role/ROSAWorkerInstancePolicy",
 				"arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
@@ -129,6 +144,23 @@ func getHCPOperatorRoles() []operatorRoleSpec {
 	return roles
 }
 
+// oidcIssuerDomainFromUrl derives the OIDC issuer domain (host + path, without the
+// scheme) from the issuer URL. This matches how the AWS OIDC provider is registered
+// (see HasOpenIDConnectProvider and the v1 GenerateRolePolicyDoc), so the trust
+// policy always references the provider that was actually created. A naive
+// scheme-strip would diverge whenever the issuer carries a query string, fragment,
+// or trailing slash.
+func oidcIssuerDomainFromUrl(oidcIssuerUrl string) (string, error) {
+	parsedIssuerUrl, err := urlHelper.ParseRequestURI(oidcIssuerUrl)
+	if err != nil {
+		return "", err
+	}
+	if parsedIssuerUrl.Scheme != helper.ProtocolHttps {
+		return "", fmt.Errorf("expected OIDC issuer URL '%s' to use an https:// scheme", oidcIssuerUrl)
+	}
+	return parsedIssuerUrl.Host + parsedIssuerUrl.Path, nil
+}
+
 // runSeaplaneCreateOperatorRoles creates operator roles for seaplane v2 clusters.
 // Unlike v1 which uses OCM for policies, v2 uses AWS managed policies for HCP operator roles.
 func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
@@ -140,6 +172,17 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 	}
 	if args.oidcConfigId == "" {
 		r.Reporter.Errorf("--oidc-config-id is required for operator role creation")
+		seaplaneExitFn(1)
+		return
+	}
+	// A flag-like value means --oidc-config-id was passed without a value and the
+	// flag parser consumed the next flag as its value. This typically happens in
+	// automation when the OIDC config ID variable expands to nothing, and would
+	// otherwise surface later as a confusing lookup error for an ID such as '--mode'.
+	if strings.HasPrefix(args.oidcConfigId, "-") {
+		r.Reporter.Errorf("Expected an OIDC config ID for --%s, got '%s'; "+
+			"check that the --%s value was not omitted or empty",
+			OidcConfigIdFlag, args.oidcConfigId, OidcConfigIdFlag)
 		seaplaneExitFn(1)
 		return
 	}
@@ -163,6 +206,7 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 	oidcIssuerUrl, err := getOidcConfigIssuerUrl(r, args.oidcConfigId)
 	if err != nil {
 		r.Reporter.Errorf("Failed to retrieve OIDC config: %v", err)
+		r.Reporter.Infof("Run 'rosa list oidc-config' to see the available OIDC configurations")
 		seaplaneExitFn(1)
 		return
 	}
@@ -170,10 +214,12 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 	r.Reporter.Infof("  OIDC Issuer URL: %s", oidcIssuerUrl)
 	r.Reporter.Infof("  Mode: %s", mode)
 
-	// Get OIDC issuer domain (without https://)
-	oidcIssuerDomain := oidcIssuerUrl
-	if len(oidcIssuerUrl) > 8 && oidcIssuerUrl[:8] == "https://" {
-		oidcIssuerDomain = oidcIssuerUrl[8:]
+	// Get OIDC issuer domain (host + path, without the scheme)
+	oidcIssuerDomain, err := oidcIssuerDomainFromUrl(oidcIssuerUrl)
+	if err != nil {
+		r.Reporter.Errorf("%v", err)
+		seaplaneExitFn(1)
+		return
 	}
 
 	// Get operator roles to create
@@ -201,6 +247,12 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 }`
 			} else {
 				// OIDC trust policy for operator roles
+				subject, err := operatorRoleOIDCSubject(spec.ServiceAccounts)
+				if err != nil {
+					r.Reporter.Errorf("Failed to build trust policy for role '%s': %v", roleName, err)
+					seaplaneExitFn(1)
+					return
+				}
 				trustPolicy = fmt.Sprintf(`{
   "Version": "2012-10-17",
   "Statement": [{
@@ -211,7 +263,7 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
     "Action": "sts:AssumeRoleWithWebIdentity",
     "Condition": {
       "StringEquals": {
-        "%s:sub": "%s",
+        "%s:sub": %s,
         "%s:aud": "openshift"
       }
     }
@@ -221,7 +273,7 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 					r.Creator.AccountID,
 					oidcIssuerDomain,
 					oidcIssuerDomain,
-					spec.ServiceAccount,
+					subject,
 					oidcIssuerDomain,
 				)
 			}
@@ -295,6 +347,12 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 }'`
 			} else {
 				// OIDC trust policy
+				subject, err := operatorRoleOIDCSubject(spec.ServiceAccounts)
+				if err != nil {
+					r.Reporter.Errorf("Failed to build trust policy for role '%s': %v", roleName, err)
+					seaplaneExitFn(1)
+					return
+				}
 				trustPolicy = fmt.Sprintf(`'{
   "Version": "2012-10-17",
   "Statement": [{
@@ -305,7 +363,7 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
     "Action": "sts:AssumeRoleWithWebIdentity",
     "Condition": {
       "StringEquals": {
-        "%s:sub": "%s",
+        "%s:sub": %s,
         "%s:aud": "openshift"
       }
     }
@@ -315,7 +373,7 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 					r.Creator.AccountID,
 					oidcIssuerDomain,
 					oidcIssuerDomain,
-					spec.ServiceAccount,
+					subject,
 					oidcIssuerDomain,
 				)
 			}
