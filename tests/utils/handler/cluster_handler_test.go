@@ -119,7 +119,7 @@ var _ = Describe("GenerateClusterCreateFlags seaplane", func() {
 	})
 
 	It("passes the release image configured in the profile", func() {
-		const releaseImage = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+		const releaseImage = "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
 		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
 		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
 		GinkgoT().Setenv("SEAPLANE_VERSION", "")
