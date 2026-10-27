@@ -51,6 +51,7 @@ type Config struct {
 	ClientID     string   `json:"client_id,omitempty" doc:"OpenID client identifier."`
 	ClientSecret string   `json:"client_secret,omitempty" doc:"OpenID client secret."`
 	Insecure     bool     `json:"insecure,omitempty" doc:"Enables insecure communication with the server."`
+	AllowTLS12   bool     `json:"allow_tls12,omitempty" doc:"Allow TLS 1.2 connections (default: TLS 1.3)."`
 	RefreshToken string   `json:"refresh_token,omitempty" doc:"Offline or refresh token."`
 	Scopes       []string `json:"scopes,omitempty" doc:"OpenID scope."`
 	TokenURL     string   `json:"token_url,omitempty" doc:"OpenID token URL."`
@@ -383,6 +384,7 @@ func (c *Config) Connection() (connection *sdk.Connection, err error) {
 		builder.Tokens(tokens...)
 	}
 	builder.Insecure(c.Insecure)
+	builder.AllowTLS12(c.AllowTLS12)
 
 	// Create the connection:
 	connection, err = builder.Build()
