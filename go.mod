@@ -47,7 +47,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ram v1.26.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.4.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/lib/pq v1.10.5 // indirect
