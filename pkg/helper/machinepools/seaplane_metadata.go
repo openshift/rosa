@@ -132,7 +132,7 @@ func ParseSeaplaneNodeDrainGracePeriod(input string) (*metav1.Duration, error) {
 	// Parse the duration string: "N minutes" or "N hours"
 	parts := strings.Fields(strings.TrimSpace(input))
 	if len(parts) == 0 {
-		return nil, fmt.Errorf("invalid node drain timeout format: %q", input)
+		return nil, fmt.Errorf("invalid node drain grace period format: %q", input)
 	}
 
 	// If only a number is provided, default to minutes
@@ -145,17 +145,17 @@ func ParseSeaplaneNodeDrainGracePeriod(input string) (*metav1.Duration, error) {
 	case "minute", "minutes":
 		d, err := time.ParseDuration(parts[0] + "m")
 		if err != nil {
-			return nil, fmt.Errorf("invalid node drain timeout value: %w", err)
+			return nil, fmt.Errorf("invalid node drain grace period value: %w", err)
 		}
 		duration = d
 	case "hour", "hours":
 		d, err := time.ParseDuration(parts[0] + "h")
 		if err != nil {
-			return nil, fmt.Errorf("invalid node drain timeout value: %w", err)
+			return nil, fmt.Errorf("invalid node drain grace period value: %w", err)
 		}
 		duration = d
 	default:
-		return nil, fmt.Errorf("invalid node drain timeout unit: %q, expected 'minute(s)' or 'hour(s)'", parts[1])
+		return nil, fmt.Errorf("invalid node drain grace period unit: %q, expected 'minute(s)' or 'hour(s)'", parts[1])
 	}
 
 	return &metav1.Duration{Duration: duration}, nil

@@ -62,8 +62,8 @@ var _ = Describe("Seaplane nodepool metadata validation", func() {
 		Entry("invalid key", "bad*=test:NoSchedule", "invalid taint key"),
 	)
 
-	DescribeTable("parses and validates node drain timeout", func(input string, shouldErr bool, expectedDuration *time.Duration) {
-		result, err := ParseSeaplaneNodeDrainTimeout(input)
+	DescribeTable("parses and validates node drain grace period", func(input string, shouldErr bool, expectedDuration *time.Duration) {
+		result, err := ParseSeaplaneNodeDrainGracePeriod(input)
 		if shouldErr {
 			Expect(err).To(HaveOccurred())
 			return
@@ -94,8 +94,8 @@ var _ = Describe("Seaplane nodepool metadata validation", func() {
 		Entry("invalid - malformed", "abc minutes", true, nil),
 	)
 
-	DescribeTable("formats node drain timeout for display", func(input *metav1.Duration, expected string) {
-		result := FormatSeaplaneNodeDrainTimeout(input)
+	DescribeTable("formats node drain grace period for display", func(input *metav1.Duration, expected string) {
+		result := FormatSeaplaneNodeDrainGracePeriod(input)
 		Expect(result).To(Equal(expected))
 	},
 		Entry("nil duration", nil, ""),
