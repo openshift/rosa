@@ -2557,9 +2557,15 @@ var _ = Describe("Create cluster with invalid options will",
 			})
 
 		It("to validate the network when create cluster - [id:38857]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.InProgress,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.Validated,
 			func() {
 				clusterName := "rosaci-38857"
+				// --non-sts is a classic-only flag rejected by the Seaplane dispatch before
+				// network validation runs, so it is only passed in v1 (OCM) mode.
+				extraFlags := []string{"--non-sts"}
+				if seaplaneEndpointForTests() != "" {
+					extraFlags = nil
+				}
 				By("illegal machine/service/pod cidr when create cluster")
 				illegalCIDRMap := map[string]string{
 					"--machine-cidr": "10111.0.0.0/16",
@@ -2568,9 +2574,7 @@ var _ = Describe("Create cluster with invalid options will",
 				}
 				for flag, invalidValue := range illegalCIDRMap {
 					output, err := clusterService.CreateDryRun(clusterName,
-						flag, invalidValue,
-						"--non-sts",
-					)
+						append([]string{flag, invalidValue}, extraFlags...)...)
 					Expect(err).To(HaveOccurred())
 					Expect(output.String()).Should(
 						ContainSubstring(`invalid argument "%s" for "%s" flag: invalid CIDR address: %s`,
@@ -2578,10 +2582,7 @@ var _ = Describe("Create cluster with invalid options will",
 				}
 				By("Check the overlapped CIDR block validation")
 				output, err := clusterService.CreateDryRun(clusterName,
-					"--service-cidr", "1.0.0.0/16",
-					"--pod-cidr", "1.0.0.0/16",
-					"--non-sts",
-				)
+					append([]string{"--service-cidr", "1.0.0.0/16", "--pod-cidr", "1.0.0.0/16"}, extraFlags...)...)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
 					ContainSubstring("Service CIDR '1.0.0.0/16' and pod CIDR '1.0.0.0/16' overlap"))
@@ -2594,9 +2595,7 @@ var _ = Describe("Create cluster with invalid options will",
 				}
 				for flag, invalidValue := range invalidCIDRMap {
 					output, err := clusterService.CreateDryRun(clusterName,
-						flag, invalidValue,
-						"--non-sts",
-					)
+						append([]string{flag, invalidValue}, extraFlags...)...)
 					Expect(err).To(HaveOccurred())
 					switch flag {
 					case "--machine-cidr":
@@ -2614,30 +2613,21 @@ var _ = Describe("Create cluster with invalid options will",
 				}
 				By("Check the invalid machine CIDR for multi az")
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--machine-cidr", "2.0.0.0/25",
-					"--multi-az",
-					"--non-sts",
-				)
+					append([]string{"--machine-cidr", "2.0.0.0/25", "--multi-az"}, extraFlags...)...)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
 					ContainSubstring("The allowed block size must be between a /16 netmask and /24"))
 
 				By("Check illegal host prefix")
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--machine-cidr", "2.0.0.0/25",
-					"--host-prefix", "28",
-					"--non-sts",
-				)
+					append([]string{"--machine-cidr", "2.0.0.0/25", "--host-prefix", "28"}, extraFlags...)...)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
 					ContainSubstring("Subnet length should be between 23 and 26"))
 
 				By("Check invalid host prefix")
 				output, err = clusterService.CreateDryRun(clusterName,
-					"--machine-cidr", "2.0.0.0/25",
-					"--host-prefix", "invalid",
-					"--non-sts",
-				)
+					append([]string{"--machine-cidr", "2.0.0.0/25", "--host-prefix", "invalid"}, extraFlags...)...)
 				Expect(err).To(HaveOccurred())
 				Expect(output.String()).Should(
 					ContainSubstring(`invalid argument "invalid" for "--host-prefix" flag`))
@@ -3409,7 +3399,7 @@ var _ = Describe("HCP cluster creation negative testing",
 			})
 
 		It("to validate creating a hosted cluster with CIDR that doesn't exist - [id:70970]",
-			labels.Low, labels.Runtime.Day1Negative, labels.Seaplane.InProgress,
+			labels.Low, labels.Runtime.Day1Negative, labels.Seaplane.Validated,
 			func() {
 				clusterName := "ocp-70970"
 				replacingFlags := map[string]string{
@@ -3426,7 +3416,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Expect(out.String()).
 					To(
 						ContainSubstring(
-							"ERR: All Hosted Control Plane clusters need a pre-configured VPC. " +
+							"All Hosted Control Plane clusters need a pre-configured VPC. " +
 								"Please check: " +
 								"https://docs.openshift.com/rosa/rosa_hcp/rosa-hcp-sts-creating-a-cluster-quickly.html#rosa-hcp-creating-vpc"))
 			})

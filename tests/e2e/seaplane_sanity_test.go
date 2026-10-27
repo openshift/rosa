@@ -534,7 +534,7 @@ var _ = Describe("Seaplane sanity",
 			By("Creating cluster via CLI")
 			version := os.Getenv("SEAPLANE_VERSION")
 			if version == "" {
-				version = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
+				version = "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
 			}
 			createArgs := []string{
 				"--cluster-name", clusterName,
