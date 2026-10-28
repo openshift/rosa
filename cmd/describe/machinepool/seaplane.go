@@ -13,6 +13,7 @@ import (
 	v1alpha1 "github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-seaplane-api/clientset/platform"
 
+	rosaaws "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -161,6 +162,9 @@ func seaplaneNodePoolToMap(np *v1alpha1.NodePool, clusterName string) map[string
 		"labels":                   np.Spec.Labels,
 		"taints":                   np.Spec.NodePool.Taints,
 	}
+	if len(np.Spec.Tags) > 0 {
+		m["tags"] = np.Spec.Tags
+	}
 
 	// The rolling-update settings are reported under "management_upgrade" to
 	// match the OCM-based machine pool describe output.
@@ -200,15 +204,8 @@ func seaplaneNodePoolToString(np *v1alpha1.NodePool, clusterName string) string 
 			securityGroupIDs = strings.Join(sgIDs, ", ")
 		}
 
-		// Tags
-		if len(aws.ResourceTags) > 0 {
-			tagPairs := make([]string, 0, len(aws.ResourceTags))
-			for _, tag := range aws.ResourceTags {
-				tagPairs = append(tagPairs, fmt.Sprintf("%s=%s", tag.Key, tag.Value))
-			}
-			tags = strings.Join(tagPairs, ", ")
-		}
 	}
+	tags = rosaaws.FormatUserTagsList(np.Spec.Tags)
 
 	// Autoscaling or fixed replicas (desired replicas)
 	autoscaling := "No"

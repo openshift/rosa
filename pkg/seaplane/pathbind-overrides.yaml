@@ -52,14 +52,20 @@ resources:
         type: string
       - path: spec.hostedCluster.platform.aws.cloudProviderConfig.subnet.filters
         type: string
-      - path: spec.hostedCluster.platform.aws.resourceTags
-        type: string
       - path: spec.hostedCluster.platform.aws.serviceEndpoints
         type: string
       - path: spec.properties
         type: string
       - path: spec.tags
         type: string
+        description: >-
+          Apply user defined tags to all resources created by ROSA in AWS. Tags
+          are comma separated, for example: 'key value, foo bar'. Keys or values
+          with spaces use double quotes; quote the whole flag for your shell
+          (bash/zsh/PowerShell: --tags '"Cost Center":"Finance Team"'; Windows
+          cmd.exe: --tags """Cost Center"":""Finance Team"""). Empty values
+          (key:) are supported for ROSA Classic only, not for Hosted Control
+          Plane.
 
       # ── User-settable create flags ──────────────────────────────────────────
       - path: metadata.name
@@ -201,6 +207,8 @@ resources:
         flag: ""
       - path: spec.nodePool.nodeDrainTimeout
         flag: ""
+      - path: spec.nodePool.nodeVolumeDetachTimeout
+        flag: ""
 
       # Keep complex API fields JSON-backed internally without adding new CLI flags.
       - path: spec.nodePool.config
@@ -215,8 +223,16 @@ resources:
 
       - path: spec.labels
         type: string
-      - path: spec.nodePool.platform.aws.resourceTags
+      - path: spec.tags
         type: string
+        description: >-
+          Apply user defined tags to all resources created by ROSA in AWS. Tags
+          are comma separated, for example: 'key value, foo bar'. Keys or values
+          with spaces use double quotes; quote the whole flag for your shell
+          (bash/zsh/PowerShell: --tags '"Cost Center":"Finance Team"'; Windows
+          cmd.exe: --tags """Cost Center"":""Finance Team"""). Empty values
+          (key:) are supported for ROSA Classic only, not for Hosted Control
+          Plane.
       - path: spec.nodePool.platform.aws.subnet.filters
         type: string
       - path: spec.nodePool.nodeLabels

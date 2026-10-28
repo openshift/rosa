@@ -35,5 +35,5 @@
 - name: "node-labels"
 - name: "placement-market-type"
 - name: "preference"
-- name: "resource-tags"
+- name: "tags"
 - name: "tenancy"

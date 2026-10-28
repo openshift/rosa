@@ -119,7 +119,7 @@ var _ = Describe("seaplaneClusterToMap", func() {
 						},
 					},
 					Platform: v1alpha1.PlatformSpec{
-						AWS: &hypershiftv1beta1.AWSPlatformSpec{
+						AWS: &v1alpha1.AWSPlatformSpec{
 							Region: "us-east-1",
 							RolesRef: hypershiftv1beta1.AWSRolesRef{
 								IngressARN:              "arn:aws:iam::123456789012:role/my-cluster-ingress",
@@ -303,7 +303,7 @@ var _ = Describe("seaplaneClusterToString", func() {
 			Spec: v1alpha1.ClusterSpec{
 				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 					Platform: v1alpha1.PlatformSpec{
-						AWS: &hypershiftv1beta1.AWSPlatformSpec{
+						AWS: &v1alpha1.AWSPlatformSpec{
 							RolesRef: hypershiftv1beta1.AWSRolesRef{IngressARN: arn},
 						},
 					},
@@ -323,6 +323,16 @@ var _ = Describe("seaplaneClusterToString", func() {
 
 		out = seaplaneClusterToString(&v1alpha1.Cluster{}, nil, nil)
 		Expect(out).To(ContainSubstring("Delete Protection:          Disabled"))
+	})
+
+	It("shows root AWS tags in the human-readable output", func() {
+		out := seaplaneClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{Tags: map[string]string{
+				"team":        "compute",
+				"environment": "production",
+			}},
+		}, nil, nil)
+		Expect(out).To(ContainSubstring("Tags:                       environment:production,team:compute"))
 	})
 
 	It("shows channel group from HostedCluster.Channel", func() {

@@ -30,15 +30,14 @@ type ClusterSpec struct {
 	// +kubebuilder:validation:MaxLength=1048576
 	// +optional
 	AdditionalTrustBundle *string `json:"additionalTrustBundle,omitempty"`
-	// Tags are customer-defined AWS tags applied to the AWS resources created
-	// for this cluster, for cost allocation, resource organization and
-	// compliance tracking. They are applied at provisioning time only: AWS
-	// resources created by OpenShift cannot be retagged after the fact, so this
-	// field is immutable once the cluster is created.
-	// HyperShift caps platform.aws.resourceTags at 25 entries and the operator
-	// injects 2 system tags (red-hat-managed and kubernetes.io/cluster/<id>),
-	// so 23 customer tags are available here.
-	// +seaplane:write-mode=immutable
+	// Tags are customer-defined AWS tags applied to AWS resources for this
+	// cluster and its NodePools. The operator propagates changes to the
+	// HostedCluster and NodePool resources after creation.
+	// HyperShift caps platform.aws.resourceTags at 25 entries. Reserved system
+	// tags consume part of that budget; NodePool-specific tags share the same
+	// rendered limit.
+	// +seaplane:write-mode=mutable
+	// +seaplane:resettable=true
 	// +kubebuilder:validation:MaxProperties=23
 	// +optional
 	Tags map[string]string `json:"tags,omitempty"`

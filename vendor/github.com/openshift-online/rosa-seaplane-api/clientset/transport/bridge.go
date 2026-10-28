@@ -34,7 +34,7 @@ func NewAdapter(inner http.RoundTripper) *Adapter {
 }
 
 // RoundTrip implements http.RoundTripper. It adjusts pagination query parameters,
-// then forwards the request and response unchanged. The platform-api speaks
+// then forwards the request and response unchanged. The seaplane-api speaks
 // K8s-native JSON (metav1.Status errors, ObjectMeta responses) end-to-end.
 func (a *Adapter) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = a.adaptListQuery(req)

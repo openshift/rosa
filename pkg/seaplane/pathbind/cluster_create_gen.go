@@ -79,7 +79,6 @@ type ClusterCreateInput struct {
 	EndpointAccess                 string `hfsdk:"spec.hostedCluster.platform.aws.endpointAccess"`
 	MultiArch                      *bool  `hfsdk:"spec.hostedCluster.platform.aws.multiArch"`
 	Region                         string `hfsdk:"spec.hostedCluster.platform.aws.region"`
-	ResourceTags                   string `hfsdk:"spec.hostedCluster.platform.aws.resourceTags"`
 	ControlPlaneOperatorARN        string `hfsdk:"spec.hostedCluster.platform.aws.rolesRef.controlPlaneOperatorARN"`
 	ImageRegistryARN               string `hfsdk:"spec.hostedCluster.platform.aws.rolesRef.imageRegistryARN"`
 	AwsRolesRefIngressARN          string `hfsdk:"spec.hostedCluster.platform.aws.rolesRef.ingressARN"`
@@ -156,7 +155,6 @@ var ClusterCreatePlatformAPIFlags = []string{
 	"endpoint-access",
 	"multi-arch",
 	"region",
-	"resource-tags",
 	"control-plane-operator-arn",
 	"image-registry-arn",
 	"aws-roles-ref-ingress-arn",
@@ -267,7 +265,6 @@ func RegisterClusterCreateFlags(cmd *cobra.Command, input *ClusterCreateInput) {
 	registerIfNew(f, "endpoint-access", func() { f.StringVar(&input.EndpointAccess, "endpoint-access", "", "") })
 	registerIfNew(f, "multi-arch", func() { input.MultiArch = new(bool); f.BoolVar(input.MultiArch, "multi-arch", false, "") })
 	registerIfNew(f, "region", func() { f.StringVar(&input.Region, "region", "", "") })
-	registerIfNew(f, "resource-tags", func() { f.StringVar(&input.ResourceTags, "resource-tags", "", "") })
 	registerIfNew(f, "control-plane-operator-arn", func() { f.StringVar(&input.ControlPlaneOperatorARN, "control-plane-operator-arn", "", "") })
 	registerIfNew(f, "image-registry-arn", func() { f.StringVar(&input.ImageRegistryARN, "image-registry-arn", "", "") })
 	registerIfNew(f, "aws-roles-ref-ingress-arn", func() { f.StringVar(&input.AwsRolesRefIngressARN, "aws-roles-ref-ingress-arn", "", "") })
@@ -283,7 +280,9 @@ func RegisterClusterCreateFlags(cmd *cobra.Command, input *ClusterCreateInput) {
 	registerIfNew(f, "version", func() { f.StringVar(&input.Version, "version", "", "OpenShift release image for the cluster.") })
 	registerIfNew(f, "oidc-config-id", func() { f.StringVar(&input.OidcConfigId, "oidc-config-id", "", "") })
 	registerIfNew(f, "properties", func() { f.StringVar(&input.Properties, "properties", "", "") })
-	registerIfNew(f, "tags", func() { f.StringVar(&input.Tags, "tags", "", "") })
+	registerIfNew(f, "tags", func() {
+		f.StringVar(&input.Tags, "tags", "", "Apply user defined tags to all resources created by ROSA in AWS. Tags are comma separated, for example: 'key value, foo bar'. Keys or values with spaces use double quotes; quote the whole flag for your shell (bash/zsh/PowerShell: --tags '\"Cost Center\":\"Finance Team\"'; Windows cmd.exe: --tags \"\"\"Cost Center\"\":\"\"Finance Team\"\"\"). Empty values (key:) are supported for ROSA Classic only, not for Hosted Control Plane.")
+	})
 	registerIfNew(f, "operator-roles-prefix", func() {
 		f.StringVar(&input.OperatorRolesPrefix, "operator-roles-prefix", "", "Prefix for all IAM operator role names.")
 	})

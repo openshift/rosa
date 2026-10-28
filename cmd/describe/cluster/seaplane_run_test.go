@@ -16,7 +16,6 @@ import (
 	. "github.com/onsi/gomega"
 	v1alpha1 "github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-seaplane-api/clientset/platform"
-	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/ocm"
@@ -65,7 +64,7 @@ var _ = Describe("runSeaplaneDescribe (cluster)", func() {
 				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
 					IssuerURL: "https://oidc.example.com",
 					Platform: v1alpha1.PlatformSpec{
-						AWS: &hypershiftv1beta1.AWSPlatformSpec{Region: "us-east-1"},
+						AWS: &v1alpha1.AWSPlatformSpec{Region: "us-east-1"},
 					},
 				},
 			},

@@ -50,6 +50,11 @@ type NodePoolSpecPassthrough struct {
 	// +seaplane:write-mode=mutable
 	// +optional
 	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
+	// nodeVolumeDetachTimeout is the maximum amount of time that the controller will spend on detaching volumes from a node.
+	// +k8s:openapi-gen=true
+	// +seaplane:write-mode=mutable
+	// +optional
+	NodeVolumeDetachTimeout *metav1.Duration `json:"nodeVolumeDetachTimeout,omitempty"`
 	// nodeLabels propagates a list of labels to Nodes, only once on creation.
 	// +k8s:openapi-gen=false
 	// +seaplane:write-mode=mutable

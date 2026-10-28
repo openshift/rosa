@@ -372,30 +372,19 @@ func (h *seaplaneClusterCreate) PostResponse(_ context.Context, r *rosa.Runtime,
 	return nil
 }
 
-// parseSeaplaneClusterTags converts the --tags values into the map the Platform
-// API expects on spec.tags. Tags are applied at provisioning time only: AWS
-// resources created by OpenShift cannot be retagged, so spec.tags is immutable
-// once the cluster exists.
+// parseSeaplaneClusterTags converts the existing ROSA --tags syntax into the
+// map the Platform API expects on spec.tags.
 func parseSeaplaneClusterTags(input []string) (map[string]string, error) {
 	if len(input) == 0 {
 		return nil, nil
 	}
-	if len(input) > maxSeaplaneClusterTags {
+	tags, err := rosaaws.ParseUserTags(input, rosaaws.UserTagOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("invalid cluster AWS tags: %w", err)
+	}
+	if len(tags) > maxSeaplaneClusterTags {
 		return nil, fmt.Errorf("invalid cluster AWS tags: a maximum of %d tags is supported, got %d",
-			maxSeaplaneClusterTags, len(input))
-	}
-	if err := rosaaws.UserTagValidator(rosaaws.UserTagOptions{})(input); err != nil {
-		return nil, err
-	}
-
-	delimiter := rosaaws.GetTagsDelimiter(input)
-	tags := make(map[string]string, len(input))
-	for _, tag := range input {
-		parts := strings.SplitN(tag, delimiter, 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", tag)
-		}
-		tags[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			maxSeaplaneClusterTags, len(tags))
 	}
 	return tags, nil
 }

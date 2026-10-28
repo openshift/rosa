@@ -5,9 +5,9 @@ package machinepool
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -141,7 +141,7 @@ type seaplaneNodePoolCreate struct {
 	userOptionsValidated bool
 	labels               map[string]string
 	taints               []hypershiftv1beta1.Taint
-	resourceTags         []hypershiftv1beta1.AWSResourceTag
+	tags                 map[string]string
 }
 
 func (h *seaplaneNodePoolCreate) validateAndParseUserOptions() error {
@@ -177,10 +177,6 @@ func (h *seaplaneNodePoolCreate) validateAndParseUserOptions() error {
 	if err := h.validateReplicas(); err != nil {
 		return err
 	}
-	if len(h.userOptions.Tags) > maxAWSResourceTags {
-		return fmt.Errorf("%s", "Invalid machine pool AWS tags: Resource has too many AWS tags")
-	}
-
 	labels, err := mpHelpers.ParseSeaplaneLabels(h.userOptions.Labels)
 	if err != nil {
 		return err
@@ -191,14 +187,20 @@ func (h *seaplaneNodePoolCreate) validateAndParseUserOptions() error {
 		return err
 	}
 
-	resourceTags, err := parseSeaplaneResourceTags(h.userOptions.Tags)
-	if err != nil {
-		return err
+	var tags map[string]string
+	if len(h.userOptions.Tags) > 0 {
+		tags, err = rosaaws.ParseUserTags(h.userOptions.Tags, rosaaws.UserTagOptions{})
+		if err != nil {
+			return fmt.Errorf("invalid machine pool AWS tags: %w", err)
+		}
+	}
+	if len(tags) > maxAWSResourceTags {
+		return fmt.Errorf("%s", "Invalid machine pool AWS tags: Resource has too many AWS tags")
 	}
 
 	h.labels = labels
 	h.taints = taints
-	h.resourceTags = resourceTags
+	h.tags = tags
 	h.userOptionsValidated = true
 	return nil
 }
@@ -223,29 +225,6 @@ func (h *seaplaneNodePoolCreate) validateReplicas() error {
 		return fmt.Errorf("autoscaling must be enabled in order to set min and max replicas")
 	}
 	return validation.MinReplicaValidator()(options.Replicas)
-}
-
-func parseSeaplaneResourceTags(input []string) ([]hypershiftv1beta1.AWSResourceTag, error) {
-	if len(input) == 0 {
-		return nil, nil
-	}
-	if err := rosaaws.UserTagValidator(rosaaws.UserTagOptions{})(input); err != nil {
-		return nil, err
-	}
-
-	delimiter := rosaaws.GetTagsDelimiter(input)
-	tags := make([]hypershiftv1beta1.AWSResourceTag, 0, len(input))
-	for _, tag := range input {
-		parts := strings.SplitN(tag, delimiter, 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid tag format for tag '%s'. Expected tag format: 'key value'", tag)
-		}
-		tags = append(tags, hypershiftv1beta1.AWSResourceTag{
-			Key:   strings.TrimSpace(parts[0]),
-			Value: strings.TrimSpace(parts[1]),
-		})
-	}
-	return tags, nil
 }
 
 func (h *seaplaneNodePoolCreate) PreRequest(
@@ -278,6 +257,13 @@ func (h *seaplaneNodePoolCreate) PreRequest(
 
 	input.SubnetID = h.userOptions.Subnet
 	input.EC2InstanceMetadataHttpTokens = h.userOptions.EC2MetadataHttpTokens
+	if h.tags != nil {
+		encodedTags, err := json.Marshal(h.tags)
+		if err != nil {
+			return fmt.Errorf("failed to encode --tags: %w", err)
+		}
+		input.Tags = string(encodedTags)
+	}
 
 	replicas := int32(h.userOptions.Replicas)
 	input.Replicas = &replicas
@@ -386,9 +372,9 @@ func (h *seaplaneNodePoolCreate) PostExpand(
 		}
 	}
 
-	// Resource tags
-	if len(h.resourceTags) > 0 {
-		obj.Spec.NodePool.Platform.AWS.ResourceTags = h.resourceTags
+	// Customer tags belong on the NodePool's root-level tags field.
+	if h.tags != nil {
+		obj.Spec.Tags = h.tags
 	}
 
 	// Labels

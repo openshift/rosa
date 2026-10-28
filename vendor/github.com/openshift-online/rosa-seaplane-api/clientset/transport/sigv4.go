@@ -78,7 +78,7 @@ func (t *SigV4RoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 	req = req.Clone(req.Context())
 
 	// The generated client encodes the Go namespace as /namespaces/{ns}/,
-	// but platform-api uses flat routes. Namespace scopes the stored object;
+	// but seaplane-api uses flat routes. Namespace scopes the stored object;
 	// it does not select the authenticated account.
 	if m := namespaceRE.FindStringSubmatchIndex(req.URL.Path); m != nil {
 		req.URL.Path = req.URL.Path[:m[0]] + req.URL.Path[m[1]:]

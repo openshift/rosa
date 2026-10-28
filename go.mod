@@ -34,8 +34,8 @@ require (
 	github.com/openshift-online/ocm-api-model/clientapi v0.0.470
 	github.com/openshift-online/ocm-common v0.0.46
 	github.com/openshift-online/ocm-sdk-go v0.1.517
-	github.com/openshift-online/rosa-seaplane-api/api v0.1.23-0.20261019145519-f59b0034c13c
-	github.com/openshift-online/rosa-seaplane-api/clientset v0.1.21-0.20261019145519-f59b0034c13c
+	github.com/openshift-online/rosa-seaplane-api/api v0.1.25
+	github.com/openshift-online/rosa-seaplane-api/clientset v0.1.23
 	github.com/openshift/api v0.0.0-20260715165912-72066cc9718b
 	github.com/openshift/hypershift/api v0.0.0-20260803100438-deb947936de7
 	github.com/robfig/cron/v3 v3.0.1

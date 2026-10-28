@@ -245,10 +245,10 @@ github.com/openshift-online/ocm-common v0.0.46 h1:WeVJbFGTo96hVDz2D/DSdvn2Ky7z9V
 github.com/openshift-online/ocm-common v0.0.46/go.mod h1:pCEWPrKkcE23Nw9eHIaFHYvlJPXxQRbH9O1R5bk4Ve0=
 github.com/openshift-online/ocm-sdk-go v0.1.517 h1:79KiFTqWHds1FanFByIEqo/485VqXB7LHQiN8XOTdJw=
 github.com/openshift-online/ocm-sdk-go v0.1.517/go.mod h1:3rNVzZ86jRbpFtdQUqbdlxmpR+MhKs87szY45bLg3EI=
-github.com/openshift-online/rosa-seaplane-api/api v0.1.23-0.20261019145519-f59b0034c13c h1:nB1gcCSNFPs7SrGX59dIJbWkincfV3f6+v5gvj0CdYs=
-github.com/openshift-online/rosa-seaplane-api/api v0.1.23-0.20261019145519-f59b0034c13c/go.mod h1:A7C/ahX+T+bpSyY2sf9+0Qkiawhcr9D+jWIqmf64zkU=
-github.com/openshift-online/rosa-seaplane-api/clientset v0.1.21-0.20261019145519-f59b0034c13c h1:6XecQK6wSDHrzBsk3WAJpRvw4yT9G+ysETvbRdNxSHo=
-github.com/openshift-online/rosa-seaplane-api/clientset v0.1.21-0.20261019145519-f59b0034c13c/go.mod h1:wAI1MriAZ9k+Iw7sprrdQziXe5auP6HdO/4+z8Qr8ik=
+github.com/openshift-online/rosa-seaplane-api/api v0.1.25 h1:Sz7+yxXrS2UGj5I2PQNiRBqCRV88cS0YuoQH9byAEg8=
+github.com/openshift-online/rosa-seaplane-api/api v0.1.25/go.mod h1:A7C/ahX+T+bpSyY2sf9+0Qkiawhcr9D+jWIqmf64zkU=
+github.com/openshift-online/rosa-seaplane-api/clientset v0.1.23 h1:Wd7z4HXYBcOb6hEqGBXMpCkxMr/fyTXXVTXRIH8Fkp0=
+github.com/openshift-online/rosa-seaplane-api/clientset v0.1.23/go.mod h1:wAI1MriAZ9k+Iw7sprrdQziXe5auP6HdO/4+z8Qr8ik=
 github.com/openshift/api v0.0.0-20260715165912-72066cc9718b h1:gN3SihCYEwoIksD+f24wHhwiEgvaV0RxNjgmkDvBBeg=
 github.com/openshift/api v0.0.0-20260715165912-72066cc9718b/go.mod h1:k6qH5QOVa5GDln2VVm8Jz4NV3Z7R2SATHFLwGS6Wh3M=
 github.com/openshift/hypershift/api v0.0.0-20260803100438-deb947936de7 h1:OGkFqZZyTWpXyB8KVQRXVJRmal5bXAQ35Z9tXa3PyuQ=

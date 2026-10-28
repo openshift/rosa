@@ -29,6 +29,7 @@ type NodePoolCreateInput struct {
 	Config                        string `hfsdk:"spec.nodePool.config"`
 	NodeDrainTimeout              string `hfsdk:"spec.nodePool.nodeDrainTimeout"`
 	NodeLabels                    string `hfsdk:"spec.nodePool.nodeLabels"`
+	NodeVolumeDetachTimeout       string `hfsdk:"spec.nodePool.nodeVolumeDetachTimeout"`
 	Ami                           string `hfsdk:"spec.nodePool.platform.aws.ami"`
 	ImageType                     string `hfsdk:"spec.nodePool.platform.aws.imageType"`
 	InstanceProfile               string `hfsdk:"spec.nodePool.platform.aws.instanceProfile"`
@@ -39,7 +40,6 @@ type NodePoolCreateInput struct {
 	PlacementMarketType           string `hfsdk:"spec.nodePool.platform.aws.placement.marketType"`
 	MaxPrice                      string `hfsdk:"spec.nodePool.platform.aws.placement.spot.maxPrice"`
 	Tenancy                       string `hfsdk:"spec.nodePool.platform.aws.placement.tenancy"`
-	ResourceTags                  string `hfsdk:"spec.nodePool.platform.aws.resourceTags"`
 	Size                          *int64 `hfsdk:"spec.nodePool.platform.aws.rootVolume.size"`
 	SecurityGroupIds              string `hfsdk:"spec.nodePool.platform.aws.securityGroups"`
 	Filters                       string `hfsdk:"spec.nodePool.platform.aws.subnet.filters"`
@@ -49,6 +49,7 @@ type NodePoolCreateInput struct {
 	Replicas                      *int32 `hfsdk:"spec.nodePool.replicas"`
 	Taints                        string `hfsdk:"spec.nodePool.taints"`
 	TuningConfig                  string `hfsdk:"spec.nodePool.tuningConfig"`
+	Tags                          string `hfsdk:"spec.tags"`
 }
 
 // NodePoolCreatePlatformAPIFlags lists the cobra flag names registered by
@@ -72,13 +73,13 @@ var NodePoolCreatePlatformAPIFlags = []string{
 	"placement-market-type",
 	"max-price",
 	"tenancy",
-	"resource-tags",
 	"disk-size",
 	"additional-security-group-ids",
 	"filters",
 	"subnet",
 	"image",
 	"replicas",
+	"tags",
 }
 
 // RegisterNodePoolCreateFlags registers cobra flags for user-settable NodePool create inputs.
@@ -102,7 +103,6 @@ func RegisterNodePoolCreateFlags(cmd *cobra.Command, input *NodePoolCreateInput)
 	registerIfNew(f, "placement-market-type", func() { f.StringVar(&input.PlacementMarketType, "placement-market-type", "", "") })
 	registerIfNew(f, "max-price", func() { f.StringVar(&input.MaxPrice, "max-price", "", "") })
 	registerIfNew(f, "tenancy", func() { f.StringVar(&input.Tenancy, "tenancy", "", "") })
-	registerIfNew(f, "resource-tags", func() { f.StringVar(&input.ResourceTags, "resource-tags", "", "") })
 	registerIfNew(f, "disk-size", func() { input.Size = new(int64); f.Int64Var(input.Size, "disk-size", 0, "") })
 	registerIfNew(f, "additional-security-group-ids", func() {
 		f.StringVar(&input.SecurityGroupIds, "additional-security-group-ids", "", "Additional AWS Security Group IDs to attach to node pool instances. Format should be a comma-separated list.")
@@ -113,6 +113,9 @@ func RegisterNodePoolCreateFlags(cmd *cobra.Command, input *NodePoolCreateInput)
 	registerIfNew(f, "replicas", func() {
 		input.Replicas = new(int32)
 		f.Int32Var(input.Replicas, "replicas", 0, "Number of worker nodes.")
+	})
+	registerIfNew(f, "tags", func() {
+		f.StringVar(&input.Tags, "tags", "", "Apply user defined tags to all resources created by ROSA in AWS. Tags are comma separated, for example: 'key value, foo bar'. Keys or values with spaces use double quotes; quote the whole flag for your shell (bash/zsh/PowerShell: --tags '\"Cost Center\":\"Finance Team\"'; Windows cmd.exe: --tags \"\"\"Cost Center\"\":\"\"Finance Team\"\"\"). Empty values (key:) are supported for ROSA Classic only, not for Hosted Control Plane.")
 	})
 }
 

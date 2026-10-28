@@ -30,6 +30,15 @@ type NodePoolSpec struct {
 	// +kubebuilder:validation:MaxProperties=100
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
+	// Tags are customer-defined AWS tags for resources created for this NodePool.
+	// They combine with the parent Cluster's tags, with NodePool values taking
+	// precedence when keys overlap. Reserved system tags share the rendered AWS
+	// resource tag budget.
+	// +seaplane:write-mode=mutable
+	// +seaplane:resettable=true
+	// +kubebuilder:validation:MaxProperties=25
+	// +optional
+	Tags map[string]string `json:"tags,omitempty"`
 	// MaxUnavailable is the largest number of nodes in this pool that may be
 	// unavailable at the same time while the pool is upgrading. It applies to
 	// both the Replace and the InPlace upgrade type.

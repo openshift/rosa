@@ -1,6 +1,3 @@
-// Copyright Red Hat
-// SPDX-License-Identifier: Apache-2.0
-
 package pathbind
 
 import (
@@ -48,7 +45,6 @@ type ClusterUpdateInput struct {
 	Filters                        string `hfsdk:"spec.hostedCluster.platform.aws.cloudProviderConfig.subnet.filters"`
 	EndpointAccess                 string `hfsdk:"spec.hostedCluster.platform.aws.endpointAccess"`
 	MultiArch                      *bool  `hfsdk:"spec.hostedCluster.platform.aws.multiArch"`
-	ResourceTags                   string `hfsdk:"spec.hostedCluster.platform.aws.resourceTags"`
 	ControlPlaneOperatorARN        string `hfsdk:"spec.hostedCluster.platform.aws.rolesRef.controlPlaneOperatorARN"`
 	ImageRegistryARN               string `hfsdk:"spec.hostedCluster.platform.aws.rolesRef.imageRegistryARN"`
 	AwsRolesRefIngressARN          string `hfsdk:"spec.hostedCluster.platform.aws.rolesRef.ingressARN"`
@@ -62,6 +58,7 @@ type ClusterUpdateInput struct {
 	SharedVPCRolesRefIngressARN    string `hfsdk:"spec.hostedCluster.platform.aws.sharedVPC.rolesRef.ingressARN"`
 	TerminationHandlerQueueURL     string `hfsdk:"spec.hostedCluster.platform.aws.terminationHandlerQueueURL"`
 	Properties                     string `hfsdk:"spec.properties"`
+	Tags                           string `hfsdk:"spec.tags"`
 }
 
 // ClusterUpdatePlatformAPIFlags lists the cobra flag names registered by
@@ -96,7 +93,6 @@ var ClusterUpdatePlatformAPIFlags = []string{
 	"filters",
 	"endpoint-access",
 	"multi-arch",
-	"resource-tags",
 	"control-plane-operator-arn",
 	"image-registry-arn",
 	"aws-roles-ref-ingress-arn",
@@ -110,6 +106,7 @@ var ClusterUpdatePlatformAPIFlags = []string{
 	"shared-vpc-roles-ref-ingress-arn",
 	"termination-handler-queue-url",
 	"properties",
+	"tags",
 }
 
 // RegisterClusterUpdateFlags registers cobra flags for mutable Cluster fields.
@@ -168,7 +165,6 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	registerIfNew(f, "filters", func() { f.StringVar(&input.Filters, "filters", "", "") })
 	registerIfNew(f, "endpoint-access", func() { f.StringVar(&input.EndpointAccess, "endpoint-access", "", "") })
 	registerIfNew(f, "multi-arch", func() { input.MultiArch = new(bool); f.BoolVar(input.MultiArch, "multi-arch", false, "") })
-	registerIfNew(f, "resource-tags", func() { f.StringVar(&input.ResourceTags, "resource-tags", "", "") })
 	registerIfNew(f, "control-plane-operator-arn", func() { f.StringVar(&input.ControlPlaneOperatorARN, "control-plane-operator-arn", "", "") })
 	registerIfNew(f, "image-registry-arn", func() { f.StringVar(&input.ImageRegistryARN, "image-registry-arn", "", "") })
 	registerIfNew(f, "aws-roles-ref-ingress-arn", func() { f.StringVar(&input.AwsRolesRefIngressARN, "aws-roles-ref-ingress-arn", "", "") })
@@ -182,6 +178,9 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	registerIfNew(f, "shared-vpc-roles-ref-ingress-arn", func() { f.StringVar(&input.SharedVPCRolesRefIngressARN, "shared-vpc-roles-ref-ingress-arn", "", "") })
 	registerIfNew(f, "termination-handler-queue-url", func() { f.StringVar(&input.TerminationHandlerQueueURL, "termination-handler-queue-url", "", "") })
 	registerIfNew(f, "properties", func() { f.StringVar(&input.Properties, "properties", "", "") })
+	registerIfNew(f, "tags", func() {
+		f.StringVar(&input.Tags, "tags", "", "Apply user defined tags to all resources created by ROSA in AWS. Tags are comma separated, for example: 'key value, foo bar'. Keys or values with spaces use double quotes; quote the whole flag for your shell (bash/zsh/PowerShell: --tags '\"Cost Center\":\"Finance Team\"'; Windows cmd.exe: --tags \"\"\"Cost Center\"\":\"\"Finance Team\"\"\"). Empty values (key:) are supported for ROSA Classic only, not for Hosted Control Plane.")
+	})
 }
 
 // ClusterUpdateHandler is implemented by consumers to provide Cluster update logic.
@@ -470,13 +469,6 @@ func overlayClusterUpdateInput(cmd *cobra.Command, before, input, expanded *Clus
 	} else if !pathbind.IsUnset(input.MultiArch) {
 		after.MultiArch = input.MultiArch
 	}
-	if flagChanged(cmd, "resource-tags") && pathbind.IsUnset(input.ResourceTags) {
-		return after, fmt.Errorf("field %s cannot be reset", "spec.hostedCluster.platform.aws.resourceTags")
-	} else if !pathbind.IsUnset(expanded.ResourceTags) {
-		after.ResourceTags = expanded.ResourceTags
-	} else if !pathbind.IsUnset(input.ResourceTags) {
-		after.ResourceTags = input.ResourceTags
-	}
 	if flagChanged(cmd, "control-plane-operator-arn") && pathbind.IsUnset(input.ControlPlaneOperatorARN) {
 		return after, fmt.Errorf("field %s cannot be reset", "spec.hostedCluster.platform.aws.rolesRef.controlPlaneOperatorARN")
 	} else if !pathbind.IsUnset(expanded.ControlPlaneOperatorARN) {
@@ -567,6 +559,13 @@ func overlayClusterUpdateInput(cmd *cobra.Command, before, input, expanded *Clus
 		after.Properties = expanded.Properties
 	} else if !pathbind.IsUnset(input.Properties) {
 		after.Properties = input.Properties
+	}
+	if flagChanged(cmd, "tags") && pathbind.IsUnset(input.Tags) {
+		after.Tags = input.Tags
+	} else if !pathbind.IsUnset(expanded.Tags) {
+		after.Tags = expanded.Tags
+	} else if !pathbind.IsUnset(input.Tags) {
+		after.Tags = input.Tags
 	}
 	return after, nil
 }

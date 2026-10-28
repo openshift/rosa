@@ -292,7 +292,7 @@ e2e-seaplane: install
 	ginkgo run --label-filter "($$filter) && !seaplane-na && !seaplane-deferred" \
 		--timeout 3h \
 		-v \
-		./tests/e2e/ \
+		./tests/e2e/... \
 		$(NULL)
 
 .PHONY: generate-docs

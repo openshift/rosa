@@ -15,7 +15,7 @@ type OidcConfigSpec struct {
 	// +seaplane:write-mode=immutable
 	Type string `json:"type"`
 	// IssuerUrl is the OIDC issuer URL.
-	// Required for both types; computed by platform-api for managed configs,
+	// Required for both types; computed by seaplane-api for managed configs,
 	// customer-supplied for unmanaged configs.
 	// +seaplane:write-mode=immutable
 	// +kubebuilder:validation:Required
