@@ -51,6 +51,7 @@ var args struct {
 	expirationDuration     time.Duration
 	enableDeleteProtection bool
 	notificationContacts   []string
+	tags                   []string
 
 	// Networking options
 	private                   bool
@@ -105,7 +106,14 @@ func makeCmd() *cobra.Command {
   rosa edit cluster -c mycluster --private
 
   # Edit all options interactively
-  rosa edit cluster -c mycluster --interactive`,
+  rosa edit cluster -c mycluster --interactive
+
+  # Replace the user-defined AWS tags on cluster 'mycluster'
+  # Tags are propagated to machine pool AWS resources unless the machine pool overrides the same key.
+  rosa edit cluster -c mycluster --tags cost-center:1234 --tags '"Cost Center":"Finance Team"'
+
+  # Remove all user-defined AWS tags from cluster 'mycluster'; machine-pool-specific tags stay in place
+  rosa edit cluster -c mycluster --tags ''`,
 		Run:  dispatch,
 		Args: cobra.NoArgs,
 	}
@@ -146,6 +154,14 @@ func initFlags(cmd *cobra.Command) {
 			"cluster notification emails. All contacts must belong to the same Red Hat "+
 			"organization as the cluster. Pass an empty value to remove all notification contacts.",
 	)
+	flags.StringArrayVar(&args.tags, "tags", nil,
+		"Replace user-defined tags on all AWS resources created by ROSA. "+
+			"This flag is only supported for Hosted Control Planes. "+
+			"Omitted tags are removed. "+
+			"Existing keys with different values are overwritten. "+
+			"Tags are propagated to machine pool AWS resources unless the machine pool overrides the same key. "+
+			"--tags '' removes all user-defined tags (enter \"\" at the interactive prompt). "+
+			aws.UserTagsDay2FlagHelpSuffix)
 	// Cluster expiration is not supported in production
 	flags.MarkHidden("expiration-time")
 	flags.MarkHidden("expiration")
@@ -293,6 +309,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 }
 
+// runWithRuntime prepares a cluster edit and sends the resulting changes through OCM.
 func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	clusterKey := r.GetClusterKey()
 
@@ -307,7 +324,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			"registry-config-insecure-registries", "allowed-registries-for-import",
 			"registry-config-platform-allowlist", "registry-config-additional-trusted-ca", "billing-account",
 			"registry-config-allowed-registries-for-import", "enable-delete-protection", "spot-termination-queue-url",
-			"channel-group", "network-type", "channel", notificationContactsFlagName} {
+			"channel-group", "network-type", "channel", notificationContactsFlagName, "tags"} {
 			if cmd.Flags().Changed(flag) {
 				changedFlags = true
 				break
@@ -319,6 +336,14 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	}
 
 	cluster := r.FetchCluster()
+	clusterTagChanges, err := prepareClusterTagEdit(r, cmd, cluster)
+	if err != nil {
+		return err
+	}
+	if cmd.Flags().Changed("tags") && len(clusterTagChanges) == 0 && onlyClusterTagsChanged(cmd) {
+		r.Reporter.Infof("AWS tags are already up to date for cluster '%s'", clusterKey)
+		return nil
+	}
 
 	if aws.IsHostedCP(cluster) && cmd.Flags().Changed("disable-workload-monitoring") {
 		r.Reporter.Errorf(arguments.UwmNotSupportedMessage)
@@ -744,6 +769,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 	clusterConfig := ocm.Spec{
 		Expiration: expiration,
 		Private:    private,
+		TagChanges: clusterTagChanges,
 	}
 
 	// Only set DisableWorkloadMonitoring for non-HCP clusters

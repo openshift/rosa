@@ -251,7 +251,7 @@ func BuildMachinePoolCreateCommandWithOptions() (*cobra.Command, *CreateMachinep
 		&options.Tags,
 		"tags",
 		nil,
-		"Apply user defined tags to all resources created by ROSA in AWS. "+
+		"Apply user-defined AWS tags to resources created for this machine pool. "+
 			aws.UserTagsFlagHelpSuffix,
 	)
 

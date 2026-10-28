@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -455,13 +456,27 @@ func FormatUserTagsList(tags map[string]string) string {
 	return strings.Join(parts, ",")
 }
 
-// UserTagsFlagHelpSuffix is shared --tags help text covering shell-specific quoting.
-// Prefix with the flag-specific sentence (e.g. "Apply user defined tags...").
-const UserTagsFlagHelpSuffix = "Tags are comma separated, for example: 'key value, foo bar'. " +
-	`Keys or values with spaces use double quotes; quote the whole flag for your shell ` +
-	`(bash/zsh/PowerShell: --tags '"Cost Center":"Finance Team"'; ` +
-	`Windows cmd.exe: --tags """Cost Center"":""Finance Team"""). ` +
+const userTagsFlagSyntaxHelpPrefix = "Tags are comma-separated key:value pairs, " +
+	"for example: key:value,foo:bar. " +
+	"Keys or values with spaces or colons use double quotes; quote the whole flag for your shell "
+
+func userTagsFlagSyntaxHelpSuffix(goos string) string {
+	if goos == "windows" {
+		return userTagsFlagSyntaxHelpPrefix +
+			`(PowerShell/bash/zsh: --tags '"Cost Center":"Finance Team"'; ` +
+			`cmd.exe: --tags """Cost Center"":""Finance Team"""). `
+	}
+	return userTagsFlagSyntaxHelpPrefix +
+		`(bash/zsh/PowerShell: --tags '"Cost Center":"Finance Team"'). `
+}
+
+// UserTagsFlagHelpSuffix describes tag syntax and create-time empty-value support.
+var UserTagsFlagHelpSuffix = userTagsFlagSyntaxHelpSuffix(runtime.GOOS) +
 	"Empty values (key:) are supported for ROSA Classic only, not for Hosted Control Plane."
+
+// UserTagsDay2FlagHelpSuffix describes tag syntax for HCP-only day-2 edits.
+var UserTagsDay2FlagHelpSuffix = userTagsFlagSyntaxHelpSuffix(runtime.GOOS) +
+	"Individual tag values cannot be empty."
 
 // QuoteUserTagsForUnixShell wraps a FormatUserTag list for bash, zsh, and PowerShell.
 // Single quotes preserve inner double quotes from FormatUserTag. Windows cmd.exe does not

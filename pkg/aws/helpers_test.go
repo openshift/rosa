@@ -356,6 +356,27 @@ var _ = Describe("UserTagValidator", func() {
 		})
 	})
 
+	Describe("userTagsFlagSyntaxHelpSuffix", func() {
+		It("shows bash, zsh, and PowerShell quoting outside Windows", func() {
+			help := userTagsFlagSyntaxHelpSuffix("darwin")
+			Expect(help).To(ContainSubstring("Keys or values with spaces or colons use double quotes"),
+				"document quoting for colon-containing tag keys and values")
+			Expect(help).To(ContainSubstring(`bash/zsh/PowerShell: --tags '"Cost Center":"Finance Team"'`),
+				"show the shared bash, zsh, and cross-platform PowerShell example")
+			Expect(help).NotTo(ContainSubstring("cmd.exe"), "omit Windows-only shell guidance")
+		})
+
+		It("shows PowerShell, bash, zsh, and cmd.exe quoting on Windows", func() {
+			help := userTagsFlagSyntaxHelpSuffix("windows")
+			Expect(help).To(ContainSubstring("for example: key:value,foo:bar."),
+				"keep the simple tag example shell-neutral")
+			Expect(help).To(ContainSubstring(`PowerShell/bash/zsh: --tags '"Cost Center":"Finance Team"'`),
+				"show the shared PowerShell, bash, and zsh example")
+			Expect(help).To(ContainSubstring(`cmd.exe: --tags """Cost Center"":""Finance Team"""`),
+				"show the cmd.exe example")
+		})
+	})
+
 	Describe("UserTagsCmdExeReplayTip", func() {
 		It("should be empty for simple tags", func() {
 			Expect(UserTagsCmdExeReplayTip("env:prod")).To(Equal(""))
