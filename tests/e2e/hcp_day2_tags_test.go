@@ -21,6 +21,7 @@ import (
 	"github.com/openshift/rosa/tests/utils/config"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/handler"
+	"github.com/openshift/rosa/tests/utils/helper"
 )
 
 var _ = Describe("HCP day-2 AWS tags", labels.Runtime.Day2, func() {
@@ -51,7 +52,7 @@ var _ = Describe("HCP day-2 AWS tags", labels.Runtime.Day2, func() {
 			if !hosted || !supported {
 				Skip("requires a ROSA HCP 4.20+ fixture")
 			}
-			vpc, poolID, workerIDs := day2TagWorkers(cli, clusterKey)
+			vpc, poolID, workerIDs := createDay2TagWorkerPool(cli, clusterKey)
 			original, err := runtime.OCMClient.GetClusterUserTags(clusterKey)
 			Expect(err).NotTo(HaveOccurred(), "read original cluster customer tags")
 			const key = "ROSA Day2 Cluster"
@@ -126,7 +127,7 @@ var _ = Describe("HCP day-2 AWS tags", labels.Runtime.Day2, func() {
 			if !hosted || !supported {
 				Skip("requires a ROSA HCP 4.20+ fixture")
 			}
-			vpc, poolID, workerIDs := day2TagWorkers(cli, clusterKey)
+			vpc, poolID, workerIDs := createDay2TagWorkerPool(cli, clusterKey)
 			clusterTags, err := runtime.OCMClient.GetClusterUserTags(clusterKey)
 			Expect(err).NotTo(HaveOccurred(), "read inherited cluster customer tags")
 			poolTags, err := runtime.OCMClient.GetNodePoolUserTags(clusterKey, poolID)
@@ -265,23 +266,62 @@ func copyTagSet(tags map[string]string) map[string]string {
 	return copy
 }
 
-// day2TagWorkers chooses a pool with workers so tag and identity assertions cannot pass vacuously.
-func day2TagWorkers(cli *rosacli.Client, clusterKey string) (*vpc_client.VPC, string, []string) {
+// createDay2TagWorkerPool creates a fixed-size pool so autoscaling in the fixture
+// cannot change worker identities during tag reconciliation assertions.
+func createDay2TagWorkerPool(cli *rosacli.Client, clusterKey string) (*vpc_client.VPC, string, []string) {
 	pools, err := cli.MachinePool.ListAndReflectNodePools(clusterKey)
 	Expect(err).NotTo(HaveOccurred(), "list node pools for cluster %s", clusterKey)
-	Expect(pools.NodePools).NotTo(BeEmpty(), "cluster %s needs a node pool", clusterKey)
+	Expect(pools.NodePools).NotTo(BeEmpty(), "cluster %s needs a node pool to choose a subnet", clusterKey)
 	profile := handler.LoadProfileYamlFileByENV()
 	vpc, err := vpc_client.GenerateVPCBySubnet(pools.NodePools[0].Subnet, profile.Region)
 	Expect(err).NotTo(HaveOccurred(), "create AWS VPC client for cluster %s", clusterKey)
-	for _, pool := range pools.NodePools {
-		instances, listErr := vpc.AWSClient.GetInstancesByNodePoolID(pool.ID, clusterKey)
-		Expect(listErr).NotTo(HaveOccurred(), "list worker instances for pool %s", pool.ID)
-		if len(instances) > 0 {
-			return vpc, pool.ID, instanceIDs(instances)
+	poolID := helper.GenerateRandomName("day2-tags", 4)
+	out, err := cli.MachinePool.CreateMachinePool(clusterKey, poolID,
+		"--replicas", "1",
+		"--instance-type", pools.NodePools[0].InstanceType,
+		"--subnet", pools.NodePools[0].Subnet,
+		"-y")
+	Expect(err).NotTo(HaveOccurred(), "create fixed-size tag-test pool %s: %s", poolID, out.String())
+	DeferCleanup(func() {
+		out, deleteErr := cli.MachinePool.DeleteMachinePool(clusterKey, poolID)
+		Expect(deleteErr).NotTo(HaveOccurred(), "delete tag-test pool %s: %s", poolID, out.String())
+	})
+	err = cli.MachinePool.WaitForNodePoolReplicasReady(clusterKey, poolID, false,
+		30*time.Second, 15*time.Minute)
+	Expect(err).NotTo(HaveOccurred(), "wait for fixed-size tag-test pool %s to reach one replica", poolID)
+	var running []ec2types.Instance
+	Eventually(func() (int, error) {
+		instances, listErr := vpc.AWSClient.GetInstancesByNodePoolID(poolID, clusterKey)
+		running = runningWorkerInstances(instances)
+		return len(running), listErr
+	}, 15*time.Minute, 30*time.Second).Should(Equal(1),
+		"fixed-size tag-test pool %s should have one running worker", poolID)
+	return vpc, poolID, instanceIDs(running)
+}
+
+// runningWorkerInstances excludes terminated instances that EC2 can still return
+// from DescribeInstances after a worker has been replaced or scaled down.
+func runningWorkerInstances(instances []ec2types.Instance) []ec2types.Instance {
+	running := make([]ec2types.Instance, 0, len(instances))
+	for _, instance := range instances {
+		if instance.State != nil && instance.State.Name == ec2types.InstanceStateNameRunning {
+			running = append(running, instance)
 		}
 	}
-	Skip("requires a node pool with worker instances")
-	return nil, "", nil
+	return running
+}
+
+// reconcilingWorkerInstances includes pending replacements while excluding
+// stale instances that EC2 still returns after termination.
+func reconcilingWorkerInstances(instances []ec2types.Instance) []ec2types.Instance {
+	workers := make([]ec2types.Instance, 0, len(instances))
+	for _, instance := range instances {
+		if instance.State != nil && (instance.State.Name == ec2types.InstanceStateNamePending ||
+			instance.State.Name == ec2types.InstanceStateNameRunning) {
+			workers = append(workers, instance)
+		}
+	}
+	return workers
 }
 
 // instanceIDs returns sorted EC2 instance IDs for rollout detection.
@@ -303,8 +343,10 @@ func expectDay2WorkerTag(vpc *vpc_client.VPC, clusterKey, poolID string,
 		if err != nil {
 			return err
 		}
+		instances = reconcilingWorkerInstances(instances)
 		if !slices.Equal(instanceIDs(instances), workerIDs) {
-			return fmt.Errorf("worker instance identities changed during tag edit")
+			return fmt.Errorf("worker instance identities changed during tag edit: before %v, after %v",
+				workerIDs, instanceIDs(instances))
 		}
 		for _, instance := range instances {
 			actual := ""
