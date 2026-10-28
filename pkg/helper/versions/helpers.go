@@ -119,6 +119,11 @@ func GetMinimalHostedMachinePoolVersion(controlPlaneVersion string) (string, err
 	segments := cpVersion.Segments()
 	// Hosted machinepools can be created with a minimal of two minor versions from the control plane
 	minor := segments[1] - MinorVersionsSupported
+	// Early minors of a new major version (e.g. 5.0, 5.1) have no same-major minor two versions back.
+	// Clamp to the first minor of the current major instead of underflowing into a negative minor.
+	if minor < 0 {
+		minor = 0
+	}
 	version := fmt.Sprintf("%d.%d.%d", segments[0], minor, 0)
 
 	minimalVersion, err := v1.NewVersion().ID(version).RawID(version).HostedControlPlaneEnabled(true).Build()
