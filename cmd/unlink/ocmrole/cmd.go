@@ -37,7 +37,7 @@ var Cmd = &cobra.Command{
 	Short:   "Unlink the OCM role from a specific OCM organization",
 	Long:    "Unlink the OCM role from a specific OCM organization",
 	Example: ` #Unlink ocm role
-rosa unlink ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
+rosa unlink ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenShift-OCM-Role-1223456778`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  run,
 }
