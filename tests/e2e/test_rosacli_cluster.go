@@ -4071,6 +4071,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 		rosaClient = rosacli.NewClient()
 		ocmResourceService = rosaClient.OCMResource
 		clusterService = rosaClient.Cluster
+		operatorPolicyArn = ""
 		profile = handler.LoadProfileYamlFileByENV()
 		Expect(err).ToNot(HaveOccurred())
 
@@ -4083,9 +4084,7 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 	})
 
 	AfterEach(func() {
-		hostedCluster, err := clusterService.IsHostedCPCluster(clusterID)
-		Expect(err).ToNot(HaveOccurred())
-		if !hostedCluster {
+		if operatorPolicyArn != "" {
 			By("Recover the operator role policy version")
 			keysToUntag := []string{versionTagName}
 			err = awsClient.UntagPolicy(operatorPolicyArn, keysToUntag)
