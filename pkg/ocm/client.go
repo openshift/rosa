@@ -156,6 +156,7 @@ func (b *ClientBuilder) Build() (result *Client, err error) {
 		builder.Tokens(tokens...)
 	}
 	builder.Insecure(b.cfg.Insecure)
+	builder.AllowTLS12(b.cfg.AllowTLS12)
 
 	// Create the connection:
 	conn, err := builder.Build()

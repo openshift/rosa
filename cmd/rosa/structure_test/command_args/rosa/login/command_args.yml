@@ -1,4 +1,5 @@
 - name: admin
+- name: allow-tls12
 - name: client-id
 - name: client-secret
 - name: govcloud

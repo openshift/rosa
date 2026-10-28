@@ -84,6 +84,7 @@ func resetLoginArgs() {
 	args.env = ""
 	args.token = ""
 	args.insecure = false
+	args.allowTLS12 = false
 	args.useAuthCode = false
 	args.useDeviceCode = false
 	args.rhRegion = ""
@@ -509,8 +510,9 @@ func TestLoginSystemTrustHelper(t *testing.T) {
 	}
 	t.Setenv("SSL_CERT_FILE", caFile)
 	t.Setenv("OCM_CONFIG", filepath.Join(t.TempDir(), "ocm-config.json"))
-	initiateAuthCode = func(ctx context.Context, clientID string, insecure bool) (string, error) {
-		if ctx == nil || clientID != oauthClientId || insecure {
+	initiateAuthCode = func(ctx context.Context, clientID string, insecure bool,
+		allowTLS12 bool) (string, error) {
+		if ctx == nil || clientID != oauthClientId || insecure || allowTLS12 {
 			return "", errors.New("unexpected auth-code options")
 		}
 		return refreshToken, nil
@@ -571,10 +573,12 @@ var _ = Describe("OAuth authorization code TLS options", Ordered, func() {
 		fedramp.Disable()
 		Cmd.SetContext(context.Background())
 		Expect(os.Setenv("OCM_CONFIG", filepath.Join(GinkgoT().TempDir(), "ocm-config.json"))).To(Succeed())
-		initiateAuthCode = func(ctx context.Context, clientID string, insecure bool) (string, error) {
+		initiateAuthCode = func(ctx context.Context, clientID string, insecure bool,
+			allowTLS12 bool) (string, error) {
 			Expect(ctx).ToNot(BeNil())
 			Expect(clientID).To(Equal(oauthClientId))
 			Expect(insecure).To(Equal(args.insecure))
+			Expect(allowTLS12).To(Equal(args.allowTLS12))
 			return refreshToken, nil
 		}
 	})
@@ -666,16 +670,37 @@ var _ = Describe("OAuth authorization code TLS options", Ordered, func() {
 		Expect(cfg.Insecure).To(BeTrue())
 	})
 
+	It("passes allowTLS12 flag to the auth-code exchange and persists it", func() {
+		args.allowTLS12 = true
+		err := runLogin(untrustedServer.URL, true)
+		Expect(err).ToNot(HaveOccurred())
+
+		cfg, err := config.Load()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(cfg.AllowTLS12).To(BeTrue())
+	})
+
+	It("defaults allowTLS12 to false when not explicitly set", func() {
+		err := runLogin(untrustedServer.URL, true)
+		Expect(err).ToNot(HaveOccurred())
+
+		cfg, err := config.Load()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(cfg.AllowTLS12).To(BeFalse())
+	})
+
 	It("forwards the context, client ID, and insecure option and returns auth-code errors", func() {
 		expectedError := errors.New("auth-code exchange failed")
 		ctx := context.WithValue(context.Background(), struct{}{}, "test-context")
 		Cmd.SetContext(ctx)
 		args.useAuthCode = true
 		args.insecure = true
-		initiateAuthCode = func(actualContext context.Context, clientID string, insecure bool) (string, error) {
+		initiateAuthCode = func(actualContext context.Context, clientID string, insecure bool,
+			allowTLS12 bool) (string, error) {
 			Expect(actualContext).To(Equal(ctx))
 			Expect(clientID).To(Equal(oauthClientId))
 			Expect(insecure).To(BeTrue())
+			Expect(allowTLS12).To(BeFalse())
 			return "", expectedError
 		}
 

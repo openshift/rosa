@@ -54,10 +54,12 @@ var reAttempt bool
 
 var env string
 
-var initiateAuthCode = func(ctx context.Context, clientID string, insecure bool) (string, error) {
+var initiateAuthCode = func(ctx context.Context, clientID string, insecure bool,
+	allowTLS12 bool) (string, error) {
 	return authentication.NewAuthCodeConfig().
 		Client(clientID).
 		Insecure(insecure).
+		AllowTLS12(allowTLS12).
 		InitiateAuthCode(ctx)
 }
 
@@ -69,6 +71,7 @@ var args struct {
 	env           string
 	token         string
 	insecure      bool
+	allowTLS12    bool
 	useAuthCode   bool
 	useDeviceCode bool
 	rhRegion      string
@@ -150,6 +153,12 @@ func init() {
 			"and is not recommended for production environments.",
 	)
 	flags.BoolVar(
+		&args.allowTLS12,
+		"allow-tls12",
+		false,
+		"Allow TLS 1.2 connections instead of requiring TLS 1.3 minimum.",
+	)
+	flags.BoolVar(
 		&args.useAuthCode,
 		"use-auth-code",
 		false,
@@ -228,7 +237,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 		if spin != nil {
 			spin.Stop()
 		}
-		token, err := initiateAuthCode(ctx, oauthClientId, args.insecure)
+		token, err := initiateAuthCode(ctx, oauthClientId, args.insecure, args.allowTLS12)
 		if err != nil {
 			return fmt.Errorf("an error occurred while retrieving the token: %v", err)
 		}
@@ -401,6 +410,7 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command, argv []string) error {
 	cfg.Scopes = args.scopes
 	cfg.URL = gatewayURL
 	cfg.Insecure = args.insecure
+	cfg.AllowTLS12 = args.allowTLS12
 	cfg.FedRAMP = fedramp.Enabled()
 
 	if token != "" {
