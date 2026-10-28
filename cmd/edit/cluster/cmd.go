@@ -211,14 +211,17 @@ func initFlags(cmd *cobra.Command) {
 		&args.autonode,
 		autonode.AutoNodeFlagName,
 		"",
-		"Configure AutoNode for the cluster. Valid values are: enabled",
+		"Enable AutoNode, automatic node provisioning powered by the Red Hat build of Karpenter, "+
+			"for a Hosted Control Plane cluster. Valid values are: enabled. "+
+			"Requires --autonode-iam-role-arn.",
 	)
 
 	flags.StringVar(
 		&args.autoNodeRoleARN,
 		autonode.AutoNodeIAMRoleArnFlagName,
 		"",
-		"The AWS ARN of the IAM Role that has permissions for AutoNode",
+		"The ARN of the IAM role that grants the Red Hat build of Karpenter permission to "+
+			"provision nodes for AutoNode. Required when enabling AutoNode with --autonode.",
 	)
 
 	flags.StringSliceVar(
