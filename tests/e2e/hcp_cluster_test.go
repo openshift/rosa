@@ -483,27 +483,10 @@ var _ = Describe("HCP cluster testing",
 		It("can edit ROSA HCP cluster with additional allowed principals - [id:74556]",
 			labels.High, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated,
 			func() {
-				isSeaplane := isSeaplaneMode()
-
 				By("Check the help message of 'rosa edit cluster -h'")
 				helpOutput, err := clusterService.EditCluster("", "-h")
 				Expect(err).To(BeNil())
 				Expect(helpOutput.String()).To(ContainSubstring("--additional-allowed-principals"))
-
-				if isSeaplane {
-					// Flag exists on Seaplane create pathbind; cluster edit Seaplane dispatch does not
-					// accept it yet — reject with the supported-flag error.
-					By("V2: --additional-allowed-principals edit is rejected until Seaplane edit wiring")
-					out, err := clusterService.EditCluster(
-						clusterID,
-						"--additional-allowed-principals",
-						"arn:aws:iam::123456789012:role/unused",
-						"-y",
-					)
-					Expect(err).To(HaveOccurred())
-					Expect(out.String()).To(ContainSubstring("specify at least one supported flag"))
-					return
-				}
 
 				By("Check if cluster profile is enabled with additional allowed principals")
 				if !profile.ClusterConfig.AdditionalPrincipals {
@@ -512,15 +495,22 @@ var _ = Describe("HCP cluster testing",
 
 				output, err := clusterService.DescribeClusterAndReflect(clusterID)
 				Expect(err).ToNot(HaveOccurred())
+				if clusterConfig.AdditionalPrincipals == "" {
+					clusterConfig.AdditionalPrincipals = output.AdditionalPrincipals
+				}
+				Expect(clusterConfig.AdditionalPrincipals).ToNot(BeEmpty())
 				Expect(output.AdditionalPrincipals).To(ContainSubstring(clusterConfig.AdditionalPrincipals))
 
-				By("Get the installer role arn")
-				rosaClient.Runner.JsonFormat()
-				jsonOutput, err := clusterService.DescribeCluster(clusterID)
-				Expect(err).To(BeNil())
-				rosaClient.Runner.UnsetFormat()
-				jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
-				installRoleArn := jsonData.DigString("aws", "sts", "role_arn")
+				By("Get the role ARN used to create an additional principal role")
+				trustRoleArn := strings.Split(clusterConfig.AdditionalPrincipals, ",")[0]
+				if !isSeaplaneMode() {
+					rosaClient.Runner.JsonFormat()
+					jsonOutput, err := clusterService.DescribeCluster(clusterID)
+					Expect(err).To(BeNil())
+					rosaClient.Runner.UnsetFormat()
+					jsonData := rosaClient.Parser.JsonData.Input(jsonOutput).Parse()
+					trustRoleArn = jsonData.DigString("aws", "sts", "role_arn")
+				}
 
 				By("Create additional account roles")
 				accrolePrefix := "arPrefix74556"
@@ -532,7 +522,7 @@ var _ = Describe("HCP cluster testing",
 				additionalPrincipalRoleName := fmt.Sprintf("%s-%s", accrolePrefix, "additional-principal-role")
 				additionalPrincipalRoleArn, err := resourcesHandler.PrepareAdditionalPrincipalsRole(
 					additionalPrincipalRoleName,
-					installRoleArn)
+					trustRoleArn)
 				Expect(err).To(BeNil())
 				defer func() {
 					By("Delete the additional principal account-roles")

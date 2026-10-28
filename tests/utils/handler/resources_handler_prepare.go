@@ -19,6 +19,7 @@ import (
 	cwtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
@@ -1140,17 +1141,21 @@ func (rh *resourcesHandler) PrepareSharedVPCEndPointRoleForHostedCP(
 }
 
 func (rh *resourcesHandler) PrepareAdditionalPrincipalsRole(roleName string, installerRoleArn string) (string, error) {
-	awsClient, err := rh.GetAWSClient(true)
+	if installerRoleArn == "" {
+		log.Logger.Errorf("Can not create additional principal role due to no installer role.")
+		return "", fmt.Errorf("installer role ARN is required to create an additional principal role")
+	}
+	useSharedAccount := !usesSeaplane()
+	awsClient, err := rh.GetAWSClient(useSharedAccount)
 	if err != nil {
 		return "", err
 	}
 	policyArn := "arn:aws:iam::aws:policy/service-role/ROSAControlPlaneOperatorPolicy"
-	if installerRoleArn == "" {
-		log.Logger.Errorf("Can not create additional principal role due to no installer role.")
-		return "", err
-	}
-	roleArn, err := awsClient.CreateRoleForAdditionalPrincipals(roleName, installerRoleArn)
-	additionalPrincipalRoleArn := aws.ToString(roleArn.Arn)
+	additionalPrincipalRoleArn, err := waitForAdditionalPrincipalRole(
+		context.Background(),
+		additionalPrincipalRolePollInterval,
+		newAdditionalPrincipalRoleCreator(awsClient.CreateRoleForAdditionalPrincipals, roleName, installerRoleArn),
+	)
 	rh.registerAdditionalPrincipals(additionalPrincipalRoleArn)
 	if err != nil {
 		log.Logger.Errorf("Error happens when prepare additional principal role: %s", err.Error())
@@ -1164,6 +1169,57 @@ func (rh *resourcesHandler) PrepareAdditionalPrincipalsRole(roleName string, ins
 			additionalPrincipalRoleArn, err.Error())
 	}
 	return additionalPrincipalRoleArn, err
+}
+
+type additionalPrincipalRoleCreator func() (string, error)
+
+func newAdditionalPrincipalRoleCreator(
+	createRole func(roleName string, trustedRoleArn string) (iamTypes.Role, error),
+	roleName string,
+	trustedRoleArn string,
+) additionalPrincipalRoleCreator {
+	return func() (string, error) {
+		role, createErr := createRole(roleName, trustedRoleArn)
+		return aws.ToString(role.Arn), createErr
+	}
+}
+
+const (
+	additionalPrincipalRolePollInterval = 5 * time.Second
+	additionalPrincipalRolePollTimeout  = 2 * time.Minute
+)
+
+func waitForAdditionalPrincipalRole(
+	ctx context.Context,
+	interval time.Duration,
+	createRole additionalPrincipalRoleCreator,
+) (string, error) {
+	var roleArn string
+	err := wait.PollUntilContextTimeout(
+		ctx,
+		interval,
+		additionalPrincipalRolePollTimeout,
+		true,
+		func(context.Context) (bool, error) {
+			createdArn, createErr := createRole()
+			roleArn = createdArn
+			if createErr == nil {
+				return true, nil
+			}
+			if awserrors.IsErrorCode(createErr, "MalformedPolicyDocument") {
+				log.Logger.Warnf(
+					"AWS has not finished propagating the trusted role principal, retrying: %s",
+					createErr.Error(),
+				)
+				return false, nil
+			}
+			return false, createErr
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+	return roleArn, nil
 }
 
 func (rh *resourcesHandler) PrepareDNSDomain(hostedcp bool) (string, error) {

@@ -80,11 +80,12 @@ func NewClusterHandlerForKonflux(client *rosacli.Client, profile *Profile) (Clus
 		return nil, err
 	}
 	// Make sure shared VPC credentials file based on loaded resources
-	if (resourcesHandler.resources.SharedVPCRole != "" ||
-		resourcesHandler.resources.AdditionalPrincipals != "" ||
-		resourcesHandler.resources.HCPRoute53ShareRole != "" ||
-		resourcesHandler.resources.HCPVPCEndpointShareRole != "" ||
-		resourcesHandler.resources.ResourceShareArn != "") &&
+	if !usesSeaplane() &&
+		(resourcesHandler.resources.SharedVPCRole != "" ||
+			resourcesHandler.resources.AdditionalPrincipals != "" ||
+			resourcesHandler.resources.HCPRoute53ShareRole != "" ||
+			resourcesHandler.resources.HCPVPCEndpointShareRole != "" ||
+			resourcesHandler.resources.ResourceShareArn != "") &&
 		resourcesHandler.awsSharedAccountCredentialsFile == "" {
 
 		log.Logger.Errorf(envVariableErrMsg, awsCredentialsFile)
@@ -138,11 +139,12 @@ func newClusterHandler(client *rosacli.Client,
 	}
 
 	// Make sure shared VPC credentials file based on loaded resources
-	if (resourcesHandler.resources.SharedVPCRole != "" ||
-		resourcesHandler.resources.AdditionalPrincipals != "" ||
-		resourcesHandler.resources.HCPRoute53ShareRole != "" ||
-		resourcesHandler.resources.HCPVPCEndpointShareRole != "" ||
-		resourcesHandler.resources.ResourceShareArn != "") &&
+	if !usesSeaplane() &&
+		(resourcesHandler.resources.SharedVPCRole != "" ||
+			resourcesHandler.resources.AdditionalPrincipals != "" ||
+			resourcesHandler.resources.HCPRoute53ShareRole != "" ||
+			resourcesHandler.resources.HCPVPCEndpointShareRole != "" ||
+			resourcesHandler.resources.ResourceShareArn != "") &&
 		resourcesHandler.awsSharedAccountCredentialsFile == "" {
 
 		log.Logger.Errorf(envVariableErrMsg, awsCredentialsFile)
