@@ -196,6 +196,28 @@ var _ = Describe("Nodepool metadata updates", func() {
 		Expect(updated.Spec.NodePool.Replicas).NotTo(BeNil())
 		Expect(*updated.Spec.NodePool.Replicas).To(Equal(int32(3)))
 	})
+	It("translates an on-demand Spot max price into an explicit reset", func() {
+		seaplaneClient, pools := metadataTestClient(func(w http.ResponseWriter, req *http.Request) {
+			body, err := io.ReadAll(req.Body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(body)).To(MatchJSON(`{"spec":{"nodePool":{"platform":{"type":"AWS","aws":{"placement":{"spot":{"maxPrice":""}}}},"management":{"upgradeType":"Replace","autoRepair":false}}}}`))
+			_, err = w.Write([]byte(`{"metadata":{"name":"my-cluster.workers"}}`))
+			Expect(err).NotTo(HaveOccurred())
+		})
+		pools.EXPECT().Get(gomock.Any(), "my-cluster.workers", platform.GetOptions{}).
+			Return(nodePoolWithPlatformManagedFields(), nil)
+
+		_, err := WithNodePoolPatchUpdates(seaplaneClient, false, false, true).
+			SeaplaneV1alpha1().NodePools().Patch(
+			context.Background(), "my-cluster.workers", types.MergePatchType,
+			[]byte(`{"spec":{"nodePool":{"platform":{"aws":{"placement":{"spot":{"maxPrice":"on-demand"}}}}}}}`), platform.PatchOptions{},
+		)
+		Expect(err).NotTo(HaveOccurred())
+	})
+	It("rejects malformed Spot max price reset patches", func() {
+		_, err := resetNodePoolSpotMaxPrice([]byte("{"))
+		Expect(err).To(MatchError(ContainSubstring("decode patch document")))
+	})
 	It("reports malformed API responses", func() {
 		seaplaneClient, _ := metadataTestClient(func(w http.ResponseWriter, _ *http.Request) {
 			_, err := w.Write([]byte("{"))

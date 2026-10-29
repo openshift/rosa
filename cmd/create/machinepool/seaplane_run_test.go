@@ -26,9 +26,11 @@ import (
 	awsmocks "github.com/openshift/rosa/pkg/aws/mocks"
 	"github.com/openshift/rosa/pkg/ocm"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
+	"github.com/openshift/rosa/pkg/rosa"
 	seaplanemocks "github.com/openshift/rosa/pkg/seaplane/mocks"
 	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
 	"github.com/openshift/rosa/pkg/test"
+	reportertest "github.com/openshift/rosa/test/reporter"
 )
 
 func newCreateMPMocks(ctrl *gomock.Controller) (
@@ -418,6 +420,111 @@ var _ = Describe("runSeaplaneCreate (machinepool)", func() {
 
 		err := h.validateAndParseUserOptions()
 		Expect(err).To(MatchError("Invalid machine pool AWS tags: Resource has too many AWS tags"))
+	})
+
+	It("maps Spot NodePool options and warns when the cluster has no termination handler", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, clusters, _ := newCreateMPMocks(ctrl)
+		cluster := makeCluster("cluster1", "cluster-uid")
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+
+		handler := &seaplaneNodePoolCreate{
+			clusterName: "cluster1",
+			clusterUID:  "cluster-uid",
+			userOptions: &mpOpts.CreateMachinepoolUserOptions{
+				UseSpotInstances: true,
+				SpotMaxPrice:     "0.50",
+			},
+		}
+		nodePool := &v1alpha1.NodePool{Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
+			Platform: v1alpha1.NodePoolPlatform{
+				AWS: &v1alpha1.AWSNodePoolPlatform{
+					InstanceType: "m5.xlarge",
+					Subnet:       hypershiftv1beta1.AWSResourceReference{ID: awssdk.String("subnet-abc123")},
+				},
+			},
+		}}}
+
+		Expect(handler.PostExpand(context.Background(), t.RosaRuntime, nil, nodePool)).To(Succeed())
+		Expect(nodePool.Spec.NodePool.Platform.AWS.Placement.MarketType).To(Equal(hypershiftv1beta1.MarketTypeSpot))
+		Expect(nodePool.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice).To(Equal("0.50"))
+
+		var warning string
+		reporter := &reportertest.FakeLogger{
+			WarnFn: func(format string, args ...any) { warning = fmt.Sprintf(format, args...) },
+		}
+		Expect(handler.PostResponse(
+			context.Background(), &rosa.Runtime{Reporter: reporter}, nodePool,
+		)).To(Succeed())
+		Expect(warning).To(Equal("Spot NodePool created without termination handler configuration. " +
+			"Nodes will not be gracefully drained on interruptions."))
+	})
+
+	It("does not warn for Spot NodePools when the cluster has a termination handler", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, clusters, _ := newCreateMPMocks(ctrl)
+		cluster := makeCluster("cluster1", "cluster-uid")
+		cluster.Spec.HostedCluster.Platform.AWS.TerminationHandlerQueueURL =
+			"https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).Return(cluster, nil)
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+
+		handler := &seaplaneNodePoolCreate{
+			clusterName: "cluster1",
+			clusterUID:  "cluster-uid",
+			userOptions: &mpOpts.CreateMachinepoolUserOptions{UseSpotInstances: true},
+		}
+		nodePool := &v1alpha1.NodePool{Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
+			Platform: v1alpha1.NodePoolPlatform{
+				AWS: &v1alpha1.AWSNodePoolPlatform{
+					InstanceType: "m5.xlarge",
+					Subnet:       hypershiftv1beta1.AWSResourceReference{ID: awssdk.String("subnet-abc123")},
+				},
+			},
+		}}}
+
+		Expect(handler.PostExpand(context.Background(), t.RosaRuntime, nil, nodePool)).To(Succeed())
+		Expect(nodePool.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice).To(BeEmpty())
+
+		var warning string
+		reporter := &reportertest.FakeLogger{
+			WarnFn: func(format string, args ...any) { warning = fmt.Sprintf(format, args...) },
+		}
+		Expect(handler.PostResponse(
+			context.Background(), &rosa.Runtime{Reporter: reporter}, nodePool,
+		)).To(Succeed())
+		Expect(warning).To(BeEmpty())
+	})
+
+	It("maps the on-demand Spot price sentinel to an empty Platform API max price", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, clusters, _ := newCreateMPMocks(ctrl)
+		clusters.EXPECT().Get(gomock.Any(), "cluster1", gomock.Any()).
+			Return(makeCluster("cluster1", "cluster-uid"), nil)
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+
+		handler := &seaplaneNodePoolCreate{
+			clusterName: "cluster1",
+			clusterUID:  "cluster-uid",
+			userOptions: &mpOpts.CreateMachinepoolUserOptions{
+				UseSpotInstances: true,
+				SpotMaxPrice:     mpOpts.SpotPriceOnDemand,
+			},
+		}
+		nodePool := &v1alpha1.NodePool{Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
+			Platform: v1alpha1.NodePoolPlatform{
+				AWS: &v1alpha1.AWSNodePoolPlatform{
+					InstanceType: "m5.xlarge",
+					Subnet:       hypershiftv1beta1.AWSResourceReference{ID: awssdk.String("subnet-abc123")},
+				},
+			},
+		}}}
+
+		Expect(handler.PostExpand(context.Background(), t.RosaRuntime, nil, nodePool)).To(Succeed())
+		Expect(nodePool.Spec.NodePool.Platform.AWS.Placement.MarketType).
+			To(Equal(hypershiftv1beta1.MarketTypeSpot))
+		Expect(nodePool.Spec.NodePool.Platform.AWS.Placement.Spot.MaxPrice).To(BeEmpty())
 	})
 })
 

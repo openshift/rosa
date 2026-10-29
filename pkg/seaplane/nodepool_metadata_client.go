@@ -22,31 +22,50 @@ import (
 // API versions that validate omitted fields as zero values.
 func WithNodePoolMetadataUpdates(client seaplaneclientset.Interface,
 	labelsChanged, taintsChanged bool) seaplaneclientset.Interface {
-	return &nodePoolMetadataClient{Interface: client, labelsChanged: labelsChanged, taintsChanged: taintsChanged}
+	return WithNodePoolPatchUpdates(client, labelsChanged, taintsChanged, false)
+}
+
+// WithNodePoolPatchUpdates preserves explicit empty labels and taints in PUT
+// requests, echoes existing platform-managed fields in PATCH requests, and can
+// translate the on-demand Spot max-price sentinel into an explicit JSON reset.
+func WithNodePoolPatchUpdates(client seaplaneclientset.Interface,
+	labelsChanged, taintsChanged, spotMaxPriceReset bool) seaplaneclientset.Interface {
+	return &nodePoolMetadataClient{
+		Interface:         client,
+		labelsChanged:     labelsChanged,
+		taintsChanged:     taintsChanged,
+		spotMaxPriceReset: spotMaxPriceReset,
+	}
 }
 
 type nodePoolMetadataClient struct {
 	seaplaneclientset.Interface
 	labelsChanged, taintsChanged bool
+	spotMaxPriceReset            bool
 }
 
 func (c *nodePoolMetadataClient) SeaplaneV1alpha1() platform.V1alpha1PublicInterface {
 	return &nodePoolMetadataPublicClient{
 		V1alpha1PublicInterface: c.Interface.SeaplaneV1alpha1(),
-		labelsChanged:           c.labelsChanged, taintsChanged: c.taintsChanged,
+		labelsChanged:           c.labelsChanged,
+		taintsChanged:           c.taintsChanged,
+		spotMaxPriceReset:       c.spotMaxPriceReset,
 	}
 }
 
 type nodePoolMetadataPublicClient struct {
 	platform.V1alpha1PublicInterface
 	labelsChanged, taintsChanged bool
+	spotMaxPriceReset            bool
 }
 
 func (c *nodePoolMetadataPublicClient) NodePools() platform.NodePoolInterface {
 	return &nodePoolMetadataUpdateClient{
 		NodePoolInterface: c.V1alpha1PublicInterface.NodePools(),
 		restClient:        c.RESTClient(),
-		labelsChanged:     c.labelsChanged, taintsChanged: c.taintsChanged,
+		labelsChanged:     c.labelsChanged,
+		taintsChanged:     c.taintsChanged,
+		spotMaxPriceReset: c.spotMaxPriceReset,
 	}
 }
 
@@ -54,11 +73,19 @@ type nodePoolMetadataUpdateClient struct {
 	platform.NodePoolInterface
 	restClient                   rest.Interface
 	labelsChanged, taintsChanged bool
+	spotMaxPriceReset            bool
 }
 
 // Patch keeps the Platform API's non-standard field-level errors in validation responses.
 func (c *nodePoolMetadataUpdateClient) Patch(ctx context.Context, name string, patchType types.PatchType,
 	data []byte, opts platform.PatchOptions) (*v1alpha1.NodePool, error) {
+	if c.spotMaxPriceReset {
+		var err error
+		data, err = resetNodePoolSpotMaxPrice(data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to prepare node pool patch: %w", err)
+		}
+	}
 	if c.restClient == nil {
 		return c.NodePoolInterface.Patch(ctx, name, patchType, data, opts)
 	}
@@ -121,6 +148,41 @@ func addNodePoolNoOpFields(data []byte, current *v1alpha1.NodePool) ([]byte, err
 	nodePool["platform"] = platform
 	nodePool["management"] = current.Spec.NodePool.Management
 	spec["nodePool"] = nodePool
+	return json.Marshal(request)
+}
+
+// resetNodePoolSpotMaxPrice converts the non-empty on-demand sentinel used by
+// generated update overlays into the explicit empty string required to clear it.
+func resetNodePoolSpotMaxPrice(data []byte) ([]byte, error) {
+	var request map[string]any
+	if err := json.Unmarshal(data, &request); err != nil {
+		return nil, fmt.Errorf("decode patch document: %w", err)
+	}
+	spec, ok := request["spec"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("patch document must contain a spec object")
+	}
+	nodePool, ok := spec["nodePool"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("patch spec.nodePool must be an object")
+	}
+	nodePlatform, ok := nodePool["platform"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("patch spec.nodePool.platform must be an object")
+	}
+	aws, ok := nodePlatform["aws"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("patch spec.nodePool.platform.aws must be an object")
+	}
+	placement, ok := aws["placement"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("patch spec.nodePool.platform.aws.placement must be an object")
+	}
+	spot, ok := placement["spot"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("patch spec.nodePool.platform.aws.placement.spot must be an object")
+	}
+	spot["maxPrice"] = ""
 	return json.Marshal(request)
 }
 

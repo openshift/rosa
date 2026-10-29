@@ -22,6 +22,7 @@ import (
 	rosaaws "github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/clusterautoscaler"
 	"github.com/openshift/rosa/pkg/helper/roles"
+	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/seaplane"
@@ -144,6 +145,12 @@ func (h *seaplaneClusterCreate) PreRequest(
 		input.Version = args.version
 	}
 	input.OperatorRolesPrefix = args.operatorRolesPrefix
+	if args.spotTerminationQueueUrl != "" {
+		if err := urlHelper.ValidateHTTPSQueueURL(args.spotTerminationQueueUrl); err != nil {
+			return fmt.Errorf("invalid value for '--spot-termination-queue-url': %w", err)
+		}
+		input.TerminationHandlerQueueURL = args.spotTerminationQueueUrl
+	}
 
 	// --subnet-id is a new Seaplane-only flag (no OCM equivalent) so it IS registered on
 	// seaplaneClusterInput and arrives directly from cobra. Fall back to --subnet-ids[0]

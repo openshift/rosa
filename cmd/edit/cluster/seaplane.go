@@ -19,6 +19,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	"github.com/openshift/rosa/pkg/helper/roles"
+	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	rosainput "github.com/openshift/rosa/pkg/input"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -123,17 +124,18 @@ func (h *seaplaneClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtime,
 	channelChanged := h.cmd.Flags().Changed("channel-group") || h.cmd.Flags().Changed("channel")
 	schedulerProfileChanged := h.cmd.Flags().Changed("scheduler-profile")
 	additionalPrincipalsChanged := h.cmd.Flags().Changed("additional-allowed-principals")
-	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") &&
-		!tagsChanged &&
+	spotTerminationQueueChanged := h.cmd.Flags().Changed("spot-termination-queue-url")
+	if !h.cmd.Flags().Changed("expiration") && !h.cmd.Flags().Changed("expiration-time") && !tagsChanged &&
 		!h.cmd.Flags().Changed("delete-protection") &&
 		!channelChanged && !schedulerProfileChanged && !h.cmd.Flags().Changed("no-proxy") &&
 		!h.cmd.Flags().Changed("http-proxy") && !h.cmd.Flags().Changed("https-proxy") &&
-		!h.cmd.Flags().Changed("additional-trust-bundle-file") && !additionalPrincipalsChanged {
+		!h.cmd.Flags().Changed("additional-trust-bundle-file") &&
+		!additionalPrincipalsChanged && !spotTerminationQueueChanged {
 		return fmt.Errorf(
 			"specify at least one supported flag: --expiration, --expiration-time, " +
 				"--tags, --delete-protection, --channel-group, --channel, --scheduler-profile, " +
 				"--http-proxy, --https-proxy, --no-proxy, --additional-trust-bundle-file, " +
-				"--additional-allowed-principals",
+				"--additional-allowed-principals, --spot-termination-queue-url",
 		)
 	}
 
@@ -161,6 +163,15 @@ func (h *seaplaneClusterUpdate) PreRequest(ctx context.Context, r *rosa.Runtime,
 		if _, err := additionalAllowedPrincipalsForSeaplaneEdit(); err != nil {
 			return err
 		}
+	}
+	if spotTerminationQueueChanged {
+		queueURL := h.cmd.Flag("spot-termination-queue-url").Value.String()
+		if queueURL != "" {
+			if err := urlHelper.ValidateHTTPSQueueURL(queueURL); err != nil {
+				return fmt.Errorf("invalid value for '--spot-termination-queue-url': %w", err)
+			}
+		}
+		input.TerminationHandlerQueueURL = queueURL
 	}
 	if schedulerProfileChanged {
 		switch input.SchedulerProfile {
@@ -299,9 +310,10 @@ func (h *seaplaneClusterUpdate) buildSpecPatch(input *seaplanepathbind.ClusterUp
 		if err != nil {
 			return nil, err
 		}
-		hostedClusterPatch(spec)["platform"] = map[string]any{
-			"aws": map[string]any{"additionalAllowedPrincipals": principals},
-		}
+		hostedClusterAWSPatch(spec)["additionalAllowedPrincipals"] = principals
+	}
+	if h.cmd.Flags().Changed("spot-termination-queue-url") {
+		hostedClusterAWSPatch(spec)["terminationHandlerQueueURL"] = input.TerminationHandlerQueueURL
 	}
 	configuration := map[string]any{}
 	if h.cmd.Flags().Changed("scheduler-profile") {
@@ -348,6 +360,21 @@ func hostedClusterPatch(spec map[string]any) map[string]any {
 		spec["hostedCluster"] = hostedCluster
 	}
 	return hostedCluster
+}
+
+func hostedClusterAWSPatch(spec map[string]any) map[string]any {
+	hostedCluster := hostedClusterPatch(spec)
+	platform, _ := hostedCluster["platform"].(map[string]any)
+	if platform == nil {
+		platform = map[string]any{}
+		hostedCluster["platform"] = platform
+	}
+	awsPlatform, _ := platform["aws"].(map[string]any)
+	if awsPlatform == nil {
+		awsPlatform = map[string]any{}
+		platform["aws"] = awsPlatform
+	}
+	return awsPlatform
 }
 
 func additionalAllowedPrincipalsForSeaplaneEdit() ([]string, error) {

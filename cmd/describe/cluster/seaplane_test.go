@@ -120,7 +120,8 @@ var _ = Describe("seaplaneClusterToMap", func() {
 					},
 					Platform: v1alpha1.PlatformSpec{
 						AWS: &v1alpha1.AWSPlatformSpec{
-							Region: "us-east-1",
+							Region:                     "us-east-1",
+							TerminationHandlerQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue",
 							RolesRef: hypershiftv1beta1.AWSRolesRef{
 								IngressARN:              "arn:aws:iam::123456789012:role/my-cluster-ingress",
 								ImageRegistryARN:        "arn:aws:iam::123456789012:role/my-cluster-image-registry",
@@ -177,6 +178,9 @@ var _ = Describe("seaplaneClusterToMap", func() {
 		Expect(m["region"]).To(Equal("us-east-1"))
 		Expect(m["vpc"]).To(Equal("vpc-def456"))
 		Expect(m["subnet"]).To(Equal("subnet-abc123"))
+		aws := m["aws"].(map[string]interface{})
+		Expect(aws["termination_handler_queue_url"]).To(
+			Equal("https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"))
 		Expect(m["api_url"]).To(Equal("https://api.my-cluster.example.com:6443"))
 		Expect(m["management_cluster"]).To(Equal("mc01"))
 		Expect(m["scheduler_profile"]).To(Equal("HighNodeUtilization"))
@@ -359,5 +363,21 @@ var _ = Describe("seaplaneClusterToString", func() {
 			Status: v1alpha1.ClusterStatus{Version: "4.17.0"},
 		}, nil, nil)
 		Expect(out).To(ContainSubstring("Channel Group:              candidate"))
+	})
+
+	It("shows the spot termination queue URL when configured", func() {
+		out := seaplaneClusterToString(&v1alpha1.Cluster{
+			Spec: v1alpha1.ClusterSpec{
+				HostedCluster: v1alpha1.HostedClusterSpecPassthrough{
+					Platform: v1alpha1.PlatformSpec{
+						AWS: &v1alpha1.AWSPlatformSpec{
+							TerminationHandlerQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue",
+						},
+					},
+				},
+			},
+		}, nil, nil)
+		Expect(out).To(ContainSubstring(
+			"Spot Termination Queue URL: https://sqs.us-east-1.amazonaws.com/123456789012/rosa-spot-queue"))
 	})
 })
