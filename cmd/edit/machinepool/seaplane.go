@@ -93,16 +93,17 @@ func runSeaplaneEdit(r *rosa.Runtime, userOptions *EditMachinepoolUserOptions, c
 // seaplaneNodePoolUpdate implements seaplanepathbind.NodePoolUpdateHandler for rosa edit machinepool.
 type seaplaneNodePoolUpdate struct {
 	seaplanepathbind.GeneratedNodePoolUpdatePrompt
-	clusterKey               string
-	nodePoolKey              string
-	nodePoolName             string
-	userOptions              *EditMachinepoolUserOptions
-	cmd                      *cobra.Command
-	labels                   map[string]string
-	taints                   []hypershiftv1beta1.Taint
-	imageType                string
-	tags                     map[string]string
-	nodeDrainGracePeriod     *metav1.Duration
+	clusterKey           string
+	nodePoolKey          string
+	nodePoolName         string
+	userOptions          *EditMachinepoolUserOptions
+	cmd                  *cobra.Command
+	labels               map[string]string
+	taints               []hypershiftv1beta1.Taint
+	imageType            string
+	tags                 map[string]string
+	nodeDrainGracePeriod *metav1.Duration
+	maxSurge             string
 }
 
 func (h *seaplaneNodePoolUpdate) PreRequest(
@@ -119,15 +120,16 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 		minReplicasChanged || maxReplicasChanged
 	imageTypeChanged := h.cmd.Flags().Changed("image-type")
 	nodeDrainChanged := h.cmd.Flags().Changed("node-drain-grace-period")
+	maxSurgeChanged := h.cmd.Flags().Changed("max-surge")
 
 	if !replicasChanged && !spotMaxPriceChanged && !autoscalingChanged &&
 		!h.cmd.Flags().Changed("labels") && !h.cmd.Flags().Changed("taints") &&
 		!h.cmd.Flags().Changed("autorepair") && !h.cmd.Flags().Changed("additional-security-group-ids") &&
-		!imageTypeChanged && !tagsChanged && !nodeDrainChanged {
+		!imageTypeChanged && !tagsChanged && !nodeDrainChanged && !maxSurgeChanged {
 		return fmt.Errorf(
 			"specify at least one supported flag: --replicas, --enable-autoscaling, " +
 				"--min-replicas, --max-replicas, --spot-max-price, --labels, --taints, --autorepair, " +
-				"--additional-security-group-ids, --image-type, --tags, --node-drain-grace-period",
+				"--additional-security-group-ids, --image-type, --tags, --node-drain-grace-period, --max-surge",
 		)
 	}
 	if tagsChanged {
@@ -184,6 +186,17 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 			return fmt.Errorf("invalid --node-drain-grace-period: %w", err)
 		}
 		h.nodeDrainGracePeriod = nodeDrainGracePeriod
+	}
+
+	if maxSurgeChanged {
+		// Validate and store the max surge value
+		maxSurgeVal := h.userOptions.maxSurge
+		if err := mpHelpers.ValidateUpgradeMaxSurgeUnavailable(maxSurgeVal); err != nil {
+			return fmt.Errorf("invalid --max-surge: %w", err)
+		}
+		h.maxSurge = maxSurgeVal
+		// Encode for pathbind
+		input.MaxSurge = seaplane.EncodeUpgradeValue(maxSurgeVal)
 	}
 
 	// Validate autoscaling and replicas are mutually exclusive
@@ -335,6 +348,12 @@ func (h *seaplaneNodePoolUpdate) PostExpand(
 
 	if h.cmd.Flags().Changed("node-drain-grace-period") {
 		merged.Spec.NodePool.NodeDrainTimeout = h.nodeDrainGracePeriod
+	}
+
+	if h.cmd.Flags().Changed("max-surge") {
+		// Create the IntOrString from the encoded value
+		maxSurgeVal := seaplane.DecodeUpgradeValue(h.maxSurge)
+		merged.Spec.MaxSurge = maxSurgeVal
 	}
 
 	// Security groups - convert comma-separated string to []AWSResourceReference
