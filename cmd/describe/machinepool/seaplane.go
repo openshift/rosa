@@ -14,6 +14,7 @@ import (
 	"github.com/openshift-online/rosa-seaplane-api/clientset/platform"
 
 	rosaaws "github.com/openshift/rosa/pkg/aws"
+	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
@@ -111,9 +112,11 @@ func seaplaneNodePoolEC2MetadataHttpTokens(np *v1alpha1.NodePool) string {
 
 func seaplaneManagementUpgradeToMap(np *v1alpha1.NodePool) map[string]string {
 	_, upgrade := seaplane.NodePoolUpgradeSettings(np)
+	nodeDrainGracePeriod := mpHelpers.FormatSeaplaneNodeDrainGracePeriod(np.Spec.NodePool.NodeDrainTimeout)
 	return map[string]string{
-		"max_surge":       upgrade.MaxSurge,
-		"max_unavailable": upgrade.MaxUnavailable,
+		"max_surge":               upgrade.MaxSurge,
+		"max_unavailable":         upgrade.MaxUnavailable,
+		"node_drain_grace_period": nodeDrainGracePeriod,
 	}
 }
 

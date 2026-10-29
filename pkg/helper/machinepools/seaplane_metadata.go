@@ -6,8 +6,10 @@ package machinepools
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
@@ -112,4 +114,58 @@ func ParseSeaplaneImageType(imageType string) (string, error) {
 	}
 	// Same wording as the OCM path, so both reject an unknown type alike.
 	return "", fmt.Errorf("expected a valid image type for the machine pool: '%s'", imageType)
+}
+
+// ParseSeaplaneNodeDrainGracePeriod parses and validates a node drain grace period
+// duration string and returns a metav1.Duration pointer suitable for the API.
+// Empty input returns nil. Accepts format "N minutes" or "N hours" where N is
+// a non-negative integer, with a maximum of 1 week (10080 minutes / 168 hours).
+func ParseSeaplaneNodeDrainGracePeriod(input string) (*metav1.Duration, error) {
+	if input == "" {
+		return nil, nil
+	}
+	// Validate using the same rules as the OCM path
+	if err := ValidateNodeDrainGracePeriod(input); err != nil {
+		return nil, err
+	}
+
+	// Parse the duration string: "N minutes" or "N hours"
+	parts := strings.Fields(strings.TrimSpace(input))
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("invalid node drain grace period format: %q", input)
+	}
+
+	// If only a number is provided, default to minutes
+	if len(parts) == 1 {
+		parts = append(parts, "minutes")
+	}
+
+	var duration time.Duration
+	switch parts[1] {
+	case "minute", "minutes":
+		d, err := time.ParseDuration(parts[0] + "m")
+		if err != nil {
+			return nil, fmt.Errorf("invalid node drain grace period value: %w", err)
+		}
+		duration = d
+	case "hour", "hours":
+		d, err := time.ParseDuration(parts[0] + "h")
+		if err != nil {
+			return nil, fmt.Errorf("invalid node drain grace period value: %w", err)
+		}
+		duration = d
+	default:
+		return nil, fmt.Errorf("invalid node drain grace period unit: %q, expected 'minute(s)' or 'hour(s)'", parts[1])
+	}
+
+	return &metav1.Duration{Duration: duration}, nil
+}
+
+// FormatSeaplaneNodeDrainGracePeriod formats a metav1.Duration as a human-readable
+// string for display. Returns empty string for nil or zero duration.
+func FormatSeaplaneNodeDrainGracePeriod(d *metav1.Duration) string {
+	if d == nil || d.Duration == 0 {
+		return ""
+	}
+	return d.Duration.String()
 }
