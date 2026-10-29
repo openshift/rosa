@@ -39,6 +39,32 @@ var _ = Describe("EncodeUpgradeValue", func() {
 	)
 })
 
+var _ = Describe("DecodeUpgradeValue", func() {
+	DescribeTable("decodes CLI string to IntOrString",
+		func(value string, expectedType intstr.Type, expectedVal interface{}) {
+			decoded := DecodeUpgradeValue(value)
+			if expectedVal == nil {
+				Expect(decoded).To(BeNil())
+			} else {
+				Expect(decoded).NotTo(BeNil())
+				Expect(decoded.Type).To(Equal(expectedType))
+				if expectedType == intstr.Int {
+					Expect(decoded.IntVal).To(Equal(expectedVal.(int32)))
+				} else {
+					Expect(decoded.StrVal).To(Equal(expectedVal.(string)))
+				}
+			}
+		},
+		Entry("absolute count", "2", intstr.Int, int32(2)),
+		Entry("zero", "0", intstr.Int, int32(0)),
+		Entry("large number", "100", intstr.Int, int32(100)),
+		Entry("percentage", "20%", intstr.String, "20%"),
+		Entry("zero percentage", "0%", intstr.String, "0%"),
+		Entry("with space", " 5 ", intstr.Int, int32(5)),
+		Entry("unset", "", nil, nil),
+	)
+})
+
 var _ = Describe("NodePoolUpgradeSettings", func() {
 	nodePoolWithManagement := func(management hypershiftv1beta1.NodePoolManagement) *v1alpha1.NodePool {
 		return &v1alpha1.NodePool{Spec: v1alpha1.NodePoolSpec{
