@@ -1,6 +1,3 @@
-// Copyright Red Hat
-// SPDX-License-Identifier: Apache-2.0
-
 package pathbind
 
 import (
@@ -74,7 +71,6 @@ var ClusterUpdatePlatformAPIFlags = []string{
 	"platform",
 	"provisioner-config-name",
 	"channel",
-	"authentication-type",
 	"component-routes",
 	"container-log-max-files",
 	"container-log-max-size",
@@ -127,7 +123,6 @@ func RegisterClusterUpdateFlags(cmd *cobra.Command, input *ClusterUpdateInput) {
 	registerIfNew(f, "platform", func() { f.StringVar(&input.Platform, "platform", "", "") })
 	registerIfNew(f, "provisioner-config-name", func() { f.StringVar(&input.ProvisionerConfigName, "provisioner-config-name", "", "") })
 	registerIfNew(f, "channel", func() { f.StringVar(&input.Channel, "channel", "", "") })
-	registerIfNew(f, "authentication-type", func() { f.StringVar(&input.AuthenticationType, "authentication-type", "", "") })
 	registerIfNew(f, "component-routes", func() { f.StringVar(&input.ComponentRoutes, "component-routes", "", "") })
 	registerIfNew(f, "container-log-max-files", func() {
 		input.ContainerLogMaxFiles = new(int32)
@@ -318,7 +313,7 @@ func overlayClusterUpdateInput(cmd *cobra.Command, before, input, expanded *Clus
 	} else if !pathbind.IsUnset(input.OidcProviders) {
 		after.OidcProviders = input.OidcProviders
 	}
-	if flagChanged(cmd, "authentication-type") && pathbind.IsUnset(input.AuthenticationType) {
+	if flagChanged(cmd, "") && pathbind.IsUnset(input.AuthenticationType) {
 		return after, fmt.Errorf("field %s cannot be reset", "spec.hostedCluster.configuration.authentication.type")
 	} else if !pathbind.IsUnset(expanded.AuthenticationType) {
 		after.AuthenticationType = expanded.AuthenticationType

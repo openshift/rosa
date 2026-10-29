@@ -87,8 +87,6 @@
 - name: dry-run
 - name: fake-cluster
 - name: properties
-- name: disabled
-- name: enabled
 - name: use-local-credentials
 - name: permissions-boundary
 - name: hosted-cp
@@ -130,6 +128,8 @@
 - name: "authentication-type"
 - name: "component-routes"
 - name: "delete-protection"
+- name: "disable-cluster-capabilities"
+- name: "enable-cluster-capabilities"
 - name: "scheduler-profile"
 - name: "container-log-max-files"
 - name: "container-log-max-size"

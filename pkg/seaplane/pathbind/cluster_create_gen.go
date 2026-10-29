@@ -115,10 +115,9 @@ var ClusterCreatePlatformAPIFlags = []string{
 	"autoscaler-max-nodes-total",
 	"autoscaler-max-pod-grace-period",
 	"autoscaler-pod-priority-threshold",
-	"disabled",
-	"enabled",
+	"disable-cluster-capabilities",
+	"enable-cluster-capabilities",
 	"channel",
-	"authentication-type",
 	"component-routes",
 	"container-log-max-files",
 	"container-log-max-size",
@@ -204,10 +203,13 @@ func RegisterClusterCreateFlags(cmd *cobra.Command, input *ClusterCreateInput) {
 		input.PodPriorityThreshold = new(int32)
 		f.Int32Var(input.PodPriorityThreshold, "autoscaler-pod-priority-threshold", 0, "")
 	})
-	registerIfNew(f, "disabled", func() { f.StringVar(&input.Disabled, "disabled", "", "") })
-	registerIfNew(f, "enabled", func() { f.StringVar(&input.Enabled, "enabled", "", "") })
+	registerIfNew(f, "disable-cluster-capabilities", func() {
+		f.StringVar(&input.Disabled, "disable-cluster-capabilities", "", "Comma-separated capabilities to disable at cluster installation.")
+	})
+	registerIfNew(f, "enable-cluster-capabilities", func() {
+		f.StringVar(&input.Enabled, "enable-cluster-capabilities", "", "Comma-separated capabilities to enable at cluster installation.")
+	})
 	registerIfNew(f, "channel", func() { f.StringVar(&input.Channel, "channel", "", "") })
-	registerIfNew(f, "authentication-type", func() { f.StringVar(&input.AuthenticationType, "authentication-type", "", "") })
 	registerIfNew(f, "component-routes", func() { f.StringVar(&input.ComponentRoutes, "component-routes", "", "") })
 	registerIfNew(f, "container-log-max-files", func() {
 		input.ContainerLogMaxFiles = new(int32)
