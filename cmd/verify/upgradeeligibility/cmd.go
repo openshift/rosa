@@ -54,7 +54,8 @@ var Cmd = &cobra.Command{
 
   # Machine-readable output
   rosa verify upgrade-eligibility -c mycluster --output json`,
-	Run: run,
+	Args: cobra.NoArgs,
+	Run:  run,
 }
 
 func init() {
@@ -81,6 +82,11 @@ func run(cmd *cobra.Command, _ []string) {
 	r := rosa.NewRuntime().WithOCM()
 	defer r.Cleanup()
 
+	if args.output != "" && args.output != "json" {
+		r.Reporter.Errorf("Invalid output format '%s'. Supported values: '' (human-readable), 'json'", args.output)
+		os.Exit(1)
+	}
+
 	clusterKey := r.GetClusterKey()
 	cluster := r.FetchCluster()
 
@@ -99,16 +105,16 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		fmt.Println(string(data))
-		return
+	} else {
+		printHumanReadable(result)
 	}
-
-	printHumanReadable(result)
 
 	if !result.Eligible {
 		os.Exit(1)
 	}
 }
 
+// printHumanReadable renders the eligibility result as formatted text.
 func printHumanReadable(result *eligibility.Result) {
 	fmt.Printf("Cluster: %s (%s, %s, %s)\n", result.Cluster.Name, result.Cluster.Product,
 		result.Cluster.Version, result.Cluster.Region)
