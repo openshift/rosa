@@ -27,15 +27,26 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 )
 
+var validVersion = regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`)
+
 // CheckAll runs the Day-1 OCM-side eligibility checks and returns a structured result.
 // It does not require backplane or in-cluster access.
 func CheckAll(ocmClient OCMClient, cluster *cmv1.Cluster, targetVersion string) (*Result, error) {
+	if targetVersion != "" && !validVersion.MatchString(targetVersion) {
+		return nil, fmt.Errorf("invalid target version format %q: expected X.Y or X.Y.Z", targetVersion)
+	}
+
+	channelGroup := ""
+	if version := cluster.Version(); version != nil {
+		channelGroup = version.ChannelGroup()
+	}
+
 	result := &Result{
 		Cluster: ClusterInfo{
 			ID:           cluster.ID(),
 			Name:         cluster.Name(),
 			Version:      cluster.OpenshiftVersion(),
-			ChannelGroup: cluster.Version().ChannelGroup(),
+			ChannelGroup: channelGroup,
 			Region:       cluster.Region().ID(),
 			State:        string(cluster.State()),
 			Hypershift:   cluster.Hypershift().Enabled(),
@@ -236,7 +247,11 @@ func checkActiveUpgradesHypershift(result *Result, ocmClient OCMClient, cluster 
 // checkAvailableTargets verifies upgrade targets exist and, if specified, that the target version is among them.
 func checkAvailableTargets(result *Result, ocmClient OCMClient, cluster *cmv1.Cluster, targetVersion string) error {
 	versionID := ocm.GetVersionID(cluster)
-	available, err := ocmClient.GetAvailableUpgrades(versionID)
+	product := ""
+	if cluster.Hypershift().Enabled() {
+		product = ocm.HcpProduct
+	}
+	available, err := ocmClient.GetAvailableUpgradesWithProduct(product, versionID)
 	if err != nil {
 		return fmt.Errorf("failed to get available upgrades: %w", err)
 	}

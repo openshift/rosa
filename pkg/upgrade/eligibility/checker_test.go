@@ -52,6 +52,10 @@ func (m *mockOCMClient) GetAvailableUpgrades(string) ([]string, error) {
 	return m.availableUpgrades, m.err
 }
 
+func (m *mockOCMClient) GetAvailableUpgradesWithProduct(string, string) ([]string, error) {
+	return m.availableUpgrades, m.err
+}
+
 func (m *mockOCMClient) GetRawAvailableUpgrades(string) ([]string, error) {
 	return m.rawAvailableUpgrades, m.err
 }
