@@ -153,7 +153,9 @@ optional-value handling, and the full Request/Result lifecycle.
 A function in `pkg/` must **never**:
 - Import Cobra, pflag, survey, or the reporter/output/interactive packages.
 - Call `os.Exit`.
-- Write to `os.Stdout` or `os.Stderr`.
+- Write to `os.Stdout` or `os.Stderr`, except through `pkg/log` (structured
+  diagnostic logging, always to stderr) — see
+  [structured-logging.md](structured-logging.md).
 - Read global state like `interactive.Enabled()` or `fedramp.Enabled()`.
 - Build fixed-width display strings or formatted human-readable output.
 - Prompt the user for input.
@@ -270,7 +272,13 @@ all new code immediately, and to modified code as scope permits:
 1. **Core layer functions accept resolved values.** A machine pool creation function
    receives a struct of options, not a `*cobra.Command` to extract flags from.
 2. **Core layer functions return data and errors.** They never call `os.Exit`, print
-   to stdout/stderr, or build display strings.
+   to stdout/stderr, or build display strings. The one exception is structured
+   diagnostic logging via `pkg/log` (`log.FromContext(ctx).InfoContext(...)`, etc.),
+   which always writes to stderr but is not user-facing output: it carries no
+   presentation concerns, never affects `--output json`/`--output yaml`, and never
+   changes a command's exit code or displayed result. See
+   [structured-logging.md](structured-logging.md) for the full rationale and the
+   relationship to `reporter`.
 3. **The CLI layer owns all user interaction.** Prompting, confirmation, spinners,
    progress bars, and output formatting live exclusively in `cmd/` or `internal/cli/`.
 4. **No global state in the core layer.** Functions do not read `interactive.Enabled()`,

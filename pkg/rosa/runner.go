@@ -8,6 +8,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/openshift/rosa/pkg/log"
 )
 
 // RuntimeVisitor are functions that configure the Runtime for a command.
@@ -24,6 +26,7 @@ func DefaultRunner(visitor RuntimeVisitor, runner CommandRunner) func(command *c
 		ctx := context.Background()
 		r := NewRuntime()
 		defer r.Cleanup()
+		ctx = log.WithLogger(ctx, r.StructuredLogger)
 
 		if visitor != nil {
 			visitor(ctx, r, command, args)

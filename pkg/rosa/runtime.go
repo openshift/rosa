@@ -4,6 +4,7 @@
 package rosa
 
 import (
+	"log/slog"
 	"os"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/debug"
+	"github.com/openshift/rosa/pkg/log"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -19,21 +22,37 @@ import (
 )
 
 type Runtime struct {
-	Reporter   reporter.Logger
-	Logger     *logrus.Logger
-	OCMClient  *ocm.Client
-	AWSClient  aws.Client
-	Creator    *aws.Creator
-	ClusterKey string
-	Cluster    *cmv1.Cluster
-	Spinner    *spinner.Spinner
+	Reporter reporter.Logger
+	// TODO: rename to SdkLogger, and rename StructuredLogger to Logger.
+	// This logrus logger only feeds AWS/OCM SDK client builders their
+	// wire-level debug output. "Logger" should belong to the structured,
+	// diagnostic logger callers reach for by default. See
+	// guidelines/structured-logging.md.
+	Logger           *logrus.Logger
+	StructuredLogger *slog.Logger
+	OCMClient        *ocm.Client
+	AWSClient        aws.Client
+	Creator          *aws.Creator
+	ClusterKey       string
+	Cluster          *cmv1.Cluster
+	Spinner          *spinner.Spinner
 }
 
 func NewRuntime() *Runtime {
 	r := reporter.CreateReporter()
 	logger := logging.NewLogger()
+	logLevel := slog.LevelInfo
+	if debug.Enabled() {
+		logLevel = slog.LevelDebug
+	}
+	structuredLogger := log.New(os.Stderr, logLevel)
 	spinner := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	return &Runtime{Reporter: output.NewStructuredReporter(r), Logger: logger, Spinner: spinner}
+	return &Runtime{
+		Reporter:         output.NewStructuredReporter(r),
+		Logger:           logger,
+		StructuredLogger: structuredLogger,
+		Spinner:          spinner,
+	}
 }
 
 // WithOCM Adds an OCM client to the runtime. Requires a deferred call to `.Cleanup()` to close connections.
