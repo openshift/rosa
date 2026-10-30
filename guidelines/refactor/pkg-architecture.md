@@ -43,6 +43,7 @@ Target location: `pkg/` (stable, exported). Each entry shows **target name** wit
 | `pkg/iamserviceaccount` | Clean | Types, validation, trust policy generation, tag construction, and role name generation for IAM service accounts. |
 | `pkg/ingress` | Needs split | Ingress describe/list service with OCM API calls. |
 | `pkg/kubeletconfig` | Needs split | KubeletConfig pod pids limit validation and OCM CRUD operations. |
+| `pkg/log` | Clean | Structured, leveled diagnostic logging (`log/slog`) propagated via `context.Context` for core-layer workflows; see `guidelines/structured-logging.md`. Distinct from `pkg/logging`'s `logrus`-based AWS/OCM SDK logger factories. |
 | `pkg/logforwarding` | Needs split | Log forwarding config types, YAML unmarshalling, and OCM builder binding. |
 | `pkg/machinepool` | Needs split | Machine pool and node pool CRUD via OCM, replica/autoscaling validation, spot instance logic, root disk sizing, version compatibility checks. Most entangled package. |
 | `pkg/properties` | Clean | OCM cluster property key constants (`rosa_cli_version`, `fake_cluster`, etc.). |

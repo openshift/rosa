@@ -25,6 +25,9 @@ import (
 	"github.com/openshift/rosa/pkg/debug"
 )
 
+// TODO: rename to Reporter. "Logger" is easily confused with pkg/log's
+// *slog.Logger, which is an unrelated, diagnostic-only concept; see
+// guidelines/structured-logging.md.
 type Logger interface {
 	// Debugf logs a debug message with formatted arguments.
 	Debugf(format string, args ...any)
