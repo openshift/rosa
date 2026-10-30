@@ -31,7 +31,7 @@ var _ = Describe("Runner Tests", func() {
 			return nil
 		}
 
-		DefaultRunner(visitor, runner)(nil, nil)
+		DefaultRunner(visitor, runner)(&cobra.Command{}, nil)
 
 		Expect(visited).To(BeTrue())
 		Expect(run).To(BeTrue())
@@ -44,7 +44,7 @@ var _ = Describe("Runner Tests", func() {
 			return nil
 		}
 
-		DefaultRunner(nil, runner)(nil, nil)
+		DefaultRunner(nil, runner)(&cobra.Command{}, nil)
 
 		Expect(run).To(BeTrue())
 	})
