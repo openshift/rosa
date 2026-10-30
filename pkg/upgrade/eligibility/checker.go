@@ -216,6 +216,9 @@ func checkActiveUpgradesHypershift(result *Result, ocmClient OCMClient, cluster 
 	}
 
 	for _, policy := range policies {
+		if policy.NextRun().IsZero() {
+			continue
+		}
 		result.AddFinding(Finding{
 			Severity:   SeverityBlocker,
 			ReasonCode: ReasonUpgradeInFlight,
@@ -247,6 +250,19 @@ func checkAvailableTargets(result *Result, ocmClient OCMClient, cluster *cmv1.Cl
 		}
 
 		if len(rawUpgrades) == 0 {
+			if targetVersion != "" {
+				result.AddFinding(Finding{
+					Severity:   SeverityBlocker,
+					ReasonCode: ReasonTargetNotAvailable,
+					Owner:      OwnerCustomer,
+					Summary:    fmt.Sprintf("Requested version %s is not available — no upgrade targets exist", targetVersion),
+					Detail: fmt.Sprintf("The cluster is on %s and no upgrade targets exist in the '%s' channel.",
+						cluster.OpenshiftVersion(), cluster.Version().ChannelGroup()),
+					Action: "Verify the target version exists for this channel group, or switch " +
+						"to a different channel group (e.g., fast or candidate).",
+				})
+				return nil
+			}
 			result.atLatestVersion = true
 			result.AddFinding(Finding{
 				Severity:   SeverityOK,
