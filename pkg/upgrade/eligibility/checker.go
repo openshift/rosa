@@ -210,10 +210,10 @@ func checkActiveUpgradesClassic(result *Result, ocmClient OCMClient, cluster *cm
 		Severity:   SeverityBlocker,
 		ReasonCode: ReasonUpgradeInFlight,
 		Owner:      OwnerCustomer,
-		Summary:    fmt.Sprintf("Upgrade already scheduled to version %s on %s%s",
+		Summary: fmt.Sprintf("Upgrade already scheduled to version %s on %s%s",
 			policy.Version(), policy.NextRun().Format("2006-01-02 15:04 MST"), stateDesc),
-		Detail:  "Only one upgrade policy can be active at a time. Cancel the existing upgrade before scheduling a new one.",
-		Action:  fmt.Sprintf("rosa delete upgrade -c %s", cluster.ID()),
+		Detail: "Only one upgrade policy can be active at a time. Cancel the existing upgrade before scheduling a new one.",
+		Action: fmt.Sprintf("rosa delete upgrade -c %s", cluster.ID()),
 	})
 
 	return nil
@@ -234,7 +234,7 @@ func checkActiveUpgradesHypershift(result *Result, ocmClient OCMClient, cluster 
 			Severity:   SeverityBlocker,
 			ReasonCode: ReasonUpgradeInFlight,
 			Owner:      OwnerCustomer,
-			Summary:    fmt.Sprintf("Upgrade already scheduled: type=%s version=%s on %s",
+			Summary: fmt.Sprintf("Upgrade already scheduled: type=%s version=%s on %s",
 				policy.UpgradeType(), policy.Version(), policy.NextRun().Format("2006-01-02 15:04 MST")),
 			Detail: "An upgrade policy is already active. Cancel or wait for it to complete before scheduling a new one.",
 			Action: fmt.Sprintf("rosa delete upgrade -c %s", cluster.ID()),
@@ -294,7 +294,8 @@ func checkAvailableTargets(result *Result, ocmClient OCMClient, cluster *cmv1.Cl
 				Severity:   SeverityBlocker,
 				ReasonCode: ReasonNoTargetsAvailable,
 				Owner:      OwnerCustomer,
-				Summary: fmt.Sprintf("No ROSA-enabled upgrade targets available (%d version(s) exist in channel but are not enabled)",
+				Summary: fmt.Sprintf(
+					"No ROSA-enabled upgrade targets available (%d version(s) exist in channel but are not enabled)",
 					len(rawUpgrades)),
 				Detail: fmt.Sprintf("OCM lists %d version(s) in the upgrade graph (%s) but none are ROSA-enabled. "+
 					"This is typically caused by unacknowledged version gates blocking the next minor, "+
@@ -445,8 +446,12 @@ func checkVersionGates(result *Result, ocmClient OCMClient, cluster *cmv1.Cluste
 			ReasonCode: ReasonGateUnacked,
 			Owner:      OwnerCustomer,
 			Summary:    fmt.Sprintf("Version gates for %s not acknowledged — %d gate(s)", targetMinor, len(unackedGates)),
-			Detail:     fmt.Sprintf("The following gate(s) must be acknowledged before the target is visible:\n\n%s", strings.Join(gateLines, "\n")),
-			Action: fmt.Sprintf("rosa upgrade cluster -c %s --version <target> (the CLI will prompt for gate acknowledgements during scheduling)",
+			Detail: fmt.Sprintf(
+				"The following gate(s) must be acknowledged before the target is visible:\n\n%s",
+				strings.Join(gateLines, "\n")),
+			Action: fmt.Sprintf(
+				"rosa upgrade cluster -c %s --version <target> "+
+					"(the CLI will prompt for gate acknowledgements during scheduling)",
 				cluster.ID()),
 		})
 	}

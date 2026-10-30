@@ -45,7 +45,9 @@ func (a *ocmClientAdapter) GetLimitedSupportReasons(clusterID string) ([]*cmv1.L
 	return a.client.GetLimitedSupportReasons(clusterID)
 }
 
-func (a *ocmClientAdapter) GetScheduledUpgrade(clusterID string) (*cmv1.UpgradePolicy, *cmv1.UpgradePolicyState, error) {
+func (a *ocmClientAdapter) GetScheduledUpgrade(
+	clusterID string,
+) (*cmv1.UpgradePolicy, *cmv1.UpgradePolicyState, error) {
 	return a.client.GetScheduledUpgrade(clusterID)
 }
 

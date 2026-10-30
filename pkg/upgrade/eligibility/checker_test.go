@@ -85,7 +85,7 @@ func readyHCPCluster(version, channelGroup string) *cmv1.Cluster {
 			Name("test-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion(version).
-			Version(cmv1.NewVersion().ID("openshift-v"+version).ChannelGroup(channelGroup)).
+			Version(cmv1.NewVersion().ID("openshift-v" + version).ChannelGroup(channelGroup)).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(true)).
 			CreationTimestamp(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
@@ -99,7 +99,7 @@ func readyClassicCluster(version, channelGroup string) *cmv1.Cluster {
 			Name("test-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion(version).
-			Version(cmv1.NewVersion().ID("openshift-v"+version).ChannelGroup(channelGroup)).
+			Version(cmv1.NewVersion().ID("openshift-v" + version).ChannelGroup(channelGroup)).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(false)).
 			CreationTimestamp(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)),

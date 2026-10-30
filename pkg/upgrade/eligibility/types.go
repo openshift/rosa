@@ -36,14 +36,14 @@ const (
 type ReasonCode string
 
 const (
-	ReasonClusterNotReady     ReasonCode = "CLUSTER_NOT_READY"
-	ReasonLimitedSupport      ReasonCode = "LIMITED_SUPPORT"
-	ReasonLimitedSupportEOL   ReasonCode = "LIMITED_SUPPORT_EOL_VERSION"
-	ReasonUpgradeInFlight     ReasonCode = "UPGRADE_IN_FLIGHT"
-	ReasonGateUnacked         ReasonCode = "GATE_UNACKED"
-	ReasonNoTargetsAvailable  ReasonCode = "NO_TARGETS_AVAILABLE"
-	ReasonTargetNotAvailable  ReasonCode = "TARGET_NOT_AVAILABLE"
-	ReasonAtLatestVersion     ReasonCode = "AT_LATEST_VERSION"
+	ReasonClusterNotReady    ReasonCode = "CLUSTER_NOT_READY"
+	ReasonLimitedSupport     ReasonCode = "LIMITED_SUPPORT"
+	ReasonLimitedSupportEOL  ReasonCode = "LIMITED_SUPPORT_EOL_VERSION"
+	ReasonUpgradeInFlight    ReasonCode = "UPGRADE_IN_FLIGHT"
+	ReasonGateUnacked        ReasonCode = "GATE_UNACKED"
+	ReasonNoTargetsAvailable ReasonCode = "NO_TARGETS_AVAILABLE"
+	ReasonTargetNotAvailable ReasonCode = "TARGET_NOT_AVAILABLE"
+	ReasonAtLatestVersion    ReasonCode = "AT_LATEST_VERSION"
 )
 
 type Finding struct {
