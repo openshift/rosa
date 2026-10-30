@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -28,6 +29,8 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/upgrade/eligibility"
 )
+
+var targetVersionRegexp = regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`)
 
 var args struct {
 	targetVersion string
@@ -84,6 +87,11 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if args.output != "" && args.output != "json" {
 		r.Reporter.Errorf("Invalid output format '%s'. Supported values: '' (human-readable), 'json'", args.output)
+		os.Exit(1)
+	}
+
+	if args.targetVersion != "" && !targetVersionRegexp.MatchString(args.targetVersion) {
+		r.Reporter.Errorf("Invalid target version '%s'. Expected format: X.Y or X.Y.Z", args.targetVersion)
 		os.Exit(1)
 	}
 
