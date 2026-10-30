@@ -86,6 +86,7 @@ type Result struct {
 	atLatestVersion   bool
 }
 
+// AddFinding appends a finding and marks the result ineligible if it is a blocker.
 func (r *Result) AddFinding(f Finding) {
 	r.Findings = append(r.Findings, f)
 	if f.Severity == SeverityBlocker {
@@ -93,6 +94,7 @@ func (r *Result) AddFinding(f Finding) {
 	}
 }
 
+// BlockerCount returns the number of blocker-severity findings.
 func (r *Result) BlockerCount() int {
 	n := 0
 	for _, f := range r.Findings {
@@ -103,6 +105,7 @@ func (r *Result) BlockerCount() int {
 	return n
 }
 
+// ReasonCodes returns deduplicated blocker reason codes.
 func (r *Result) ReasonCodes() []ReasonCode {
 	codes := make([]ReasonCode, 0, len(r.Findings))
 	seen := make(map[ReasonCode]bool)

@@ -1045,3 +1045,38 @@ func TestGateFiltering_STSGateShownForSTSCluster(t *testing.T) {
 	}
 	assertFinding(t, result, ReasonGateUnacked, SeverityBlocker)
 }
+
+// Z-stream upgrade should skip gate evaluation entirely.
+func TestGateFiltering_ZStreamSkipsGates(t *testing.T) {
+	cluster := mustBuildCluster(
+		cmv1.NewCluster().
+			ID("test-cluster-id").
+			Name("test-cluster").
+			State(cmv1.ClusterStateReady).
+			OpenshiftVersion("4.17.33").
+			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable")).
+			Region(cmv1.NewCloudRegion().ID("us-east-1")).
+			Hypershift(cmv1.NewHypershift().Enabled(true)).
+			CreationTimestamp(time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)),
+	)
+
+	gate := mustBuildGate("gate-417-zstream", "Should not appear for z-stream", false,
+		time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
+
+	mock := &mockOCMClient{
+		availableUpgrades:    []string{"4.17.34"},
+		rawAvailableUpgrades: []string{"4.17.34"},
+		gates:                []*cmv1.VersionGate{gate},
+		gateAgreements:       []*cmv1.VersionGateAgreement{},
+	}
+
+	result, err := CheckAll(mock, cluster, "4.17.34")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assertNoBlockers(t, result)
+	if len(result.Gates) != 0 {
+		t.Errorf("expected no gates for z-stream upgrade, got %d", len(result.Gates))
+	}
+}

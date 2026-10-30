@@ -18,6 +18,7 @@ package eligibility
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -41,6 +42,7 @@ func CheckAll(ocmClient OCMClient, cluster *cmv1.Cluster, targetVersion string) 
 		},
 		TargetVersion: targetVersion,
 		Eligible:      true,
+		Findings:      []Finding{},
 		EvaluatedAt:   time.Now().UTC(),
 	}
 
@@ -77,6 +79,7 @@ func CheckAll(ocmClient OCMClient, cluster *cmv1.Cluster, targetVersion string) 
 	return result, nil
 }
 
+// checkClusterState verifies the cluster is in 'ready' state.
 func checkClusterState(result *Result, cluster *cmv1.Cluster) error {
 	if cluster.State() != cmv1.ClusterStateReady {
 		result.AddFinding(Finding{
@@ -91,30 +94,30 @@ func checkClusterState(result *Result, cluster *cmv1.Cluster) error {
 	return nil
 }
 
-var versionEOLKeywords = []string{
-	"end of life",
-	"end of supported life",
-	"life cycle",
-	"lifecycle",
-	"eol",
-	"unsupported version",
-	"version is no longer supported",
+var versionEOLPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)\bend of life\b`),
+	regexp.MustCompile(`(?i)\bend of supported life\b`),
+	regexp.MustCompile(`(?i)\beol\b`),
+	regexp.MustCompile(`(?i)\bunsupported version\b`),
+	regexp.MustCompile(`(?i)version is no longer supported`),
 }
 
+// isVersionEOLReason returns true if the LS reason indicates version end-of-life.
 func isVersionEOLReason(reason *cmv1.LimitedSupportReason) bool {
-	summary := strings.ToLower(reason.Summary())
-	for _, kw := range versionEOLKeywords {
-		if strings.Contains(summary, kw) {
+	summary := reason.Summary()
+	for _, re := range versionEOLPatterns {
+		if re.MatchString(summary) {
 			return true
 		}
 	}
 	return false
 }
 
+// checkLimitedSupport queries LS reasons and classifies them as version-EOL (warning) or other (blocker).
 func checkLimitedSupport(result *Result, ocmClient OCMClient, cluster *cmv1.Cluster) error {
 	reasons, err := ocmClient.GetLimitedSupportReasons(cluster.ID())
 	if err != nil {
-		return fmt.Errorf("failed to check limited support reasons: %v", err)
+		return fmt.Errorf("failed to check limited support reasons: %w", err)
 	}
 
 	if len(reasons) == 0 {
@@ -169,6 +172,7 @@ func checkLimitedSupport(result *Result, ocmClient OCMClient, cluster *cmv1.Clus
 	return nil
 }
 
+// checkActiveUpgrades reports a blocker if an upgrade policy is already scheduled.
 func checkActiveUpgrades(result *Result, ocmClient OCMClient, cluster *cmv1.Cluster) error {
 	if cluster.Hypershift().Enabled() {
 		return checkActiveUpgradesHypershift(result, ocmClient, cluster)
@@ -176,10 +180,11 @@ func checkActiveUpgrades(result *Result, ocmClient OCMClient, cluster *cmv1.Clus
 	return checkActiveUpgradesClassic(result, ocmClient, cluster)
 }
 
+// checkActiveUpgradesClassic checks for an existing scheduled upgrade on a Classic cluster.
 func checkActiveUpgradesClassic(result *Result, ocmClient OCMClient, cluster *cmv1.Cluster) error {
 	policy, state, err := ocmClient.GetScheduledUpgrade(cluster.ID())
 	if err != nil {
-		return fmt.Errorf("failed to check active upgrade policies: %v", err)
+		return fmt.Errorf("failed to check active upgrade policies: %w", err)
 	}
 	if policy == nil {
 		return nil
@@ -203,10 +208,11 @@ func checkActiveUpgradesClassic(result *Result, ocmClient OCMClient, cluster *cm
 	return nil
 }
 
+// checkActiveUpgradesHypershift checks for active upgrade policies on an HCP cluster.
 func checkActiveUpgradesHypershift(result *Result, ocmClient OCMClient, cluster *cmv1.Cluster) error {
 	policies, err := ocmClient.GetUpgradePolicies(cluster.ID())
 	if err != nil {
-		return fmt.Errorf("failed to check active upgrade policies: %v", err)
+		return fmt.Errorf("failed to check active upgrade policies: %w", err)
 	}
 
 	for _, policy := range policies {
@@ -224,11 +230,12 @@ func checkActiveUpgradesHypershift(result *Result, ocmClient OCMClient, cluster 
 	return nil
 }
 
+// checkAvailableTargets verifies upgrade targets exist and, if specified, that the target version is among them.
 func checkAvailableTargets(result *Result, ocmClient OCMClient, cluster *cmv1.Cluster, targetVersion string) error {
 	versionID := ocm.GetVersionID(cluster)
 	available, err := ocmClient.GetAvailableUpgrades(versionID)
 	if err != nil {
-		return fmt.Errorf("failed to get available upgrades: %v", err)
+		return fmt.Errorf("failed to get available upgrades: %w", err)
 	}
 
 	result.AvailableUpgrades = available
@@ -236,7 +243,7 @@ func checkAvailableTargets(result *Result, ocmClient OCMClient, cluster *cmv1.Cl
 	if len(available) == 0 {
 		rawUpgrades, rawErr := ocmClient.GetRawAvailableUpgrades(versionID)
 		if rawErr != nil {
-			return fmt.Errorf("failed to get raw available upgrades: %v", rawErr)
+			return fmt.Errorf("failed to get raw available upgrades: %w", rawErr)
 		}
 
 		if len(rawUpgrades) == 0 {
@@ -293,6 +300,7 @@ func checkAvailableTargets(result *Result, ocmClient OCMClient, cluster *cmv1.Cl
 	return nil
 }
 
+// checkVersionGates evaluates version gate agreements for minor-version transitions.
 func checkVersionGates(result *Result, ocmClient OCMClient, cluster *cmv1.Cluster, targetVersion string) error {
 	targetMinor := targetVersion
 	if targetMinor == "" {
@@ -318,9 +326,15 @@ func checkVersionGates(result *Result, ocmClient OCMClient, cluster *cmv1.Cluste
 		return nil
 	}
 
+	// Gates guard minor-version transitions only; skip for z-stream upgrades
+	curParts := strings.SplitN(cluster.OpenshiftVersion(), ".", 3)
+	if len(curParts) >= 2 && targetMinor == curParts[0]+"."+curParts[1] {
+		return nil
+	}
+
 	allGates, err := ocmClient.ListAllOcpGates(targetMinor)
 	if err != nil {
-		return fmt.Errorf("failed to list version gates for %s: %v", targetMinor, err)
+		return fmt.Errorf("failed to list version gates for %s: %w", targetMinor, err)
 	}
 
 	if len(allGates) == 0 {
@@ -330,7 +344,7 @@ func checkVersionGates(result *Result, ocmClient OCMClient, cluster *cmv1.Cluste
 	// Get existing gate agreements for this cluster
 	agreements, err := getGateAgreements(ocmClient, cluster.ID())
 	if err != nil {
-		return fmt.Errorf("failed to get gate agreements: %v", err)
+		return fmt.Errorf("failed to get gate agreements: %w", err)
 	}
 
 	ackedGateIDs := make(map[string]bool)
