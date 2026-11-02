@@ -11,6 +11,8 @@ match the change. Shared guidance is tool agnostic and lives in `guidelines/`.
 | Cobra commands, flags, prompts, output, or Platform API dispatch | [Command guidelines](guidelines/command-guidelines.md) |
 | Reusable `pkg/` workflows, Request/Result types, or validation | [Workflow conventions](guidelines/workflow-conventions.md) |
 | Error creation, wrapping, translation, or exit behavior | [Error conventions](guidelines/error-conventions.md) |
+| Progress, warnings, success messages, human versus machine-readable output, or diagnostic logging | [Message and output taxonomy](guidelines/message-taxonomy.md) |
+| Structured logging fields and levels, `pkg/log` usage, or the reporter-to-log migration path | [Structured logging conventions](guidelines/structured-logging.md) |
 | AWS-facing code, prerequisites, or product-facing setup text | [AWS guidelines](guidelines/aws-guidelines.md) |
 | Go code and review | [Go guidelines](guidelines/go-guidelines.md) |
 | Tests, generated files, command structure, or verification | [Testing guidelines](guidelines/testing-guidelines.md) |
@@ -64,6 +66,8 @@ match the change. Shared guidance is tool agnostic and lives in `guidelines/`.
   - Error handling at the CLI/core boundary: wrapping, typed errors, CLI translation, exit codes, and diagnostic context.
 - `guidelines/structured-logging.md`
   - Relationship between reporter output and structured logging, contextual fields and levels, workflow propagation, and the reporter migration path.
+- `guidelines/message-taxonomy.md`
+  - Message and output categories (progress, final results, warnings, errors, diagnostic logging, machine-readable output), their layer ownership, and interactive/non-interactive behavior.
 
 ## Codebase Map
 

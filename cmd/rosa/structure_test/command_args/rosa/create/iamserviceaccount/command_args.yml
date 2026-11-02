@@ -5,6 +5,7 @@
 - name: mode
 - name: name
 - name: namespace
+- name: output
 - name: path
 - name: permissions-boundary
 - name: profile

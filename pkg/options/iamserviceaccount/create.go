@@ -22,6 +22,7 @@ import (
 
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/ocm"
+	"github.com/openshift/rosa/pkg/output"
 )
 
 type CreateIamServiceAccountUserOptions struct {
@@ -116,5 +117,6 @@ func BuildIamServiceAccountCreateCommandWithOptions() (*cobra.Command, *CreateIa
 
 	interactive.AddModeFlag(cmd)
 	interactive.AddFlag(flags)
+	output.AddFlag(cmd)
 	return cmd, options
 }

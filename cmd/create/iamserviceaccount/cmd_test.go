@@ -20,7 +20,9 @@ package iamserviceaccount
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -33,7 +35,9 @@ import (
 
 	"github.com/openshift/rosa/pkg/aws"
 	rosaerrors "github.com/openshift/rosa/pkg/errors"
+	"github.com/openshift/rosa/pkg/iamserviceaccount"
 	iamServiceAccountOpts "github.com/openshift/rosa/pkg/options/iamserviceaccount"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/test"
 	"github.com/openshift/rosa/tests/utils/helper"
 )
@@ -114,6 +118,101 @@ var _ = Describe("Create IAM Service Account", func() {
 
 				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
 				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should print the machine-readable result instead of reporter text when --output json is set", func() {
+				cluster := test.MockCluster(func(c *cmv1.ClusterBuilder) {
+					c.ID("test-cluster-id")
+					c.Name("test-cluster")
+					c.AWS(cmv1.NewAWS().
+						STS(cmv1.NewSTS().
+							RoleARN("arn:aws:iam::123456789012:role/test-role").
+							OidcConfig(cmv1.NewOidcConfig().
+								ID("test-oidc-id").
+								IssuerUrl("https://test.example.com")).
+							OIDCEndpointURL("https://test.example.com")))
+				})
+
+				t.SetCluster(cluster.ID(), cluster)
+
+				mockAWS.EXPECT().
+					GetCreator().
+					Return(&aws.Creator{
+						ARN:        "arn:aws:iam::123456789012:user/test-user",
+						AccountID:  "123456789012",
+						IsSTS:      false,
+						IsGovcloud: false,
+						Partition:  "aws",
+					}, nil)
+
+				mockAWS.EXPECT().
+					GetOpenIDConnectProviderByOidcEndpointUrl("https://test.example.com").
+					Return("arn:aws:iam::123456789012:oidc-provider/test.example.com", nil)
+
+				// The reporter argument must be the discard reporter, not
+				// r.Reporter: EnsureRole/AttachRolePolicy call Infof directly
+				// on success (pkg/aws/policies.go), and under --output
+				// json/yaml that plain text must not reach stdout ahead of
+				// the JSON result below.
+				mockAWS.EXPECT().
+					EnsureRole(gomock.AssignableToTypeOf(discardReporter{}), gomock.Any(), gomock.Any(), "", "",
+						gomock.Any(), gomock.Any(), false).
+					Return("arn:aws:iam::123456789012:role/test-cluster-default-test-sa", nil)
+
+				mockAWS.EXPECT().
+					AttachRolePolicy(gomock.AssignableToTypeOf(discardReporter{}), gomock.Any(),
+						"arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess").
+					Return(nil)
+
+				options := &iamServiceAccountOpts.CreateIamServiceAccountUserOptions{
+					ServiceAccountNames: []string{"test-sa"},
+					Namespace:           "default",
+					PolicyArns:          []string{"arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"},
+				}
+				testRunner := CreateIamServiceAccountRunner(options)
+
+				output.SetOutput("json")
+				defer output.SetOutput("")
+
+				stdoutState := os.Stdout
+				stdoutReader, stdoutWriter, pipeErr := os.Pipe()
+				Expect(pipeErr).ToNot(HaveOccurred(), "failed to create stdout pipe")
+				os.Stdout = stdoutWriter
+				defer func() {
+					os.Stdout = stdoutState
+				}()
+				DeferCleanup(stdoutReader.Close)
+
+				err := testRunner(context.Background(), t.RosaRuntime, cmd, []string{})
+				Expect(err).ToNot(HaveOccurred(), "unexpected error creating the IAM service account")
+
+				Expect(stdoutWriter.Close()).To(Succeed(), "failed to close stdout pipe writer")
+				stdout, readErr := io.ReadAll(stdoutReader)
+				Expect(readErr).ToNot(HaveOccurred(), "failed to read captured stdout")
+
+				// Decode into a map first so the test fails if the literal
+				// JSON key names (the whole point of this change) ever
+				// regress: unmarshaling straight into
+				// CreateIAMServiceAccountResult would still pass even
+				// without json tags, since encoding/json matches field
+				// names case-insensitively absent an explicit tag.
+				var asMap map[string]interface{}
+				Expect(json.Unmarshal(stdout, &asMap)).To(Succeed(), "stdout is not valid JSON")
+				Expect(asMap).To(HaveKeyWithValue("roleName", "test-cluster-default-test-sa-role"),
+					"expected literal JSON key 'roleName' with the generated role name")
+				Expect(asMap).To(HaveKeyWithValue("roleArn", "arn:aws:iam::123456789012:role/test-cluster-default-test-sa"),
+					"expected literal JSON key 'roleArn' with the role ARN returned by EnsureRole")
+				Expect(asMap).To(HaveKeyWithValue("attachedPolicyArns", []interface{}{"arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"}),
+					"expected literal JSON key 'attachedPolicyArns' with the attached policy ARN")
+
+				var result iamserviceaccount.CreateIAMServiceAccountResult
+				Expect(json.Unmarshal(stdout, &result)).To(Succeed(),
+					"stdout is not a valid CreateIAMServiceAccountResult JSON document")
+				Expect(result.RoleName).To(Equal("test-cluster-default-test-sa-role"), "unexpected role name in JSON output")
+				Expect(result.RoleARN).To(Equal("arn:aws:iam::123456789012:role/test-cluster-default-test-sa"),
+					"unexpected role ARN in JSON output")
+				Expect(result.AttachedPolicyARNs).To(Equal([]string{"arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"}),
+					"unexpected attached policy ARNs in JSON output")
 			})
 
 			It("should fail with non-STS cluster", func() {

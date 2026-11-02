@@ -202,15 +202,15 @@ func validateGovcloud(r *CreateIAMServiceAccountRequest) []error {
 // The CLI layer uses this to format output for the user. The result carries
 // domain values only, not preformatted console messages.
 type CreateIAMServiceAccountResult struct {
-	RoleName string
-	RoleARN  string
+	RoleName string `json:"roleName" yaml:"roleName"`
+	RoleARN  string `json:"roleArn" yaml:"roleArn"`
 
 	// AttachedPolicyARNs lists the managed policies that were attached to the role.
-	AttachedPolicyARNs []string
+	AttachedPolicyARNs []string `json:"attachedPolicyArns,omitempty" yaml:"attachedPolicyArns,omitempty"`
 
 	// InlinePolicyName is the name of the inline policy that was attached to
 	// the role. Empty when no inline policy was requested.
-	InlinePolicyName string
+	InlinePolicyName string `json:"inlinePolicyName,omitempty" yaml:"inlinePolicyName,omitempty"`
 }
 
 // Service is the default implementation of IAMServiceAccountService.
