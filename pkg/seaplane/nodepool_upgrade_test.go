@@ -39,10 +39,10 @@ var _ = Describe("EncodeUpgradeValue", func() {
 	)
 })
 
-var _ = Describe("DecodeUpgradeValue", func() {
-	DescribeTable("decodes CLI string to IntOrString",
+var _ = Describe("ParseUpgradeValue", func() {
+	DescribeTable("parses CLI string into IntOrString",
 		func(value string, expectedType intstr.Type, expectedVal interface{}) {
-			decoded := DecodeUpgradeValue(value)
+			decoded := ParseUpgradeValue(value)
 			if expectedVal == nil {
 				Expect(decoded).To(BeNil())
 			} else {

@@ -109,9 +109,10 @@ func EncodeUpgradeValue(value string) string {
 	return strconv.Quote(trimmed)
 }
 
-// DecodeUpgradeValue converts a CLI string value to an IntOrString pointer
+// ParseUpgradeValue converts a CLI string value to an IntOrString pointer
 // for the API: absolute numbers become IntVal, percentages become StrVal.
-func DecodeUpgradeValue(value string) *intstr.IntOrString {
+// It parses raw user input, so it is not the inverse of EncodeUpgradeValue.
+func ParseUpgradeValue(value string) *intstr.IntOrString {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return nil

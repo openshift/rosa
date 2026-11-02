@@ -9,6 +9,8 @@ import (
 	"go.uber.org/mock/gomock"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -117,7 +119,7 @@ var _ = Describe("Seaplane label and taint editing", func() {
 		Entry("invalid unit", "1 days", true),
 		Entry("exceeds max", "169 hours", true),
 	)
-	DescribeTable("max-surge editing", func(surgeInput string, shouldErr bool) {
+	DescribeTable("max-surge editing", func(surgeInput string, shouldErr bool, expected *intstr.IntOrString) {
 		t := test.NewTestRuntime()
 		ctrl := gomock.NewController(GinkgoT())
 		seaplaneClient, _, pools := newEditMPMocks(ctrl)
@@ -146,13 +148,16 @@ var _ = Describe("Seaplane label and taint editing", func() {
 			Expect(handler.PreRequest(context.Background(), t.RosaRuntime, input)).To(Succeed())
 			updated := &v1alpha1.NodePool{}
 			Expect(handler.PostExpand(context.Background(), t.RosaRuntime, input, updated)).To(Succeed())
+			// An absolute count must survive as an int and a percentage as a
+			// string: conflating the two is the conversion bug worth catching.
+			Expect(updated.Spec.MaxSurge).To(Equal(expected))
 			Expect(current).To(Equal(original))
 		}
 	},
-		Entry("valid absolute count", "2", false),
-		Entry("valid percentage", "20%", false),
-		Entry("valid zero", "0", false),
-		Entry("invalid percentage exceeds 100", "150%", true),
-		Entry("invalid negative", "-1", true),
+		Entry("valid absolute count", "2", false, ptr.To(intstr.FromInt32(2))),
+		Entry("valid percentage", "20%", false, ptr.To(intstr.FromString("20%"))),
+		Entry("valid zero", "0", false, ptr.To(intstr.FromInt32(0))),
+		Entry("invalid percentage exceeds 100", "150%", true, nil),
+		Entry("invalid negative", "-1", true, nil),
 	)
 })

@@ -361,9 +361,7 @@ func (h *seaplaneNodePoolUpdate) PostExpand(
 	}
 
 	if h.cmd.Flags().Changed("max-surge") {
-		// Create the IntOrString from the encoded value
-		maxSurgeVal := seaplane.DecodeUpgradeValue(h.maxSurge)
-		merged.Spec.MaxSurge = maxSurgeVal
+		merged.Spec.MaxSurge = seaplane.ParseUpgradeValue(h.maxSurge)
 	}
 
 	// Security groups - convert comma-separated string to []AWSResourceReference
