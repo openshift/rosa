@@ -30,7 +30,7 @@ import (
 	"github.com/openshift/rosa/pkg/upgrade/eligibility"
 )
 
-var targetVersionRegexp = regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`)
+var targetVersionRegexp = regexp.MustCompile(`^\d+\.\d+(\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?)?$`)
 
 var args struct {
 	targetVersion string
@@ -91,7 +91,8 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if args.targetVersion != "" && !targetVersionRegexp.MatchString(args.targetVersion) {
-		r.Reporter.Errorf("Invalid target version '%s'. Expected format: X.Y or X.Y.Z", args.targetVersion)
+		r.Reporter.Errorf("Invalid target version '%s'. Expected format: X.Y, X.Y.Z, or X.Y.Z-prerelease",
+			args.targetVersion)
 		os.Exit(1)
 	}
 
