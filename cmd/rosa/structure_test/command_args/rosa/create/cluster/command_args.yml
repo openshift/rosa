@@ -125,7 +125,6 @@
 - name: "dns-reservation-id"
 - name: "platform"
 - name: "provisioner-config-name"
-- name: "authentication-type"
 - name: "component-routes"
 - name: "delete-protection"
 - name: "disable-cluster-capabilities"
