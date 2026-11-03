@@ -218,6 +218,7 @@ generate-seaplane: $(PATHBIND_GEN_BIN)
 		--draft=$(PATHBIND_DRAFT) \
 		--overrides=$(PATHBIND_OVERRIDES) \
 		--output-dir=$(PATHBIND_OUT)
+	./scripts/add-license-header.sh $(PATHBIND_OUT)/*.go
 
 .PHONY: generate
 generate: $(GO_BINDATA) mocks generate-seaplane
