@@ -27,13 +27,16 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 )
 
-var validVersion = regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`)
+var validVersion = regexp.MustCompile(`^\d+\.\d+(\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?)?$`)
 
 // CheckAll runs the Day-1 OCM-side eligibility checks and returns a structured result.
 // It does not require backplane or in-cluster access.
 func CheckAll(ocmClient OCMClient, cluster *cmv1.Cluster, targetVersion string) (*Result, error) {
 	if targetVersion != "" && !validVersion.MatchString(targetVersion) {
-		return nil, fmt.Errorf("invalid target version format %q: expected X.Y or X.Y.Z", targetVersion)
+		return nil, fmt.Errorf(
+			"invalid target version format %q: expected X.Y, X.Y.Z, or X.Y.Z-prerelease",
+			targetVersion,
+		)
 	}
 
 	channelGroup := ""
@@ -312,6 +315,11 @@ func checkAvailableTargets(result *Result, ocmClient OCMClient, cluster *cmv1.Cl
 		found := false
 		for _, v := range available {
 			if v == targetVersion {
+				found = true
+				break
+			}
+			// X.Y (minor-only) target matches any patch release with that prefix.
+			if strings.Count(targetVersion, ".") == 1 && strings.HasPrefix(v, targetVersion+".") {
 				found = true
 				break
 			}
