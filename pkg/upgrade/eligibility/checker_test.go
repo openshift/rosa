@@ -301,7 +301,10 @@ func TestOHSS55966_MUOStuckDetectsActivePolicy(t *testing.T) {
 
 	policy := mustBuildUpgradePolicy("4.18.12", time.Now().Add(-2*time.Hour))
 
-	state, _ := cmv1.NewUpgradePolicyState().Value("started").Build()
+	state, err := cmv1.NewUpgradePolicyState().Value("started").Build()
+	if err != nil {
+		t.Fatalf("failed to build upgrade policy state: %v", err)
+	}
 
 	mock := &mockOCMClient{
 		scheduledPolicy:      policy,
