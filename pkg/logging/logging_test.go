@@ -172,6 +172,18 @@ var _ = Describe("Logging", func() {
 			Expect(logBuffer.String()).To(ContainSubstring("debug message value"))
 		})
 
+		It("logs customer tag keys and values in SDK debug body dumps", func() {
+			logBuffer := &bytes.Buffer{}
+			result, err := NewOCMLogger().Logger(newDebugLogger(logBuffer)).Build()
+			Expect(err).NotTo(HaveOccurred(), "build debug OCM logger")
+			result.Debug(context.Background(), "%s", []byte(
+				`{"aws":{"tags":{"Cost Center":"Finance Team"}},"items":[{"aws_node_pool":{"tags":{"owner":"Platform Team"}}}]}`))
+			logs := logBuffer.String()
+			Expect(logs).To(ContainSubstring("Cost Center"), "include cluster tag key")
+			Expect(logs).To(ContainSubstring("Finance Team"), "include cluster tag value")
+			Expect(logs).To(ContainSubstring("Platform Team"), "include node-pool tag value")
+		})
+
 		It("routes error messages through error logging", func() {
 			logBuffer := &bytes.Buffer{}
 			result, err := NewOCMLogger().Logger(newLoggerWithLevel(logBuffer, logrus.ErrorLevel)).Build()

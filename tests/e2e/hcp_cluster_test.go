@@ -873,6 +873,45 @@ var _ = Describe("HCP cluster testing",
 				Expect(jsonData.DigString("auto_node", "mode")).To(Equal("enabled"))
 				Expect(jsonData.DigString("aws", "auto_node", "role_arn")).To(Equal(autonodeRoleARN2))
 			})
+
+		Describe("Spot termination queue URL lifecycle", func() {
+			It("should edit cluster with spot-termination-queue-url and verify enhanced mode [id:spot-hcp-cluster]",
+				labels.Medium, labels.Runtime.Day2,
+				func() {
+					By("Get the cluster region")
+					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("Save the original spot termination queue URL")
+					originalJSONData, err := clusterService.GetJSONClusterDescription(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					originalQueueURL := originalJSONData.DigString("aws", "termination_handler_queue_url")
+					defer func() {
+						By("Restore the original spot termination queue URL")
+						// An empty value clears the URL when it was originally unset.
+						_, restoreErr := clusterService.EditCluster(
+							clusterID,
+							"--spot-termination-queue-url="+originalQueueURL,
+						)
+						Expect(restoreErr).ToNot(HaveOccurred())
+					}()
+
+					By("Edit the cluster with a spot-termination-queue-url")
+					queueURL := fmt.Sprintf("https://sqs.%s.amazonaws.com/123456789012/rosa-spot-termination-queue",
+						clusterDescription.Region)
+					out, err := clusterService.EditCluster(
+						clusterID,
+						"--spot-termination-queue-url", queueURL,
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(out.String()).To(ContainSubstring("Updated cluster"))
+
+					By("Describe the cluster and verify the queue URL is set")
+					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(jsonData.DigString("aws", "termination_handler_queue_url")).To(Equal(queueURL))
+				})
+		})
 	})
 var _ = Describe("hosted-cp cluster creation",
 	labels.Feature.Cluster,
@@ -945,29 +984,4 @@ var _ = Describe("hosted-cp cluster creation",
 				Expect(err).ToNot(HaveOccurred())
 				Expect(jsonData.DigBool("properties", "skip_inflight_tests")).To(BeTrue())
 			})
-
-		Describe("Spot termination queue URL lifecycle", func() {
-			It("should edit cluster with spot-termination-queue-url and verify enhanced mode [id:spot-hcp-cluster]",
-				labels.Medium, labels.Runtime.Day2,
-				func() {
-					By("Get the cluster region")
-					clusterDescription, err := clusterService.DescribeClusterAndReflect(clusterID)
-					Expect(err).ToNot(HaveOccurred())
-
-					By("Edit the cluster with a spot-termination-queue-url")
-					queueURL := fmt.Sprintf("https://sqs.%s.amazonaws.com/123456789012/rosa-spot-termination-queue",
-						clusterDescription.Region)
-					out, err := clusterService.EditCluster(
-						clusterID,
-						"--spot-termination-queue-url", queueURL,
-					)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(out.String()).To(ContainSubstring("Updated cluster"))
-
-					By("Describe the cluster and verify the queue URL is set")
-					jsonData, err := clusterService.GetJSONClusterDescription(clusterID)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(jsonData.DigString("aws", "termination_handler_queue_url")).To(Equal(queueURL))
-				})
-		})
 	})

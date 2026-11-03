@@ -18,8 +18,8 @@ Usage:
   make run-checks -- <mode> [--dry-run] [--list-steps]
 
 Modes:
-  pre-push                 Steps: format-check, build, lint, docs-lint, license-check, coverage, tests
-  basic                    Steps: format, format-check, build, lint, docs-lint, license-check, coverage, tests
+  pre-push                 Steps: format-check, build, version-env-isolation, lint, docs-lint, license-check, coverage, tests
+  basic                    Steps: format, format-check, build, version-env-isolation, lint, docs-lint, license-check, coverage, tests
 
 Flags:
   --dry-run                Print planned steps and commands without executing
@@ -79,6 +79,7 @@ case "$mode" in
   pre-push)
     append_step "Format check (imports + gofmt)" "make --no-print-directory fmt-check"
     append_step "Build" "make --no-print-directory rosa"
+    append_step "Version env isolation" "make --no-print-directory check-version-env-isolation"
     append_step "Lint" "make --no-print-directory lint"
     append_step "Documentation lint (Vale)" "make --no-print-directory docs-lint"
     append_step "License header check" "make --no-print-directory license-check"
@@ -89,6 +90,7 @@ case "$mode" in
     append_step "Format (imports + gofmt)" "make --no-print-directory fmt"
     append_step "Format check (imports + gofmt)" "make --no-print-directory fmt-check"
     append_step "Build" "make --no-print-directory rosa"
+    append_step "Version env isolation" "make --no-print-directory check-version-env-isolation"
     append_step "Lint" "make --no-print-directory lint"
     append_step "Documentation lint (Vale)" "make --no-print-directory docs-lint"
     append_step "License header check" "make --no-print-directory license-check"

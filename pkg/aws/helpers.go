@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -455,13 +456,27 @@ func FormatUserTagsList(tags map[string]string) string {
 	return strings.Join(parts, ",")
 }
 
-// UserTagsFlagHelpSuffix is shared --tags help text covering shell-specific quoting.
-// Prefix with the flag-specific sentence (e.g. "Apply user defined tags...").
-const UserTagsFlagHelpSuffix = "Tags are comma separated, for example: 'key value, foo bar'. " +
-	`Keys or values with spaces use double quotes; quote the whole flag for your shell ` +
-	`(bash/zsh/PowerShell: --tags '"Cost Center":"Finance Team"'; ` +
-	`Windows cmd.exe: --tags """Cost Center"":""Finance Team"""). ` +
+const userTagsFlagSyntaxHelpPrefix = "Tags are comma-separated key:value pairs, " +
+	"for example: key:value,foo:bar. " +
+	"Keys or values with spaces or colons use double quotes; quote the whole flag for your shell "
+
+func userTagsFlagSyntaxHelpSuffix(goos string) string {
+	if goos == "windows" {
+		return userTagsFlagSyntaxHelpPrefix +
+			`(PowerShell/bash/zsh: --tags '"Cost Center":"Finance Team"'; ` +
+			`cmd.exe: --tags """Cost Center"":""Finance Team"""). `
+	}
+	return userTagsFlagSyntaxHelpPrefix +
+		`(bash/zsh/PowerShell: --tags '"Cost Center":"Finance Team"'). `
+}
+
+// UserTagsFlagHelpSuffix describes tag syntax and create-time empty-value support.
+var UserTagsFlagHelpSuffix = userTagsFlagSyntaxHelpSuffix(runtime.GOOS) +
 	"Empty values (key:) are supported for ROSA Classic only, not for Hosted Control Plane."
+
+// UserTagsDay2FlagHelpSuffix describes tag syntax for HCP-only day-2 edits.
+var UserTagsDay2FlagHelpSuffix = userTagsFlagSyntaxHelpSuffix(runtime.GOOS) +
+	"Individual tag values cannot be empty."
 
 // QuoteUserTagsForUnixShell wraps a FormatUserTag list for bash, zsh, and PowerShell.
 // Single quotes preserve inner double quotes from FormatUserTag. Windows cmd.exe does not
@@ -749,6 +764,26 @@ func GetTagValues(tagsValue []iamtypes.Tag) (roleType string, version string) {
 func GetOCMRoleName(prefix string, role string, postfix string) string {
 	name := fmt.Sprintf("%s-%s-Role-%s", prefix, role, postfix)
 	return awsCommonUtils.TruncateRoleName(name)
+}
+
+// OCMRoleNameSuffix returns the role-name suffix OCM requires in order to authorize an
+// OCM role's AWS account for cluster creation, as documented at
+// https://access.redhat.com/articles/7137057.
+func OCMRoleNameSuffix(externalID string) string {
+	return fmt.Sprintf("-%s-Role-%s", OCMRole, externalID)
+}
+
+// OCMRoleNameMatchesConvention reports whether roleArn ends in the organization's required
+// "-OCM-Role-<externalID>" suffix. A role ARN that does not match this convention can link
+// successfully but is later rejected by OCM during AWS account authorization. An empty
+// externalID means the organization's external ID could not be determined, so the ARN can't
+// be verified; this is treated as non-compliant rather than matching any ARN ending in
+// "-OCM-Role-".
+func OCMRoleNameMatchesConvention(roleArn string, externalID string) bool {
+	if externalID == "" {
+		return false
+	}
+	return strings.HasSuffix(roleArn, OCMRoleNameSuffix(externalID))
 }
 
 func GetUserRoleName(prefix string, role string, userName string) string {

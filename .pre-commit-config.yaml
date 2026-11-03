@@ -66,7 +66,7 @@ repos:
       # Pre-push stage: comprehensive checks before push
       - id: pre-push-checks
         name: Run pre-push checks
-        description: Runs format-check, build, lint, docs-lint, license-check, coverage, and tests
+        description: Runs format-check, build, version-env-isolation, lint, docs-lint, license-check, coverage, and tests
         entry: ./hack/pre-push-hook.sh
         language: script
         stages: [pre-push]

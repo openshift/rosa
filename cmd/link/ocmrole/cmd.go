@@ -38,7 +38,7 @@ var Cmd = &cobra.Command{
 	Short:   "Link OCM role to specific OCM organization.",
 	Long:    "Link OCM role to specific OCM organization before you create your cluster.",
 	Example: ` # Link OCM role
-  rosa link ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenshift-OCM-Role`,
+  rosa link ocm-role --role-arn arn:aws:iam::123456789012:role/ManagedOpenShift-OCM-Role-1223456778`,
 	Run:  run,
 	Args: cobra.MaximumNArgs(1),
 }
@@ -63,6 +63,32 @@ func init() {
 	interactive.AddFlag(flags)
 }
 
+// nonCompliantRoleNameWarning explains why a role's name doesn't match the naming convention
+// OCM requires, so run can show it both before and after linking. It intentionally does not
+// echo the caller-supplied ARN or organization external ID back into the message; the ARN is
+// already shown in the surrounding confirmation and success messages. It also avoids implying
+// role-name validation is purely a future concern, since an organization may already enforce
+// it today.
+func nonCompliantRoleNameWarning() string {
+	return "This role's name does not match the '<prefix>-OCM-Role-<ocm-organization-external-id>' " +
+		"convention OCM uses to authorize an AWS account for cluster creation. If that validation " +
+		"is enforced for your organization, cluster creation for this AWS account will fail with " +
+		"an organization-not-authorized error. Recreate the role to ensure compatibility with the " +
+		"OCM convention."
+}
+
+// unknownExternalIDWarning explains that the role name could not be checked against the naming
+// convention because the organization's external ID could not be determined, so run can show it
+// both before and after linking instead of wrongly asserting the role name itself is wrong.
+func unknownExternalIDWarning() string {
+	return "Your organization's external ID could not be determined, so this role's name could " +
+		"not be checked against the '<prefix>-OCM-Role-<ocm-organization-external-id>' convention " +
+		"OCM uses to authorize an AWS account for cluster creation. If this role's name doesn't " +
+		"match that convention, cluster creation for this AWS account may fail with an " +
+		"organization-not-authorized error. Verify the role name manually, or retry this command " +
+		"once your organization's external ID is available."
+}
+
 func run(cmd *cobra.Command, argv []string) {
 	r := rosa.NewRuntime().WithAWS().WithOCM()
 	defer r.Cleanup()
@@ -71,7 +97,7 @@ func run(cmd *cobra.Command, argv []string) {
 		args.roleArn = argv[0]
 	}
 
-	orgAccount, _, err := r.OCMClient.GetCurrentOrganization()
+	orgAccount, externalID, err := r.OCMClient.GetCurrentOrganization()
 	if err != nil {
 		r.Reporter.Errorf("Error getting organization account: %v", err)
 		os.Exit(1)
@@ -128,6 +154,13 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(1)
 	}
 
+	nameCompliant := aws.OCMRoleNameMatchesConvention(roleArn, externalID)
+	if externalID == "" {
+		r.Reporter.Warnf("%s", unknownExternalIDWarning())
+	} else if !nameCompliant {
+		r.Reporter.Warnf("%s", nonCompliantRoleNameWarning())
+	}
+
 	if !confirm.Prompt(true, "Link the '%s' role with organization '%s'?", roleArn, orgAccount) {
 		os.Exit(0)
 	}
@@ -159,4 +192,9 @@ func run(cmd *cobra.Command, argv []string) {
 		os.Exit(0)
 	}
 	r.Reporter.Infof("Successfully linked role-arn '%s' with organization account '%s'", roleArn, orgAccount)
+	if externalID == "" {
+		r.Reporter.Warnf("Reminder: %s", unknownExternalIDWarning())
+	} else if !nameCompliant {
+		r.Reporter.Warnf("Reminder: %s", nonCompliantRoleNameWarning())
+	}
 }

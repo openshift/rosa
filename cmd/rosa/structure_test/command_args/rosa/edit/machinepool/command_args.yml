@@ -16,6 +16,7 @@
 - name: replicas
 - name: spot-max-price
 - name: taints
+- name: tags
 - name: tuning-configs
 - name: use-spot-instances
 - name: "yes"

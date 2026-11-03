@@ -356,6 +356,27 @@ var _ = Describe("UserTagValidator", func() {
 		})
 	})
 
+	Describe("userTagsFlagSyntaxHelpSuffix", func() {
+		It("shows bash, zsh, and PowerShell quoting outside Windows", func() {
+			help := userTagsFlagSyntaxHelpSuffix("darwin")
+			Expect(help).To(ContainSubstring("Keys or values with spaces or colons use double quotes"),
+				"document quoting for colon-containing tag keys and values")
+			Expect(help).To(ContainSubstring(`bash/zsh/PowerShell: --tags '"Cost Center":"Finance Team"'`),
+				"show the shared bash, zsh, and cross-platform PowerShell example")
+			Expect(help).NotTo(ContainSubstring("cmd.exe"), "omit Windows-only shell guidance")
+		})
+
+		It("shows PowerShell, bash, zsh, and cmd.exe quoting on Windows", func() {
+			help := userTagsFlagSyntaxHelpSuffix("windows")
+			Expect(help).To(ContainSubstring("for example: key:value,foo:bar."),
+				"keep the simple tag example shell-neutral")
+			Expect(help).To(ContainSubstring(`PowerShell/bash/zsh: --tags '"Cost Center":"Finance Team"'`),
+				"show the shared PowerShell, bash, and zsh example")
+			Expect(help).To(ContainSubstring(`cmd.exe: --tags """Cost Center"":""Finance Team"""`),
+				"show the cmd.exe example")
+		})
+	})
+
 	Describe("UserTagsCmdExeReplayTip", func() {
 		It("should be empty for simple tags", func() {
 			Expect(UserTagsCmdExeReplayTip("env:prod")).To(Equal(""))
@@ -1141,6 +1162,40 @@ var _ = Describe("GetOCMRoleName", func() {
 	It("should build the correct OCM role name", func() {
 		result := GetOCMRoleName("ManagedOpenShift", "OCM", "12345")
 		Expect(result).To(Equal("ManagedOpenShift-OCM-Role-12345"))
+	})
+})
+
+var _ = Describe("OCMRoleNameSuffix", func() {
+	It("should build the suffix OCM requires for the organization's external ID", func() {
+		Expect(OCMRoleNameSuffix("1223456778")).To(
+			Equal("-OCM-Role-1223456778"), "expected the suffix to embed the given external ID")
+	})
+})
+
+var _ = Describe("OCMRoleNameMatchesConvention", func() {
+	It("returns true when the role name ends with the organization's external ID suffix", func() {
+		roleArn := "arn:aws:iam::123456789012:role/ManagedOpenShift-OCM-Role-1223456778"
+		Expect(OCMRoleNameMatchesConvention(roleArn, "1223456778")).To(
+			BeTrue(), "expected ARN '%s' to match the OCM role naming convention", roleArn)
+	})
+
+	It("returns false when the role name omits the external ID suffix", func() {
+		roleArn := "arn:aws:iam::123456789012:role/ManagedOpenShift-OCM-Role"
+		Expect(OCMRoleNameMatchesConvention(roleArn, "1223456778")).To(
+			BeFalse(), "expected ARN '%s' without a suffix to not match the convention", roleArn)
+	})
+
+	It("returns false when the role name carries a different organization's external ID", func() {
+		roleArn := "arn:aws:iam::123456789012:role/ManagedOpenShift-OCM-Role-9999999999"
+		Expect(OCMRoleNameMatchesConvention(roleArn, "1223456778")).To(
+			BeFalse(), "expected ARN '%s' with a mismatched external ID to not match the convention", roleArn)
+	})
+
+	It("returns false when the organization's external ID is empty, even if the role name ends "+
+		"with the bare suffix", func() {
+		roleArn := "arn:aws:iam::123456789012:role/ManagedOpenShift-OCM-Role-"
+		Expect(OCMRoleNameMatchesConvention(roleArn, "")).To(
+			BeFalse(), "expected an empty external ID to never report a match")
 	})
 })
 
