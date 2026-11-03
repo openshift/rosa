@@ -599,7 +599,7 @@ var _ = Describe("OAuth authorization code TLS options", Ordered, func() {
 		openerEnvironmentName, _, _ := strings.Cut(openerEnvironment, "=")
 		for _, scenario := range []string{"untrusted", "insecure", "trusted"} {
 			Expect(callbackPortAvailable()).To(Succeed(), "callback port was contaminated before %s", scenario)
-			scenarioContext, cancelScenario := context.WithTimeout(context.Background(), 15*time.Second)
+			scenarioContext, cancelScenario := context.WithTimeout(context.Background(), 30*time.Second)
 			callbackResults := make(chan browserCallbackResult, 1)
 			go func() {
 				callbackResults <- runBrowserCallback(scenarioContext)

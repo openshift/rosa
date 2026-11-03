@@ -528,7 +528,8 @@ func tokenType(jwtToken *jwt.Token) (typ string, err error) {
 }
 
 func Call(cmd *cobra.Command, argv []string, reporter reporter.Logger) error {
-	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", arguments.NewEnvFlag, "token", "insecure"}
+	loginFlags := []string{"token-url", "client-id", "client-secret", "scope", arguments.NewEnvFlag, "token", "insecure",
+		"allow-tls12"}
 	hasLoginFlags := false
 	// Check if the user set login flags
 	for _, loginFlag := range loginFlags {
