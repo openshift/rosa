@@ -43,8 +43,15 @@ resolved path. When driving `ginkgo` by hand, check `command -v rosa` first.
 ## Run all validated specs
 
 ```bash
-SEAPLANE_URL=<v2 endpoint> TEST_PROFILE=rosa-seaplane-basic make test-validate-seaplane
+make test-validate-seaplane
 ```
+
+The endpoint comes from the rosa config written by `rosa login --seaplane-url`,
+which is the same value the CLI itself uses. Exporting `SEAPLANE_URL` is
+optional; if you do, it must match the config, because the specs read the
+variable while the CLI reads the config and a disagreement would point the two
+halves of the run at different endpoints. The target prints the endpoint and
+the resolved `rosa` binary before phase 1.
 
 This runs the 67 specs labelled `seaplane-validated` in five ordered phases:
 `day1`, `day1-readiness`, the main test body, `destroy`, then `destroy-post`.

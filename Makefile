@@ -297,11 +297,7 @@ SEAPLANE_LABEL_BASE := seaplane-validated && !seaplane-na && !seaplane-deferred
 # unless selected: rosa-seaplane-nocni and rosa-seaplane-disable-capabilities.
 .PHONY: test-validate-seaplane
 test-validate-seaplane: install
-	@test -n "$${SEAPLANE_URL}" || { \
-		echo "SEAPLANE_URL is required (see guidelines/seaplane-guidelines.md)"; \
-		exit 1; \
-	}; \
-	name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
+	@name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
 	profile='$(TEST_PROFILE)'; profile=$${profile:-rosa-seaplane-basic}; \
 	seed=''; test -z "$${GINKGO_SEED}" || seed="--seed=$${GINKGO_SEED}"; \
 	gobin=$$(go env GOBIN); test -n "$$gobin" || gobin=$$(go env GOPATH)/bin; \
@@ -320,14 +316,26 @@ test-validate-seaplane: install
 			*) cfg="$${XDG_CONFIG_HOME:-$$HOME/.config}/ocm/ocm.json" ;; \
 		esac; \
 	fi; \
-	if ! grep -q '"seaplane_url"[[:space:]]*:[[:space:]]*"[^"]' "$$cfg" 2>/dev/null; then \
+	cfgurl=$$(sed -n 's/.*"seaplane_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+		"$$cfg" 2>/dev/null | head -1); \
+	if [ -z "$$cfgurl" ]; then \
 		echo "rosa config ($$cfg) has no seaplane_url."; \
-		echo "SEAPLANE_URL alone is not enough: the test handler's usesSeaplane() reads"; \
-		echo "the rosa config, so without it the suite silently takes the OCM path and"; \
-		echo "fails later somewhere unrelated. Run:"; \
-		echo "  rosa login --seaplane-url \"$$SEAPLANE_URL\""; \
+		echo "The rosa CLI reads the endpoint from its config, not from SEAPLANE_URL, so"; \
+		echo "without it the suite silently takes the OCM path and fails somewhere"; \
+		echo "unrelated. Run:"; \
+		echo "  rosa login --seaplane-url \"$${SEAPLANE_URL:-<endpoint>}\""; \
 		exit 1; \
 	fi; \
+	if [ -n "$$SEAPLANE_URL" ] && [ "$$SEAPLANE_URL" != "$$cfgurl" ]; then \
+		echo "SEAPLANE_URL and the rosa config disagree on the endpoint:"; \
+		echo "  SEAPLANE_URL : $$SEAPLANE_URL"; \
+		echo "  rosa config  : $$cfgurl"; \
+		echo "The specs read SEAPLANE_URL but the CLI reads the config, so the run would"; \
+		echo "target two different endpoints and fail against whichever one does not know"; \
+		echo "this account. Unset SEAPLANE_URL to use the config, or re-run rosa login."; \
+		exit 1; \
+	fi; \
+	SEAPLANE_URL="$$cfgurl"; \
 	export SEAPLANE_URL; \
 	export TEST_PROFILE="$$profile"; \
 	export CLUSTER_NAME="$$name"; \
@@ -345,7 +353,8 @@ test-validate-seaplane: install
 			./tests/e2e/...; \
 	}; \
 	echo "seaplane validated run: cluster=$$name profile=$$profile"; \
-	echo "rosa binary: $$(command -v rosa)"; \
+	echo "  endpoint: $$SEAPLANE_URL"; \
+	echo "  rosa:     $$(command -v rosa)"; \
 	rc=0; td=0; \
 	run_phase "1/5 setup" "day1" || rc=$$?; \
 	if [ $$rc -eq 0 ]; then \
