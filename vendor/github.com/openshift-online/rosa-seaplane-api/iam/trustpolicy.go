@@ -137,7 +137,10 @@ func IssuerDomain(issuerURL string) (string, error) {
 	if parsed.Host == "" {
 		return "", fmt.Errorf("OIDC issuer URL '%s' has no host", issuerURL)
 	}
-	return parsed.Host + parsed.Path, nil
+	// Use EscapedPath(), not Path: url.Parse decodes percent-encoded
+	// characters in .Path, which would make the trust policy reference a
+	// decoded path that doesn't match the OIDC provider registered with AWS.
+	return parsed.Host + parsed.EscapedPath(), nil
 }
 
 // ManagedPolicyARNs renders the full policy ARNs for a role in the given
