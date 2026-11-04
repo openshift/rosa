@@ -263,28 +263,101 @@ e2e_test: install
         --focus-file tests/e2e/.* \
 		$(NULL)
 
-# e2e-seaplane: seaplane e2e via ginkgo --label-filter.
+# Label selection shared by every Seaplane validated phase.
+SEAPLANE_LABEL_BASE := seaplane-validated && !seaplane-na && !seaplane-deferred
+
+# test-validate-seaplane: run every Seaplane-validated E2E spec in one command.
 #
-# Labels (see tests/ci/labels/seaplane.go):
-#   seaplane-validated — day1 FVT (profile-driven cluster prep; needs TEST_PROFILE)
-#   seaplane-sanity    — full CLI/SDK lifecycle spec (self-contained; no TEST_PROFILE)
+# Ginkgo randomizes top-level containers, so a single invocation can tear the
+# cluster down before it is created. The run is split into ordered phases
+# instead, mirroring the runbook in tests/e2e/seaplane-guidelines.md:
+#
+#   1 day1            cluster preparation by profile
+#   2 day1-readiness  wait for the cluster to be ready
+#   3 tests           everything else — day1-post/-supplemental/-negative, day2,
+#                     and specs carrying no day label — selected by negation
+#   4 destroy         profile teardown
+#   5 destroy-post    verify deletion
+#
+# Phases 4-5 always run, even when an earlier phase fails, so a failed test
+# never leaks a cluster. The exit code is the test failure when there is one,
+# otherwise the teardown failure.
 #
 # Required:
-#   SEAPLANE_URL  — Platform API v2 base URL
-#   TEST_PROFILE    — e.g. rosa-seaplane-basic (for seaplane-validated only)
+#   SEAPLANE_URL — Platform API v2 base URL
 #
 # Optional:
+#   TEST_PROFILE       — profile in tests/ci/data/profiles/rosa-seaplane.yaml
+#                        (defaults to rosa-seaplane-basic)
 #   CLUSTER_NAME       — defaults to sp-e2e-<unix timestamp> (≤18 chars)
 #   AWS_DEFAULT_REGION — fallback when region cannot be derived from SEAPLANE_URL
-#   LABEL_FILTER       — defaults to seaplane-validated; use seaplane-sanity for sanity
-.PHONY: e2e-seaplane
-e2e-seaplane: install
+#   GINKGO_SEED        — pin the seed to reproduce a failing run
+#
+# Two validated specs are gated to their own profiles and report as skipped
+# unless selected: rosa-seaplane-nocni and rosa-seaplane-disable-capabilities.
+.PHONY: test-validate-seaplane
+test-validate-seaplane: install
 	@test -n "$${SEAPLANE_URL}" || { \
 		echo "SEAPLANE_URL is required (see guidelines/seaplane-guidelines.md)"; \
 		exit 1; \
 	}; \
 	name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
-	filter=$${LABEL_FILTER:-seaplane-validated}; \
+	profile='$(TEST_PROFILE)'; profile=$${profile:-rosa-seaplane-basic}; \
+	seed=''; test -z "$${GINKGO_SEED}" || seed="--seed=$${GINKGO_SEED}"; \
+	export SEAPLANE_URL; \
+	export TEST_PROFILE="$$profile"; \
+	export CLUSTER_NAME="$$name"; \
+	export OPERATOR_ROLES_PREFIX="$$name"; \
+	export AWS_DEFAULT_REGION; \
+	run_phase() { \
+		echo ""; \
+		echo "=== seaplane phase $$1 ==="; \
+		ginkgo run \
+			--label-filter "$(SEAPLANE_LABEL_BASE) && ($$2)" \
+			--timeout 3h \
+			-v \
+			$$seed \
+			$(SEAPLANE_GINKGO_EXTRA) \
+			./tests/e2e/...; \
+	}; \
+	echo "seaplane validated run: cluster=$$name profile=$$profile"; \
+	rc=0; td=0; \
+	run_phase "1/5 setup" "day1" || rc=$$?; \
+	if [ $$rc -eq 0 ]; then \
+		run_phase "2/5 readiness" "day1-readiness" || rc=$$?; \
+	fi; \
+	if [ $$rc -eq 0 ]; then \
+		run_phase "3/5 tests" \
+			"!day1 && !day1-readiness && !destroy && !destroy-post" || rc=$$?; \
+	fi; \
+	run_phase "4/5 destroy" "destroy" || td=$$?; \
+	run_phase "5/5 destroy-post" "destroy-post" || td=$$?; \
+	if [ $$rc -ne 0 ]; then \
+		echo "seaplane validated run FAILED (tests rc=$$rc, teardown rc=$$td)"; \
+		exit $$rc; \
+	fi; \
+	if [ $$td -ne 0 ]; then \
+		echo "seaplane validated run: tests passed but teardown rc=$$td"; \
+		exit $$td; \
+	fi; \
+	echo "seaplane validated run OK"
+
+# e2e-seaplane: compatibility entry point.
+#
+# Defaults to the phased validated run above. LABEL_FILTER stays available for
+# self-contained selections such as seaplane-sanity, which need no phasing.
+.PHONY: e2e-seaplane
+e2e-seaplane: install
+	@filter=$${LABEL_FILTER:-seaplane-validated}; \
+	if [ "$$filter" = "seaplane-validated" ]; then \
+		$(MAKE) test-validate-seaplane; \
+		exit $$?; \
+	fi; \
+	test -n "$${SEAPLANE_URL}" || { \
+		echo "SEAPLANE_URL is required (see guidelines/seaplane-guidelines.md)"; \
+		exit 1; \
+	}; \
+	name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
 	SEAPLANE_URL="$${SEAPLANE_URL}" \
 	TEST_PROFILE="$(TEST_PROFILE)" \
 	CLUSTER_NAME="$$name" \
