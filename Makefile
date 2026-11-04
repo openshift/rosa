@@ -365,7 +365,14 @@ test-validate-seaplane: install
 			"!day1 && !day1-readiness && !destroy && !destroy-post" || rc=$$?; \
 	fi; \
 	run_phase "4/5 destroy" "destroy" || td=$$?; \
-	run_phase "5/5 destroy-post" "destroy-post" || td=$$?; \
+	if [ $$rc -eq 0 ]; then \
+		run_phase "5/5 destroy-post" "destroy-post" || td=$$?; \
+	else \
+		echo ""; \
+		echo "=== seaplane phase 5/5 destroy-post: skipped ==="; \
+		echo "setup or tests failed, so there is no cluster whose deletion can be"; \
+		echo "verified; running it would only bury the real failure above."; \
+	fi; \
 	if [ $$rc -ne 0 ]; then \
 		echo "seaplane validated run FAILED (tests rc=$$rc, teardown rc=$$td)"; \
 		exit $$rc; \
@@ -375,6 +382,39 @@ test-validate-seaplane: install
 		exit $$td; \
 	fi; \
 	echo "seaplane validated run OK"
+
+# clean-seaplane-cluster: delete one Seaplane cluster by name.
+#
+# For recovering from a run that left a cluster behind. The next run otherwise
+# fails with "a cluster named X already exists in this account", and because
+# that happens during setup it leaves no usable state for the normal teardown
+# phases to work from.
+#
+# Required:
+#   CLUSTER_NAME — cluster to delete
+#
+# Optional:
+#   DELETE_OPERATOR_ROLES — set to any value to also delete the operator roles
+#                           sharing the cluster-name prefix
+#   DELETE_WATCH          — set to any value to stream uninstall logs
+.PHONY: clean-seaplane-cluster
+clean-seaplane-cluster: install
+	@test -n "$${CLUSTER_NAME}" || { \
+		echo "CLUSTER_NAME is required, e.g.:"; \
+		echo "  make clean-seaplane-cluster CLUSTER_NAME=hf-e2e-1793816856"; \
+		exit 1; \
+	}; \
+	gobin=$$(go env GOBIN); test -n "$$gobin" || gobin=$$(go env GOPATH)/bin; \
+	PATH="$$gobin:$$PATH"; export PATH; \
+	watch=''; test -z "$${DELETE_WATCH}" || watch='--watch'; \
+	echo "deleting cluster '$${CLUSTER_NAME}'"; \
+	echo "  rosa: $$(command -v rosa)"; \
+	rosa delete cluster --cluster "$${CLUSTER_NAME}" --yes $$watch || exit $$?; \
+	if [ -n "$${DELETE_OPERATOR_ROLES}" ]; then \
+		echo "deleting operator roles with prefix '$${CLUSTER_NAME}'"; \
+		rosa delete operator-roles --prefix "$${CLUSTER_NAME}" --yes || exit $$?; \
+	fi; \
+	echo "deleted '$${CLUSTER_NAME}'"
 
 # e2e-seaplane: compatibility entry point.
 #

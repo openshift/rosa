@@ -58,9 +58,27 @@ This runs the 67 specs labelled `seaplane-validated` in five ordered phases:
 The phases exist because Ginkgo randomizes top-level containers, so a single
 invocation can tear the cluster down before it is created.
 
-Teardown always runs, including when an earlier phase fails, so a failed spec
-does not leak a cluster. The command exits with the test failure when there is
-one, otherwise the teardown failure.
+Phase 4 always runs, including when an earlier phase fails, so a failed spec
+does not leak a cluster. Phase 5 only runs when setup and tests succeeded:
+with no cluster there is nothing whose deletion can be verified, and running
+it would bury the real failure under an unrelated assertion. The command exits
+with the test failure when there is one, otherwise the teardown failure.
+
+If a run leaves a cluster behind, the next one fails during setup with
+`a cluster named X already exists in this account`, and because that happens
+before any state is written the normal teardown phases have nothing to work
+from. Remove it directly:
+
+```bash
+make clean-seaplane-cluster CLUSTER_NAME=<name>
+```
+
+Set `DELETE_OPERATOR_ROLES=1` to also remove operator roles sharing the
+cluster-name prefix, and `DELETE_WATCH=1` to stream uninstall logs.
+
+Note that `CLUSTER_NAME` is honoured when exported, so a stale value in your
+shell will be reused across runs and collide with the cluster it created the
+first time. Leave it unset unless you mean to pin it.
 
 Optional environment:
 
