@@ -37,6 +37,7 @@ type ocmClientAdapter struct {
 	client *ocm.Client
 }
 
+// NewOCMClient wraps an ocm.Client to satisfy the OCMClient interface.
 func NewOCMClient(client *ocm.Client) OCMClient {
 	return &ocmClientAdapter{client: client}
 }

@@ -318,8 +318,10 @@ func checkAvailableTargets(result *Result, ocmClient OCMClient, cluster *cmv1.Cl
 				found = true
 				break
 			}
-			// X.Y (minor-only) target matches any patch release with that prefix.
-			if strings.Count(targetVersion, ".") == 1 && strings.HasPrefix(v, targetVersion+".") {
+			// X.Y (minor-only) target matches any stable patch release with that prefix.
+			// Prerelease versions (e.g. 4.19.0-rc.2) are excluded so a minor-only request
+			// does not silently match a candidate build.
+			if strings.Count(targetVersion, ".") == 1 && strings.HasPrefix(v, targetVersion+".") && !strings.Contains(v, "-") {
 				found = true
 				break
 			}
@@ -467,6 +469,7 @@ func checkVersionGates(result *Result, ocmClient OCMClient, cluster *cmv1.Cluste
 	return nil
 }
 
+// getGateAgreements returns the gate agreements recorded for a cluster.
 func getGateAgreements(ocmClient OCMClient, clusterID string) ([]*cmv1.VersionGateAgreement, error) {
 	return ocmClient.ListGateAgreements(clusterID)
 }

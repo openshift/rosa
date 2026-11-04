@@ -70,6 +70,7 @@ func (m *mockOCMClient) ListGateAgreements(string) ([]*cmv1.VersionGateAgreement
 
 // --- helpers ---
 
+// mustBuildCluster builds a cluster from the given builder and panics on error.
 func mustBuildCluster(b *cmv1.ClusterBuilder) *cmv1.Cluster {
 	c, err := b.Build()
 	if err != nil {
@@ -106,6 +107,7 @@ func readyClassicCluster(version, channelGroup string) *cmv1.Cluster {
 	)
 }
 
+// mustBuildLS builds a LimitedSupportReason with the given summary and panics on error.
 func mustBuildLS(summary string) *cmv1.LimitedSupportReason {
 	ls, err := cmv1.NewLimitedSupportReason().ID("ls-1").Summary(summary).Build()
 	if err != nil {
@@ -114,6 +116,7 @@ func mustBuildLS(summary string) *cmv1.LimitedSupportReason {
 	return ls
 }
 
+// mustBuildGate builds a VersionGate with the given attributes and panics on error.
 func mustBuildGate(id, description string, stsOnly bool, createdAt time.Time) *cmv1.VersionGate {
 	g, err := cmv1.NewVersionGate().
 		ID(id).
@@ -127,6 +130,7 @@ func mustBuildGate(id, description string, stsOnly bool, createdAt time.Time) *c
 	return g
 }
 
+// mustBuildGateWithLabel builds a VersionGate with a label field and panics on error.
 func mustBuildGateWithLabel(id, description, label string, stsOnly bool, createdAt time.Time) *cmv1.VersionGate {
 	g, err := cmv1.NewVersionGate().
 		ID(id).
@@ -141,6 +145,7 @@ func mustBuildGateWithLabel(id, description, label string, stsOnly bool, created
 	return g
 }
 
+// mustBuildGateAgreement builds a VersionGateAgreement for the given gate ID and panics on error.
 func mustBuildGateAgreement(gateID string) *cmv1.VersionGateAgreement {
 	a, err := cmv1.NewVersionGateAgreement().
 		ID("agree-1").
@@ -152,6 +157,7 @@ func mustBuildGateAgreement(gateID string) *cmv1.VersionGateAgreement {
 	return a
 }
 
+// mustBuildUpgradePolicy builds an UpgradePolicy with the given version and next-run time and panics on error.
 func mustBuildUpgradePolicy(version string, nextRun time.Time) *cmv1.UpgradePolicy {
 	p, err := cmv1.NewUpgradePolicy().
 		ID("policy-1").
@@ -165,6 +171,7 @@ func mustBuildUpgradePolicy(version string, nextRun time.Time) *cmv1.UpgradePoli
 	return p
 }
 
+// assertFinding fails the test if no finding with the given code and severity is present in the result.
 func assertFinding(t *testing.T, result *Result, code ReasonCode, severity Severity) {
 	t.Helper()
 	for _, f := range result.Findings {
@@ -179,6 +186,7 @@ func assertFinding(t *testing.T, result *Result, code ReasonCode, severity Sever
 	t.Errorf("expected finding %s:%s, got findings: %v", code, severity, codes)
 }
 
+// assertNoBlockers fails the test if the result contains any blocker-severity findings.
 func assertNoBlockers(t *testing.T, result *Result) {
 	t.Helper()
 	if !result.Eligible {
@@ -1083,4 +1091,27 @@ func TestGateFiltering_ZStreamSkipsGates(t *testing.T) {
 	if len(result.Gates) != 0 {
 		t.Errorf("expected no gates for z-stream upgrade, got %d", len(result.Gates))
 	}
+}
+
+// Minor-only target (X.Y) must not match a prerelease when that is the only available version.
+func TestTargetVersion_MinorOnly_ExcludesPrerelease(t *testing.T) {
+	cluster := readyHCPCluster("4.18.20", "stable")
+
+	mock := &mockOCMClient{
+		// Only a prerelease candidate is available for 4.19
+		availableUpgrades:    []string{"4.19.0-rc.2"},
+		rawAvailableUpgrades: []string{"4.19.0-rc.2"},
+		gates:                []*cmv1.VersionGate{},
+		gateAgreements:       []*cmv1.VersionGateAgreement{},
+	}
+
+	result, err := CheckAll(mock, cluster, "4.19")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.Eligible {
+		t.Error("expected NOT eligible — minor-only target should not match a prerelease")
+	}
+	assertFinding(t, result, ReasonTargetNotAvailable, SeverityBlocker)
 }
