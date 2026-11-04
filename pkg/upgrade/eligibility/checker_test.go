@@ -419,6 +419,29 @@ func TestLimitedSupport_MixedEOLAndOther(t *testing.T) {
 	assertFinding(t, result, ReasonLimitedSupport, SeverityBlocker)
 }
 
+// Generic "end of life" reason without a version signal must be a blocker, not a warning.
+func TestLimitedSupport_GenericEOL_IsBlocker(t *testing.T) {
+	cluster := readyClassicCluster("4.14.1", "stable")
+
+	mock := &mockOCMClient{
+		limitedSupportReasons: []*cmv1.LimitedSupportReason{
+			mustBuildLS("This configuration is end of life and unsupported"),
+		},
+		availableUpgrades:    []string{"4.14.77"},
+		rawAvailableUpgrades: []string{"4.14.77"},
+	}
+
+	result, err := CheckAll(mock, cluster, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.Eligible {
+		t.Error("expected NOT eligible — generic EOL reason without version signal should be a blocker")
+	}
+	assertFinding(t, result, ReasonLimitedSupport, SeverityBlocker)
+}
+
 // Only version EOL LS — cluster should still be eligible to upgrade.
 func TestLimitedSupport_OnlyEOL_StillEligible(t *testing.T) {
 	cluster := readyClassicCluster("4.14.1", "stable")

@@ -108,23 +108,19 @@ func checkClusterState(result *Result, cluster *cmv1.Cluster) error {
 	return nil
 }
 
-var versionEOLPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\bend of life\b`),
-	regexp.MustCompile(`(?i)\bend of supported life\b`),
-	regexp.MustCompile(`(?i)\beol\b`),
-	regexp.MustCompile(`(?i)\bunsupported version\b`),
-	regexp.MustCompile(`(?i)version is no longer supported`),
-}
+// eolIndicator matches end-of-life phrases.
+var eolIndicator = regexp.MustCompile(`(?i)\bend of (supported )?life\b|\beol\b|no longer supported`)
+
+// eolVersionSignal requires a version-specific word or number alongside the EOL phrase,
+// preventing generic support-case reasons (e.g. "this configuration is end of life")
+// from being misclassified as version-EOL.
+var eolVersionSignal = regexp.MustCompile(`(?i)\bversion\b|\bunsupported version\b|\d+\.\d+`)
 
 // isVersionEOLReason returns true if the LS reason indicates version end-of-life.
+// Both an EOL indicator and a version-specific signal must be present in the summary.
 func isVersionEOLReason(reason *cmv1.LimitedSupportReason) bool {
 	summary := reason.Summary()
-	for _, re := range versionEOLPatterns {
-		if re.MatchString(summary) {
-			return true
-		}
-	}
-	return false
+	return eolIndicator.MatchString(summary) && eolVersionSignal.MatchString(summary)
 }
 
 // checkLimitedSupport queries LS reasons and classifies them as version-EOL (warning) or other (blocker).
