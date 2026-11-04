@@ -1,8 +1,8 @@
 # Seaplane E2E orchestration
 
-Use this runbook for profile-based Seaplane E2E orchestration: prepare a
-cluster, run one or more focused specs, then destroy the cluster and its
-profile-managed infrastructure.
+`make test-validate-seaplane` runs every Seaplane-validated spec end to end and
+is the normal entry point. Use the manual phases further down when you need to
+drive a single spec, or to re-run one stage against a cluster already running.
 
 ## Prerequisites
 
@@ -22,7 +22,44 @@ Install the local CLI before starting:
 make install
 ```
 
+## Run all validated specs
+
+```bash
+SEAPLANE_URL=<v2 endpoint> TEST_PROFILE=rosa-seaplane-basic make test-validate-seaplane
+```
+
+This runs the 67 specs labelled `seaplane-validated` in five ordered phases:
+`day1`, `day1-readiness`, the main test body, `destroy`, then `destroy-post`.
+The phases exist because Ginkgo randomizes top-level containers, so a single
+invocation can tear the cluster down before it is created.
+
+Teardown always runs, including when an earlier phase fails, so a failed spec
+does not leak a cluster. The command exits with the test failure when there is
+one, otherwise the teardown failure.
+
+Optional environment:
+
+- `TEST_PROFILE` — defaults to `rosa-seaplane-basic`.
+- `CLUSTER_NAME` — defaults to `sp-e2e-<unix timestamp>`.
+- `GINKGO_SEED` — pin the seed to reproduce a failing run.
+
+Two validated specs are gated to their own profiles and report as skipped
+otherwise, so full coverage takes three runs:
+
+| `TEST_PROFILE` | Adds |
+| --- | --- |
+| `rosa-seaplane-basic` | the default set |
+| `rosa-seaplane-nocni` | no-CNI cluster creation |
+| `rosa-seaplane-disable-capabilities` | disabled cluster capabilities |
+
+`make e2e-seaplane` delegates to the same phases. Set
+`LABEL_FILTER=seaplane-sanity` on it to run the self-contained sanity suite
+instead, which needs no phasing.
+
 ## Profile lifecycle
+
+These are the individual phases that `make test-validate-seaplane` runs for
+you. Drive them by hand when iterating on a single stage.
 
 Run the profile-based cluster preparation spec:
 
@@ -66,3 +103,9 @@ ginkgo run --focus-file='tests/e2e/e2e_tear_down_test.go' --focus='by profile' -
 The destroy handler tears down the profile-managed cluster and associated
 infrastructure. Confirm that it reports no destroy errors before considering
 the run complete.
+
+Then run the deletion check, which must follow the destroy above:
+
+```bash
+ginkgo run --label-filter='destroy-post && seaplane-validated' --timeout=5h tests/e2e
+```
