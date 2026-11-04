@@ -565,6 +565,19 @@ var _ = Describe("runSeaplane", func() {
 		Expect(exited).To(BeTrue())
 	})
 
+	DescribeTable("rejects a missing release image before creating a cluster",
+		func(version string) {
+			args.version = version
+			handler := &seaplaneClusterCreate{}
+			err := handler.PreRequest(context.Background(), t.RosaRuntime, &seaplanepathbind.ClusterCreateInput{})
+			Expect(err).To(MatchError(
+				"--version is required for Seaplane cluster creation; provide a full OCP release image pullspec",
+			))
+		},
+		Entry("empty version", ""),
+		Entry("whitespace version", "  "),
+	)
+
 	It("rejects an invalid network type before creating a cluster", func() {
 		args.networkType = "invalid-network-type"
 		handler := &seaplaneClusterCreate{}

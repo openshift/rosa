@@ -43,9 +43,13 @@ func (ch *clusterHandler) generateSeaplaneCreateFlags() ([]string, error) {
 
 	flags := []string{rosaAutoConfirmFlag}
 
-	if v, ok := resolvePlatformAPIVersion(ch.profile.Version); ok {
-		flags = append(flags, "--version", v)
-		ch.clusterConfig.Version = &ClusterConfigure.Version{RawID: v, VersionRequirement: v}
+	releaseImage, err := resolvePlatformAPIReleaseImage(ch.profile.Version)
+	if err != nil {
+		return nil, err
+	}
+	flags = append(flags, "--version", releaseImage)
+	ch.clusterConfig.Version = &ClusterConfigure.Version{
+		RawID: releaseImage, VersionRequirement: releaseImage,
 	}
 	if ch.profile.ChannelGroup != "" {
 		if ch.clusterConfig.Version == nil {
@@ -226,29 +230,33 @@ func (ch *clusterHandler) generateSeaplaneCreateFlags() ([]string, error) {
 	return flags, ch.saveToFile()
 }
 
-func resolvePlatformAPIVersion(profileVersion string) (string, bool) {
-	if v := os.Getenv("SEAPLANE_VERSION"); v != "" {
-		return v, true
+func resolvePlatformAPIReleaseImage(profileVersion string) (string, error) {
+	if v := strings.TrimSpace(os.Getenv("SEAPLANE_VERSION")); v != "" {
+		return v, nil
 	}
-
-	if profileVersion != "" && constants.VersionRawPattern.MatchString(profileVersion) {
-		return profileVersion, true
+	if v := strings.TrimSpace(os.Getenv("OCP_IMAGE")); v != "" {
+		return v, nil
 	}
-
-	if profileVersion != "" {
-		log.Logger.Infof(
-			"Skipping OCM version lookup for %q; Platform API resolves default (set SEAPLANE_VERSION to pin)",
-			profileVersion,
+	if version := strings.TrimSpace(profileVersion); version != "" {
+		if constants.VersionRawPattern.MatchString(version) {
+			return version, nil
+		}
+		return "", fmt.Errorf(
+			"profile version %q is not an OCP release image pullspec; set SEAPLANE_VERSION or OCP_IMAGE to a full pullspec",
+			version,
 		)
 	}
-	return "", false
+	return "", errors.New("seaplane cluster creation requires an OCP release image; set SEAPLANE_VERSION or OCP_IMAGE to a full pullspec")
 }
 
 func platformAPIVersionRequirement(profileVersion string) string {
-	if version := os.Getenv("SEAPLANE_VERSION"); version != "" {
+	if version := strings.TrimSpace(os.Getenv("SEAPLANE_VERSION")); version != "" {
 		return version
 	}
-	return profileVersion
+	if image := strings.TrimSpace(os.Getenv("OCP_IMAGE")); image != "" {
+		return image
+	}
+	return strings.TrimSpace(profileVersion)
 }
 
 func prepareBYOVPCSubnets(

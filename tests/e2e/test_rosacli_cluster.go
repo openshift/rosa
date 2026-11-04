@@ -67,6 +67,13 @@ func isSeaplaneMode() bool {
 	return seaplaneEndpointForTests() != ""
 }
 
+func customProfileVersion(seaplaneMode bool) string {
+	if !seaplaneMode {
+		return "latest"
+	}
+	return handler.LoadProfileYamlFileByENV().Version
+}
+
 func seaplaneRegionForTests(defaultRegion string) string {
 	endpoint := seaplaneEndpointForTests()
 	if endpoint == "" {
@@ -4914,7 +4921,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 					Path:               "",
 					PermissionBoundary: "",
 				},
-				Version:      "latest",
+				Version:      customProfileVersion(seaplaneMode),
 				ChannelGroup: "candidate",
 				Region:       region,
 			}
@@ -5289,7 +5296,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 					Path:               "/aa/bb/",
 					PermissionBoundary: "",
 				},
-				Version:      "latest",
+				Version:      customProfileVersion(seaplaneMode),
 				ChannelGroup: "candidate",
 				Region:       region,
 			}
@@ -5613,7 +5620,7 @@ var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 					Path:               "/aa/bb/",
 					PermissionBoundary: "",
 				},
-				Version:      "latest",
+				Version:      customProfileVersion(seaplaneMode),
 				ChannelGroup: "candidate",
 				Region:       region,
 			}
