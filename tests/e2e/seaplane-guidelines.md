@@ -22,6 +22,24 @@ Install the local CLI before starting:
 make install
 ```
 
+Then point the CLI at the endpoint:
+
+```bash
+rosa login --seaplane-url "$SEAPLANE_URL"
+```
+
+This step is required, not optional. It writes `seaplane_url` into the rosa
+config, and the config is what the test handler's `usesSeaplane()` actually
+reads — it does not look at the `SEAPLANE_URL` environment variable. Without
+it the suite silently takes the OCM path and fails somewhere unrelated, such
+as a `NAME_PREFIX` panic in `GenerateClusterCreateFlags`.
+
+One more trap: `make install` builds to `$(go env GOPATH)/bin`, but a `rosa`
+earlier on `PATH` (a `/usr/local/bin` or Homebrew install is common) will
+shadow it, so the suite exercises that binary instead of your working tree.
+`make test-validate-seaplane` prepends the build directory and prints the
+resolved path. When driving `ginkgo` by hand, check `command -v rosa` first.
+
 ## Run all validated specs
 
 ```bash

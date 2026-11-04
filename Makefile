@@ -304,6 +304,30 @@ test-validate-seaplane: install
 	name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
 	profile='$(TEST_PROFILE)'; profile=$${profile:-rosa-seaplane-basic}; \
 	seed=''; test -z "$${GINKGO_SEED}" || seed="--seed=$${GINKGO_SEED}"; \
+	gobin=$$(go env GOBIN); test -n "$$gobin" || gobin=$$(go env GOPATH)/bin; \
+	PATH="$$gobin:$$PATH"; export PATH; \
+	if ! grep -qE "^ *- as: *$$profile *$$" tests/ci/data/profiles/*.yaml; then \
+		echo "TEST_PROFILE '$$profile' is not a known profile. Valid seaplane profiles:"; \
+		grep -rhoE "^ *- as: *rosa-seaplane-[a-z-]+" tests/ci/data/profiles/*.yaml \
+			| sed 's/.*as: */  /' | sort; \
+		exit 1; \
+	fi; \
+	cfg="$${OCM_CONFIG}"; \
+	if [ -z "$$cfg" ] && [ -f "$$HOME/.ocm.json" ]; then cfg="$$HOME/.ocm.json"; fi; \
+	if [ -z "$$cfg" ]; then \
+		case "$$(uname -s)" in \
+			Darwin) cfg="$$HOME/Library/Application Support/ocm/ocm.json" ;; \
+			*) cfg="$${XDG_CONFIG_HOME:-$$HOME/.config}/ocm/ocm.json" ;; \
+		esac; \
+	fi; \
+	if ! grep -q '"seaplane_url"[[:space:]]*:[[:space:]]*"[^"]' "$$cfg" 2>/dev/null; then \
+		echo "rosa config ($$cfg) has no seaplane_url."; \
+		echo "SEAPLANE_URL alone is not enough: the test handler's usesSeaplane() reads"; \
+		echo "the rosa config, so without it the suite silently takes the OCM path and"; \
+		echo "fails later somewhere unrelated. Run:"; \
+		echo "  rosa login --seaplane-url \"$$SEAPLANE_URL\""; \
+		exit 1; \
+	fi; \
 	export SEAPLANE_URL; \
 	export TEST_PROFILE="$$profile"; \
 	export CLUSTER_NAME="$$name"; \
@@ -321,6 +345,7 @@ test-validate-seaplane: install
 			./tests/e2e/...; \
 	}; \
 	echo "seaplane validated run: cluster=$$name profile=$$profile"; \
+	echo "rosa binary: $$(command -v rosa)"; \
 	rc=0; td=0; \
 	run_phase "1/5 setup" "day1" || rc=$$?; \
 	if [ $$rc -eq 0 ]; then \
