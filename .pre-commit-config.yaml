@@ -11,6 +11,7 @@ repos:
     hooks:
       - id: check-merge-conflict
         name: Check for merge conflict strings
+        args: [--assume-in-merge]
         stages: [pre-commit]
       - id: check-yaml
         name: Check YAML syntax
