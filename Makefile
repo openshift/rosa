@@ -119,7 +119,6 @@ vale: $(VALE)
 .PHONY: docs-lint
 docs-lint: $(VALE)
 	"$(VALE)" --minAlertLevel=error --glob='!.vale.ini' --glob='!vendor/**' .
->>>>>>> a2d803bc9 (ROSAENG-6524 | chore: add license and documentation checks)
 
 .PHONY: govulncheck
 govulncheck: $(GOVULNCHECK) rosa
