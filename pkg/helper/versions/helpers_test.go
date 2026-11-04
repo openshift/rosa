@@ -80,6 +80,14 @@ var _ = Describe("Version Helpers", Ordered, func() {
 				"4.14.5",
 				"4.12.0",
 			),
+			Entry("New major, first minor",
+				"5.0.0",
+				"5.0.0",
+			),
+			Entry("New major, second minor",
+				"5.1.0",
+				"5.0.0",
+			),
 		)
 	})
 })
