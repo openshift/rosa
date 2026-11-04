@@ -182,6 +182,9 @@ func (h *seaplaneClusterCreate) PreRequest(
 	if input.SubnetID == "" {
 		return fmt.Errorf("--subnet-id (or --subnet-ids) is required")
 	}
+	if strings.TrimSpace(input.Version) == "" {
+		return fmt.Errorf("--version is required for Seaplane cluster creation; provide a full OCP release image pullspec")
+	}
 	if err := validateSeaplaneNetworkType(args.networkType); err != nil {
 		return err
 	}

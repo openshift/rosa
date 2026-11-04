@@ -147,8 +147,11 @@ var _ = Describe("GenerateClusterCreateFlags seaplane", func() {
 	)
 
 	It("skips NAME_PREFIX when CLUSTER_NAME is set", func() {
+		const releaseImage = "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
 		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
 		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
+		GinkgoT().Setenv("SEAPLANE_VERSION", "")
+		GinkgoT().Setenv("OCP_IMAGE", releaseImage)
 		ch := &clusterHandler{
 			profile:          &Profile{Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
 			clusterConfig:    &ClusterConfigure.ClusterConfig{},
@@ -166,6 +169,7 @@ var _ = Describe("GenerateClusterCreateFlags seaplane", func() {
 		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
 		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
 		GinkgoT().Setenv("SEAPLANE_VERSION", "")
+		GinkgoT().Setenv("OCP_IMAGE", "")
 		ch := &clusterHandler{
 			profile:          &Profile{Version: releaseImage, Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
 			clusterConfig:    &ClusterConfigure.ClusterConfig{},
@@ -177,12 +181,49 @@ var _ = Describe("GenerateClusterCreateFlags seaplane", func() {
 		Expect(flags).To(ContainElements("--version", releaseImage))
 	})
 
+	It("uses OCP_IMAGE when the profile has no release image", func() {
+		const releaseImage = "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
+		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
+		GinkgoT().Setenv("SEAPLANE_VERSION", "")
+		GinkgoT().Setenv("OCP_IMAGE", releaseImage)
+		ch := &clusterHandler{
+			profile:          &Profile{Version: "latest", Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
+			clusterConfig:    &ClusterConfigure.ClusterConfig{},
+			clusterDetail:    &ClusterDetail{},
+			resourcesHandler: &resourcesHandler{persist: false, resources: &Resources{}},
+		}
+
+		flags, err := ch.GenerateClusterCreateFlags()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(flags).To(ContainElements("--version", releaseImage))
+		Expect(ch.clusterConfig.Version.VersionRequirement).To(Equal(releaseImage))
+	})
+
+	It("fails before cluster creation when no release image is configured", func() {
+		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
+		GinkgoT().Setenv("SEAPLANE_VERSION", "")
+		GinkgoT().Setenv("OCP_IMAGE", "")
+		ch := &clusterHandler{
+			profile:          &Profile{Version: "latest", Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
+			clusterConfig:    &ClusterConfigure.ClusterConfig{},
+			clusterDetail:    &ClusterDetail{},
+			resourcesHandler: &resourcesHandler{persist: false, resources: &Resources{}},
+		}
+
+		flags, err := ch.GenerateClusterCreateFlags()
+		Expect(err).To(MatchError(ContainSubstring("set SEAPLANE_VERSION or OCP_IMAGE to a full pullspec")))
+		Expect(flags).To(BeNil())
+	})
+
 	It("keeps the SEAPLANE_VERSION override in the saved cluster configuration", func() {
 		const profileVersion = "quay.io/openshift-release-dev/ocp-release:5.0.0-ec.6-multi"
 		const overrideVersion = "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
 		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
 		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
 		GinkgoT().Setenv("SEAPLANE_VERSION", overrideVersion)
+		GinkgoT().Setenv("OCP_IMAGE", "")
 		ch := &clusterHandler{
 			profile:          &Profile{Version: profileVersion, Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
 			clusterConfig:    &ClusterConfigure.ClusterConfig{},
