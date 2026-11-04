@@ -5,17 +5,16 @@ package operatorroles
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	iam "github.com/openshift-online/rosa-seaplane-api/iam"
 
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
 	"github.com/openshift/rosa/pkg/helper"
-	urlHelper "github.com/openshift/rosa/pkg/helper/url"
 	"github.com/openshift/rosa/pkg/interactive"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/seaplane"
@@ -55,93 +54,16 @@ func getOidcConfigIssuerUrl(r *rosa.Runtime, oidcKey string) (string, error) {
 	return oidcConfig.Spec.IssuerUrl, nil
 }
 
-// operatorRoleSpec defines an operator role to be created
-type operatorRoleSpec struct {
-	Name              string
-	ServiceAccounts   []string // Empty for worker role (uses EC2 trust policy)
-	ManagedPolicyArns []string
-	Description       string
-	IsWorkerRole      bool // True for worker node role
-}
+// operatorRoleSpec is an alias of the canonical definition type owned by the
+// iam module (ROSAENG-75447), the single source of truth for V2 operator
+// role definitions.
+type operatorRoleSpec = iam.OperatorRoleSpec
 
-func operatorRoleOIDCSubject(serviceAccounts []string) (string, error) {
-	var subject any
-	switch len(serviceAccounts) {
-	case 0:
-		return "", fmt.Errorf("no service accounts configured")
-	case 1:
-		subject = serviceAccounts[0]
-	default:
-		subject = serviceAccounts
-	}
-
-	encodedSubject, err := json.Marshal(subject)
-	if err != nil {
-		return "", err
-	}
-	return string(encodedSubject), nil
-}
-
+// getHCPOperatorRoles returns the canonical operator role definitions from
+// the iam module. Retained as a thin wrapper for backwards compatibility of
+// internal call sites and tests.
 func getHCPOperatorRoles() []operatorRoleSpec {
-	specs := map[string]operatorRoleSpec{
-		seaplane.SuffixIngress: {
-			ServiceAccounts:   []string{"system:serviceaccount:openshift-ingress-operator:ingress-operator"},
-			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAIngressOperatorPolicy"},
-			Description:       "Manages AWS ELBs/NLBs for OpenShift routes",
-		},
-		seaplane.SuffixCloudControllerManager: {
-			ServiceAccounts:   []string{"system:serviceaccount:kube-system:kube-controller-manager"},
-			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAKubeControllerPolicy"},
-			Description:       "Manages load balancers and node lifecycle",
-		},
-		seaplane.SuffixEBSCSI: {
-			ServiceAccounts:   []string{"system:serviceaccount:openshift-cluster-csi-drivers:aws-ebs-csi-driver-controller-sa"},
-			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAAmazonEBSCSIDriverOperatorPolicy"},
-			Description:       "Creates and attaches EBS volumes",
-		},
-		seaplane.SuffixImageRegistry: {
-			ServiceAccounts: []string{
-				"system:serviceaccount:openshift-image-registry:cluster-image-registry-operator",
-				"system:serviceaccount:openshift-image-registry:registry",
-			},
-			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAImageRegistryOperatorPolicy"},
-			Description:       "S3 access for the internal container image registry",
-		},
-		seaplane.SuffixNetworkConfig: {
-			ServiceAccounts:   []string{"system:serviceaccount:openshift-cloud-network-config-controller:cloud-credentials"},
-			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSACloudNetworkConfigOperatorPolicy"},
-			Description:       "Manages ENIs and cloud networking configuration",
-		},
-		seaplane.SuffixControlPlaneOperator: {
-			ServiceAccounts:   []string{"system:serviceaccount:kube-system:control-plane-operator"},
-			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSAControlPlaneOperatorPolicy"},
-			Description:       "Control plane operator managing hosted cluster lifecycle",
-		},
-		seaplane.SuffixNodePoolManagement: {
-			ServiceAccounts:   []string{"system:serviceaccount:kube-system:capa-controller-manager"},
-			ManagedPolicyArns: []string{"arn:aws:iam::aws:policy/service-role/ROSANodePoolManagementPolicy"},
-			Description:       "Manages worker node pools",
-		},
-		seaplane.SuffixWorkerRole: {
-			ManagedPolicyArns: []string{
-				"arn:aws:iam::aws:policy/service-role/ROSAWorkerInstancePolicy",
-				"arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-			},
-			Description:  "IAM role for hosted cluster worker node EC2 instances",
-			IsWorkerRole: true,
-		},
-	}
-
-	roles := make([]operatorRoleSpec, len(seaplane.OperatorRoleSuffixes()))
-	for i, suffix := range seaplane.OperatorRoleSuffixes() {
-		spec, ok := specs[suffix]
-		if !ok {
-			panic("missing HCP operator role spec for suffix " + suffix)
-		}
-		spec.Name = suffix
-		roles[i] = spec
-	}
-	return roles
+	return seaplane.OperatorRoleDefinitions()
 }
 
 // oidcIssuerDomainFromUrl derives the OIDC issuer domain (host + path, without the
@@ -151,14 +73,7 @@ func getHCPOperatorRoles() []operatorRoleSpec {
 // scheme-strip would diverge whenever the issuer carries a query string, fragment,
 // or trailing slash.
 func oidcIssuerDomainFromUrl(oidcIssuerUrl string) (string, error) {
-	parsedIssuerUrl, err := urlHelper.ParseRequestURI(oidcIssuerUrl)
-	if err != nil {
-		return "", err
-	}
-	if parsedIssuerUrl.Scheme != helper.ProtocolHttps {
-		return "", fmt.Errorf("expected OIDC issuer URL '%s' to use an https:// scheme", oidcIssuerUrl)
-	}
-	return parsedIssuerUrl.Host + parsedIssuerUrl.Path, nil
+	return iam.IssuerDomain(oidcIssuerUrl)
 }
 
 // runSeaplaneCreateOperatorRoles creates operator roles for seaplane v2 clusters.
@@ -214,14 +129,6 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 	r.Reporter.Infof("  OIDC Issuer URL: %s", oidcIssuerUrl)
 	r.Reporter.Infof("  Mode: %s", mode)
 
-	// Get OIDC issuer domain (host + path, without the scheme)
-	oidcIssuerDomain, err := oidcIssuerDomainFromUrl(oidcIssuerUrl)
-	if err != nil {
-		r.Reporter.Errorf("%v", err)
-		seaplaneExitFn(1)
-		return
-	}
-
 	// Get operator roles to create
 	operatorRoles := getHCPOperatorRoles()
 
@@ -230,63 +137,32 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 		r.Reporter.Infof("Creating %d roles using '%s'", len(operatorRoles), r.Creator.ARN)
 
 		for _, spec := range operatorRoles {
-			roleName := fmt.Sprintf("%s-%s", args.prefix, spec.Name)
+			roleName := iam.RoleName(args.prefix, spec.Name)
 
 			var trustPolicy string
 			if spec.IsWorkerRole {
 				// EC2 trust policy for worker role
-				trustPolicy = `{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "Service": ["ec2.amazonaws.com"]
-    },
-    "Action": "sts:AssumeRole"
-  }]
-}`
+				trustPolicy = iam.BuildEC2TrustPolicy()
 			} else {
 				// OIDC trust policy for operator roles
-				subject, err := operatorRoleOIDCSubject(spec.ServiceAccounts)
+				var err error
+				trustPolicy, err = iam.BuildWebIdentityTrustPolicy(iam.TrustPolicyInput{
+					Partition: r.Creator.Partition,
+					AccountID: r.Creator.AccountID,
+					IssuerURL: oidcIssuerUrl,
+				}, spec)
 				if err != nil {
 					r.Reporter.Errorf("Failed to build trust policy for role '%s': %v", roleName, err)
 					seaplaneExitFn(1)
 					return
 				}
-				trustPolicy = fmt.Sprintf(`{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "Federated": "arn:%s:iam::%s:oidc-provider/%s"
-    },
-    "Action": "sts:AssumeRoleWithWebIdentity",
-    "Condition": {
-      "StringEquals": {
-        "%s:sub": %s,
-        "%s:aud": "openshift"
-      }
-    }
-  }]
-}`,
-					r.Creator.Partition,
-					r.Creator.AccountID,
-					oidcIssuerDomain,
-					oidcIssuerDomain,
-					subject,
-					oidcIssuerDomain,
-				)
 			}
 
 			r.Reporter.Debugf("Creating role '%s'", roleName)
 
-			// Create the IAM role
-			tagsList := map[string]string{
-				tags.RedHatManaged:      helper.True,
-				tags.HypershiftPolicies: helper.True,
-				tags.RolePrefix:         args.prefix,
-				common.ManagedPolicies:  helper.True, // Allows rosa list operator-roles to find v2 roles
-			}
+			// Create the IAM role. Tags come from the iam module; the applied
+			// definition version is recorded for future drift detection (D6).
+			tagsList := iam.RoleTags(args.prefix)
 
 			roleARN, err := r.AWSClient.EnsureRole(r.Reporter, roleName, trustPolicy, args.permissionsBoundary,
 				"", tagsList, "", true)
@@ -298,7 +174,7 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 			r.Reporter.Infof("Created role '%s' with ARN '%s'", roleName, roleARN)
 
 			// Attach AWS managed policies
-			for _, policyArn := range spec.ManagedPolicyArns {
+			for _, policyArn := range iam.ManagedPolicyARNs(spec, r.Creator.Partition) {
 				r.Reporter.Debugf("Attaching managed policy '%s' to role '%s'", policyArn, roleName)
 				err = r.AWSClient.AttachRolePolicy(r.Reporter, roleName, policyArn)
 				if err != nil {
@@ -330,52 +206,25 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 
 		commands := []string{}
 		for _, spec := range operatorRoles {
-			roleName := fmt.Sprintf("%s-%s", args.prefix, spec.Name)
+			roleName := iam.RoleName(args.prefix, spec.Name)
 
 			var trustPolicy string
 			if spec.IsWorkerRole {
 				// EC2 trust policy
-				trustPolicy = `'{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "Service": ["ec2.amazonaws.com"]
-    },
-    "Action": "sts:AssumeRole"
-  }]
-}'`
+				trustPolicy = "'" + iam.BuildEC2TrustPolicy() + "'"
 			} else {
 				// OIDC trust policy
-				subject, err := operatorRoleOIDCSubject(spec.ServiceAccounts)
+				policy, err := iam.BuildWebIdentityTrustPolicy(iam.TrustPolicyInput{
+					Partition: r.Creator.Partition,
+					AccountID: r.Creator.AccountID,
+					IssuerURL: oidcIssuerUrl,
+				}, spec)
 				if err != nil {
 					r.Reporter.Errorf("Failed to build trust policy for role '%s': %v", roleName, err)
 					seaplaneExitFn(1)
 					return
 				}
-				trustPolicy = fmt.Sprintf(`'{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "Federated": "arn:%s:iam::%s:oidc-provider/%s"
-    },
-    "Action": "sts:AssumeRoleWithWebIdentity",
-    "Condition": {
-      "StringEquals": {
-        "%s:sub": %s,
-        "%s:aud": "openshift"
-      }
-    }
-  }]
-}'`,
-					r.Creator.Partition,
-					r.Creator.AccountID,
-					oidcIssuerDomain,
-					oidcIssuerDomain,
-					subject,
-					oidcIssuerDomain,
-				)
+				trustPolicy = "'" + policy + "'"
 			}
 
 			// Build tags
@@ -396,7 +245,7 @@ func runSeaplaneCreateOperatorRoles(r *rosa.Runtime) {
 			commands = append(commands, createRoleCmd)
 
 			// Attach managed policies
-			for _, policyArn := range spec.ManagedPolicyArns {
+			for _, policyArn := range iam.ManagedPolicyARNs(spec, r.Creator.Partition) {
 				attachPolicyCmd := awscb.NewIAMCommandBuilder().
 					SetCommand(awscb.AttachRolePolicy).
 					AddParam(awscb.RoleName, roleName).
