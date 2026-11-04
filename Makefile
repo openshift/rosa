@@ -395,8 +395,13 @@ test-validate-seaplane: install
 #
 # Optional:
 #   DELETE_OPERATOR_ROLES — set to any value to also delete the operator roles
-#                           sharing the cluster-name prefix
-#   DELETE_WATCH          — set to any value to stream uninstall logs
+#                           sharing the cluster-name prefix. Implies
+#                           DELETE_WATCH: the API refuses to remove roles while
+#                           any cluster still references the prefix, reporting
+#                           "There are clusters using Operator Roles Prefix",
+#                           so the cluster deletion has to finish first.
+#   DELETE_WATCH          — set to any value to wait for uninstall to complete
+#                           and stream its logs
 .PHONY: clean-seaplane-cluster
 clean-seaplane-cluster: install
 	@test -n "$${CLUSTER_NAME}" || { \
@@ -407,6 +412,7 @@ clean-seaplane-cluster: install
 	gobin=$$(go env GOBIN); test -n "$$gobin" || gobin=$$(go env GOPATH)/bin; \
 	PATH="$$gobin:$$PATH"; export PATH; \
 	watch=''; test -z "$${DELETE_WATCH}" || watch='--watch'; \
+	if [ -n "$${DELETE_OPERATOR_ROLES}" ]; then watch='--watch'; fi; \
 	echo "deleting cluster '$${CLUSTER_NAME}'"; \
 	echo "  rosa: $$(command -v rosa)"; \
 	rosa delete cluster --cluster "$${CLUSTER_NAME}" --yes $$watch || exit $$?; \

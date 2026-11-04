@@ -74,7 +74,16 @@ make clean-seaplane-cluster CLUSTER_NAME=<name>
 ```
 
 Set `DELETE_OPERATOR_ROLES=1` to also remove operator roles sharing the
-cluster-name prefix, and `DELETE_WATCH=1` to stream uninstall logs.
+cluster-name prefix, and `DELETE_WATCH=1` to wait for uninstall and stream its
+logs. `DELETE_OPERATOR_ROLES` implies `DELETE_WATCH`, because the API refuses
+to remove roles while any cluster still references the prefix:
+
+```
+There are clusters using Operator Roles Prefix 'X', can't delete the IAM roles
+```
+
+That message is about the cluster reference, not the roles themselves — the
+IAM roles may already be gone while the cluster deletion is still pending.
 
 Note that `CLUSTER_NAME` is honoured when exported, so a stale value in your
 shell will be reused across runs and collide with the cluster it created the
