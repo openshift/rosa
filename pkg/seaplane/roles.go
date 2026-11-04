@@ -4,9 +4,8 @@
 package seaplane
 
 import (
-	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
-
 	iam "github.com/openshift-online/rosa-seaplane-api/iam"
+	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 )
 
 // Role name suffixes are owned by the iam module (single source of truth for

@@ -9,9 +9,8 @@ import (
 	"os"
 	"strings"
 
-	iam "github.com/openshift-online/rosa-seaplane-api/iam"
-
 	common "github.com/openshift-online/ocm-common/pkg/aws/validations"
+	iam "github.com/openshift-online/rosa-seaplane-api/iam"
 
 	awscb "github.com/openshift/rosa/pkg/aws/commandbuilder"
 	"github.com/openshift/rosa/pkg/aws/tags"
