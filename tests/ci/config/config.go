@@ -61,6 +61,7 @@ type GlobalENVVariables struct {
 	ProvisionShard        string `env:"PROVISION_SHARD" default:""`
 	NamePrefix            string `env:"NAME_PREFIX"`
 	ClusterWaitingTime    int    `env:"CLUSTER_TIMEOUT" default:"90"`
+	NodePoolWaitingTime   int    `env:"NODEPOOL_TIMEOUT" default:"45"`
 	WaitSetupClusterReady bool   `env:"WAIT_SETUP_CLUSTER_READY" default:"true"`
 	AWSCredetialsFile     string `env:"AWS_SHARED_CREDENTIALS_FILE" default:""`
 	SVPC_CREDENTIALS_FILE string `env:"SHARED_VPC_AWS_SHARED_CREDENTIALS_FILE" default:""`
@@ -136,6 +137,10 @@ func init() {
 	if err != nil {
 		panic(fmt.Errorf("env variable CLUSTER_TIMEOUT must be set to an integer"))
 	}
+	nodePoolWaitingTime, err := strconv.Atoi(helper.ReadENVWithDefaultValue("NODEPOOL_TIMEOUT", "45"))
+	if err != nil {
+		panic(fmt.Errorf("env variable NODEPOOL_TIMEOUT must be set to an integer"))
+	}
 	waitSetupClusterReady, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("WAIT_SETUP_CLUSTER_READY", "true"))
 	useLocalCredentials, _ := strconv.ParseBool(helper.ReadENVWithDefaultValue("USE_LOCAL_CREDENTIALS", "false"))
 	Test.GlobalENV = &GlobalENVVariables{
@@ -149,6 +154,7 @@ func init() {
 		AWSCredetialsFile:     os.Getenv("AWS_SHARED_CREDENTIALS_FILE"),
 		OCM_LOGIN_ENV:         os.Getenv("OCM_LOGIN_ENV"),
 		ClusterWaitingTime:    waitingTime,
+		NodePoolWaitingTime:   nodePoolWaitingTime,
 		WaitSetupClusterReady: waitSetupClusterReady,
 	}
 	Test.ClusterENV = &ClusterENVVariables{

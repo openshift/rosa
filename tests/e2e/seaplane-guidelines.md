@@ -94,6 +94,11 @@ Optional environment:
 - `TEST_PROFILE` — defaults to `rosa-seaplane-basic`.
 - `CLUSTER_NAME` — defaults to `sp-e2e-<unix timestamp>`.
 - `GINKGO_SEED` — pin the seed to reproduce a failing run.
+- `CLUSTER_TIMEOUT` — minutes to wait for the cluster (default 60).
+- `NODEPOOL_TIMEOUT` — minutes to wait for node pools to reach Ready
+  (default 45). Raise it if day1 fails with
+  `timeout waiting for N node pool(s)` while the logged pool status still
+  reads `Provisioning`; that means they were progressing, not stuck.
 
 Two validated specs are gated to their own profiles and report as skipped
 otherwise, so full coverage takes three runs:

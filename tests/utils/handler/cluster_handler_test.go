@@ -6,6 +6,7 @@ package handler
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -52,6 +53,26 @@ var _ = Describe("newClusterHandler", func() {
 			ClusterConfig: &ClusterConfig{AdditionalPrincipals: true},
 		})
 		Expect(err).NotTo(HaveOccurred())
+	})
+})
+
+var _ = Describe("seaplaneNodePoolTimeout", func() {
+	It("honours a configured NODEPOOL_TIMEOUT", func() {
+		Expect(seaplaneNodePoolTimeout(90)).To(Equal(90 * time.Minute))
+	})
+
+	It("falls back to the default when unset", func() {
+		Expect(seaplaneNodePoolTimeout(0)).
+			To(Equal(defaultSeaplaneNodePoolTimeoutMin * time.Minute))
+	})
+
+	It("falls back to the default for a negative value", func() {
+		Expect(seaplaneNodePoolTimeout(-5)).
+			To(Equal(defaultSeaplaneNodePoolTimeoutMin * time.Minute))
+	})
+
+	It("allows more than the previous fixed 20 minutes, which expired while provisioning", func() {
+		Expect(seaplaneNodePoolTimeout(0)).To(BeNumerically(">", 20*time.Minute))
 	})
 })
 

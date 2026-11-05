@@ -437,12 +437,26 @@ func (ch *clusterHandler) createSeaplaneNodePoolsAfterReady() error {
 	return ch.waitForSeaplaneNodePools(clusterKey, poolNames)
 }
 
+// defaultSeaplaneNodePoolTimeoutMin is the fallback wait for node pools to
+// reach Ready. The previous fixed 20 minutes expired while pools were still
+// Provisioning on an ephemeral environment, so NODEPOOL_TIMEOUT makes it
+// configurable the way CLUSTER_TIMEOUT already is for the cluster itself.
+const defaultSeaplaneNodePoolTimeoutMin = 45
+
+func seaplaneNodePoolTimeout(timeoutMin int) time.Duration {
+	if timeoutMin <= 0 {
+		timeoutMin = defaultSeaplaneNodePoolTimeoutMin
+	}
+	return time.Duration(timeoutMin) * time.Minute
+}
+
 func (ch *clusterHandler) waitForSeaplaneNodePools(clusterKey string, poolNames []string) error {
 	startTime := time.Now()
-	end := startTime.Add(20 * time.Minute)
+	timeout := seaplaneNodePoolTimeout(config.Test.GlobalENV.NodePoolWaitingTime)
+	end := startTime.Add(timeout)
 	var lastErr error
-	log.Logger.Infof("Waiting for %d Seaplane node pool(s) on cluster %s to become Ready",
-		len(poolNames), clusterKey)
+	log.Logger.Infof("Waiting up to %s for %d Seaplane node pool(s) on cluster %s to become Ready",
+		timeout, len(poolNames), clusterKey)
 	for time.Now().Before(end) {
 		lastErr = nil
 		allReady := true
