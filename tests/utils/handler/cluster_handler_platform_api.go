@@ -27,6 +27,17 @@ const seaplaneCustomKMSError = "seaplane e2e setup does not support custom KMS k
 	"set kms_key and etcd_kms to false"
 
 func (ch *clusterHandler) generateSeaplaneCreateFlags() ([]string, error) {
+	if ch.seaplaneFlagsSet {
+		return append([]string(nil), ch.seaplaneFlags...), ch.seaplaneFlagsErr
+	}
+	flags, err := ch.buildSeaplaneCreateFlags()
+	ch.seaplaneFlagsSet = true
+	ch.seaplaneFlags = append([]string(nil), flags...)
+	ch.seaplaneFlagsErr = err
+	return flags, err
+}
+
+func (ch *clusterHandler) buildSeaplaneCreateFlags() ([]string, error) {
 	if ch.profile.ClusterConfig.KMSKey || ch.profile.ClusterConfig.EtcdKMS {
 		return nil, errors.New(seaplaneCustomKMSError)
 	}
@@ -439,8 +450,9 @@ func (ch *clusterHandler) createSeaplaneNodePoolsAfterReady() error {
 
 func (ch *clusterHandler) waitForSeaplaneNodePools(clusterKey string, poolNames []string) error {
 	startTime := time.Now()
-	end := startTime.Add(20 * time.Minute)
+	end := startTime.Add(30 * time.Minute)
 	var lastErr error
+	var lastPoolStates []string
 	log.Logger.Infof("Waiting for %d Seaplane node pool(s) on cluster %s to become Ready",
 		len(poolNames), clusterKey)
 	for time.Now().Before(end) {
@@ -462,12 +474,9 @@ func (ch *clusterHandler) waitForSeaplaneNodePools(clusterKey string, poolNames 
 				poolStates = append(poolStates, fmt.Sprintf("%s=unavailable", name))
 				continue
 			}
-			state := strings.TrimSpace(nodePool.State)
-			if state == "" {
-				state = "unknown"
-			}
+			phase, state := seaplaneNodePoolStatus(nodePool.State, nodePool.Message)
 			poolStates = append(poolStates, fmt.Sprintf("%s=%s", name, state))
-			if state != string(v1alpha1.NodePoolPhaseReady) {
+			if phase != string(v1alpha1.NodePoolPhaseReady) {
 				allReady = false
 			}
 		}
@@ -477,12 +486,37 @@ func (ch *clusterHandler) waitForSeaplaneNodePools(clusterKey string, poolNames 
 		}
 		log.Logger.Infof("Cluster %s node pool status after %s: %s; waiting for Ready",
 			clusterKey, time.Since(startTime).Round(time.Second), strings.Join(poolStates, ", "))
+		lastPoolStates = poolStates
 		time.Sleep(30 * time.Second)
 	}
+	summary := strings.Join(lastPoolStates, ", ")
 	if lastErr != nil {
-		return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s: %w", len(poolNames), clusterKey, lastErr)
+		return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s; last observed: %s: %w",
+			len(poolNames), clusterKey, summary, lastErr)
 	}
-	return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s", len(poolNames), clusterKey)
+	return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s; last observed: %s",
+		len(poolNames), clusterKey, summary)
+}
+
+func seaplaneNodePoolStatus(state, message string) (phase, summary string) {
+	phase = strings.TrimSpace(state)
+	if phase == "" {
+		phase = "unknown"
+	}
+	summary = phase
+	if details := compactSeaplaneNodePoolConditions(message); details != "" {
+		summary = fmt.Sprintf("%s (%s)", phase, details)
+	}
+	return phase, summary
+}
+
+func compactSeaplaneNodePoolConditions(message string) string {
+	compact := strings.Join(strings.Fields(message), " ")
+	const maxLength = 300
+	if len(compact) > maxLength {
+		return compact[:maxLength-3] + "..."
+	}
+	return compact
 }
 
 func (ch *clusterHandler) recordSeaplaneClusterVersion(clusterKey string) {
