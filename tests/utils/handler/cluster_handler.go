@@ -42,6 +42,10 @@ type clusterHandler struct {
 	clusterDetail    *ClusterDetail
 	clusterConfig    *ClusterConfigure.ClusterConfig
 	resourcesHandler *resourcesHandler
+	persist          bool
+	seaplaneFlags    []string
+	seaplaneFlagsErr error
+	seaplaneFlagsSet bool
 
 	rosaClient *rosacli.Client
 }
@@ -97,6 +101,7 @@ func NewClusterHandlerForKonflux(client *rosacli.Client, profile *Profile) (Clus
 		rosaClient:       client,
 		profile:          profile,
 		resourcesHandler: resourcesHandler,
+		persist:          true,
 	}, nil
 }
 
@@ -158,11 +163,17 @@ func newClusterHandler(client *rosacli.Client,
 		clusterDetail:    clusterDetail,
 		clusterConfig:    clusterConfig,
 		resourcesHandler: resourcesHandler,
+		persist:          persist,
 	}, nil
 
 }
 
 func (ch *clusterHandler) saveToFile() error {
+	if !ch.persist {
+		log.Logger.Debug("Ignoring save to file as per configuration")
+		return nil
+	}
+
 	var errs []error
 
 	// Resources

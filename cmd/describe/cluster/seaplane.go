@@ -129,7 +129,7 @@ func runSeaplaneDescribe(r *rosa.Runtime, cmd *cobra.Command, argv []string) {
 	if output.HasFlag() {
 		instanceType := ""
 		if npList != nil {
-			instanceType = seaplaneDefaultNodePoolInstanceTypeFromList(npList)
+			instanceType = seaplaneDefaultNodePoolInstanceTypeFromList(cluster.Name, npList)
 		}
 		m := seaplaneClusterDescriptionToMap(description, dataPlaneAZs, npList, instanceType)
 		if err := output.Print(m); err != nil {
@@ -191,13 +191,14 @@ func seaplaneClusterDescriptionToString(description *seaplane.ClusterDescription
 	return result
 }
 
-func seaplaneDefaultNodePoolInstanceTypeFromList(list *v1alpha1.NodePoolList) string {
+func seaplaneDefaultNodePoolInstanceTypeFromList(clusterName string, list *v1alpha1.NodePoolList) string {
 	for i := range list.Items {
 		np := &list.Items[i]
 		if np.Spec.NodePool.Platform.AWS == nil {
 			continue
 		}
-		if np.Name == "workers" || strings.HasPrefix(np.Name, "workers-") {
+		name := seaplane.NodePoolDisplayName(clusterName, np.Name)
+		if name == "workers" || strings.HasPrefix(name, "workers-") {
 			return np.Spec.NodePool.Platform.AWS.InstanceType
 		}
 	}
