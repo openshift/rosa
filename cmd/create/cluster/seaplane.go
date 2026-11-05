@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/seaplane"
 	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
+	seaplanepreflight "github.com/openshift/rosa/pkg/seaplane/preflight"
 )
 
 // maxSeaplaneClusterTags is the number of customer AWS tags the Platform API
@@ -128,144 +129,180 @@ func (h *seaplaneClusterCreate) PreRequest(
 	r *rosa.Runtime,
 	input *seaplanepathbind.ClusterCreateInput,
 ) error {
-	if err := validateSeaplaneNetwork(
-		args.machineCIDR,
-		args.serviceCIDR,
-		args.podCIDR,
-		args.multiAZ,
-		args.hostPrefix,
-	); err != nil {
-		return err
-	}
+	_, err := seaplanepreflight.RunPreflightChecks(ctx, h.preflightChecks(r), input)
+	return err
+}
 
-	// Bridge flags that conflict with OCM v1 registrations (registerIfNew skips them,
-	// so they remain backed by args.* rather than seaplaneClusterInput.*).
-	input.Name = args.clusterName
-	if args.version != "" {
-		input.Version = args.version
-	}
-	input.OperatorRolesPrefix = args.operatorRolesPrefix
-	if args.spotTerminationQueueUrl != "" {
-		if err := urlHelper.ValidateHTTPSQueueURL(args.spotTerminationQueueUrl); err != nil {
-			return fmt.Errorf("invalid value for '--spot-termination-queue-url': %w", err)
-		}
-		input.TerminationHandlerQueueURL = args.spotTerminationQueueUrl
-	}
+// preflightChecks returns the ordered registry of client-side preflight checks
+// executed before the Platform API create request is sent. The order preserves
+// the v1 validation sequence (network CIDRs first, then flag bridging and
+// required inputs, then AWS-dependent checks) and must not be reordered
+// without considering user-visible error precedence.
+func (h *seaplaneClusterCreate) preflightChecks(r *rosa.Runtime) []seaplanepreflight.PreflightCheck {
+	return []seaplanepreflight.PreflightCheck{
+		seaplanepreflight.NewPreflightCheck("network-cidrs",
+			func(_ context.Context, _ *seaplanepathbind.ClusterCreateInput) error {
+				return validateSeaplaneNetwork(
+					args.machineCIDR,
+					args.serviceCIDR,
+					args.podCIDR,
+					args.multiAZ,
+					args.hostPrefix,
+				)
+			}),
+		seaplanepreflight.NewPreflightCheck("flag-bridging",
+			func(_ context.Context, input *seaplanepathbind.ClusterCreateInput) error {
+				// Bridge flags that conflict with OCM v1 registrations (registerIfNew skips them,
+				// so they remain backed by args.* rather than seaplaneClusterInput.*).
+				input.Name = args.clusterName
+				if args.version != "" {
+					input.Version = args.version
+				}
+				input.OperatorRolesPrefix = args.operatorRolesPrefix
+				if args.spotTerminationQueueUrl != "" {
+					if err := urlHelper.ValidateHTTPSQueueURL(args.spotTerminationQueueUrl); err != nil {
+						return fmt.Errorf("invalid value for '--spot-termination-queue-url': %w", err)
+					}
+					input.TerminationHandlerQueueURL = args.spotTerminationQueueUrl
+				}
 
-	// --subnet-id is a new Seaplane-only flag (no OCM equivalent) so it IS registered on
-	// seaplaneClusterInput and arrives directly from cobra. Fall back to --subnet-ids[0]
-	// for backward compatibility with existing scripts that use the OCM flag.
-	if input.SubnetID == "" && len(args.subnetIDs) > 0 {
-		input.SubnetID = args.subnetIDs[0]
-	}
+				// --subnet-id is a new Seaplane-only flag (no OCM equivalent) so it IS registered on
+				// seaplaneClusterInput and arrives directly from cobra. Fall back to --subnet-ids[0]
+				// for backward compatibility with existing scripts that use the OCM flag.
+				if input.SubnetID == "" && len(args.subnetIDs) > 0 {
+					input.SubnetID = args.subnetIDs[0]
+				}
 
-	// --expiration-time / --expiration are OCM-registered (hidden) flags; bridge via
-	// validateExpiration() which reads args.*. Safe to call unconditionally — it
-	// returns a zero time when neither flag was passed so nothing changes.
-	expiry, err := validateExpiration()
-	if err != nil {
-		return err
+				// --expiration-time / --expiration are OCM-registered (hidden) flags; bridge via
+				// validateExpiration() which reads args.*. Safe to call unconditionally — it
+				// returns a zero time when neither flag was passed so nothing changes.
+				expiry, err := validateExpiration()
+				if err != nil {
+					return err
+				}
+				if !expiry.IsZero() {
+					input.ExpirationTimestamp = expiry.UTC().Format(time.RFC3339)
+				}
+				return nil
+			}),
+		seaplanepreflight.NewPreflightCheck("required-inputs",
+			func(_ context.Context, input *seaplanepathbind.ClusterCreateInput) error {
+				if input.Name == "" {
+					return fmt.Errorf("--cluster-name is required")
+				}
+				if input.OperatorRolesPrefix == "" {
+					return fmt.Errorf("--operator-roles-prefix is required")
+				}
+				if input.SubnetID == "" {
+					return fmt.Errorf("--subnet-id (or --subnet-ids) is required")
+				}
+				if strings.TrimSpace(input.Version) == "" {
+					return fmt.Errorf("--version is required for Seaplane cluster creation; " +
+						"provide a full OCP release image pullspec")
+				}
+				return nil
+			}),
+		seaplanepreflight.NewPreflightCheck("network-type",
+			func(_ context.Context, _ *seaplanepathbind.ClusterCreateInput) error {
+				if err := validateSeaplaneNetworkType(args.networkType); err != nil {
+					return err
+				}
+				if args.noCni && args.networkType != "" {
+					return fmt.Errorf("--no-cni and --network-type are mutually exclusive parameters")
+				}
+				return nil
+			}),
+		seaplanepreflight.NewPreflightCheck("proxy",
+			func(_ context.Context, _ *seaplanepathbind.ClusterCreateInput) error {
+				return validateSeaplaneClusterProxyFlags()
+			}),
+		seaplanepreflight.NewPreflightCheck("additional-allowed-principals",
+			func(_ context.Context, input *seaplanepathbind.ClusterCreateInput) error {
+				return setAdditionalAllowedPrincipals(input)
+			}),
+		seaplanepreflight.NewPreflightCheck("cluster-capabilities",
+			func(_ context.Context, input *seaplanepathbind.ClusterCreateInput) error {
+				disabled, err := encodeSeaplaneClusterCapabilities("disable-cluster-capabilities", input.Disabled)
+				if err != nil {
+					return err
+				}
+				input.Disabled = disabled
+				enabled, err := encodeSeaplaneClusterCapabilities("enable-cluster-capabilities", input.Enabled)
+				if err != nil {
+					return err
+				}
+				input.Enabled = enabled
+				return nil
+			}),
+		seaplanepreflight.NewPreflightCheck("oidc-config",
+			func(ctx context.Context, input *seaplanepathbind.ClusterCreateInput) error {
+				// OIDC config ID is optional but recommended
+				if args.oidcConfigId == "" {
+					r.Reporter.Warnf("--oidc-config-id not provided, cluster will use auto-generated OIDC config")
+					return nil
+				}
+				oidcConfig, err := seaplane.ResolveOidcConfig(ctx, r.SeaplaneClient, args.oidcConfigId)
+				if err != nil {
+					return fmt.Errorf("failed to resolve OIDC config %q: %w", args.oidcConfigId, err)
+				}
+				input.OidcConfigId = string(oidcConfig.UID)
+				r.Reporter.Infof("Using OIDC config ID: %s", input.OidcConfigId)
+				return nil
+			}),
+		seaplanepreflight.NewPreflightCheck("aws-tags",
+			func(_ context.Context, input *seaplanepathbind.ClusterCreateInput) error {
+				// --tags is OCM-registered as a string slice, so registerIfNew skips the Seaplane
+				// flag and input.Tags stays empty. Bridge args.tags into spec.tags, which the
+				// Platform API applies to the AWS resources created for this cluster.
+				if input.Tags != "" {
+					return nil
+				}
+				tags, err := parseSeaplaneClusterTags(args.tags)
+				if err != nil {
+					return err
+				}
+				if len(tags) > 0 {
+					encoded, err := json.Marshal(tags)
+					if err != nil {
+						return fmt.Errorf("failed to encode --tags: %w", err)
+					}
+					input.Tags = string(encoded)
+				}
+				return nil
+			}),
+		seaplanepreflight.NewPreflightCheck("subnet",
+			func(ctx context.Context, input *seaplanepathbind.ClusterCreateInput) error {
+				// Derive VPC ID and availability zone from the subnet.
+				subnetOut, err := h.describeSubnets(ctx, r.AWSConfig, input.SubnetID)
+				if err != nil {
+					return fmt.Errorf("failed to describe subnet %q: %w", input.SubnetID, err)
+				}
+				if len(subnetOut.Subnets) == 0 {
+					return fmt.Errorf("subnet %q not found", input.SubnetID)
+				}
+				if err := validateSeaplaneSubnets(args.machineCIDR, args.serviceCIDR, subnetOut.Subnets); err != nil {
+					return err
+				}
+				input.VPC = awssdk.ToString(subnetOut.Subnets[0].VpcId)
+				if input.VPC == "" {
+					return fmt.Errorf("subnet %q has no VPC ID", input.SubnetID)
+				}
+				input.Zone = awssdk.ToString(subnetOut.Subnets[0].AvailabilityZone)
+				if input.Zone == "" {
+					return fmt.Errorf("subnet %q has no availability zone", input.SubnetID)
+				}
+				input.Region = r.Region
+				return nil
+			}),
+		seaplanepreflight.NewPreflightCheck("networking-conversion",
+			func(_ context.Context, input *seaplanepathbind.ClusterCreateInput) error {
+				return convertNetworkingFlags(input)
+			}),
+		seaplanepreflight.NewPreflightCheck("autoscaler",
+			func(_ context.Context, input *seaplanepathbind.ClusterCreateInput) error {
+				return convertAutoscalerFlags(h.cmd, input)
+			}),
 	}
-	if !expiry.IsZero() {
-		input.ExpirationTimestamp = expiry.UTC().Format(time.RFC3339)
-	}
-
-	// input.DeleteProtection arrives directly from cobra via the Platform API flag
-	// --delete-protection — no bridge needed.
-
-	if input.Name == "" {
-		return fmt.Errorf("--cluster-name is required")
-	}
-	if input.OperatorRolesPrefix == "" {
-		return fmt.Errorf("--operator-roles-prefix is required")
-	}
-	if input.SubnetID == "" {
-		return fmt.Errorf("--subnet-id (or --subnet-ids) is required")
-	}
-	if strings.TrimSpace(input.Version) == "" {
-		return fmt.Errorf("--version is required for Seaplane cluster creation; provide a full OCP release image pullspec")
-	}
-	if err := validateSeaplaneNetworkType(args.networkType); err != nil {
-		return err
-	}
-	if args.noCni && args.networkType != "" {
-		return fmt.Errorf("--no-cni and --network-type are mutually exclusive parameters")
-	}
-	if err := validateSeaplaneClusterProxyFlags(); err != nil {
-		return err
-	}
-	if err := setAdditionalAllowedPrincipals(input); err != nil {
-		return err
-	}
-	input.Disabled, err = encodeSeaplaneClusterCapabilities("disable-cluster-capabilities", input.Disabled)
-	if err != nil {
-		return err
-	}
-	input.Enabled, err = encodeSeaplaneClusterCapabilities("enable-cluster-capabilities", input.Enabled)
-	if err != nil {
-		return err
-	}
-
-	// OIDC config ID is optional but recommended
-	if args.oidcConfigId == "" {
-		r.Reporter.Warnf("--oidc-config-id not provided, cluster will use auto-generated OIDC config")
-	} else {
-		oidcConfig, err := seaplane.ResolveOidcConfig(ctx, r.SeaplaneClient, args.oidcConfigId)
-		if err != nil {
-			return fmt.Errorf("failed to resolve OIDC config %q: %w", args.oidcConfigId, err)
-		}
-		input.OidcConfigId = string(oidcConfig.UID)
-		r.Reporter.Infof("Using OIDC config ID: %s", input.OidcConfigId)
-	}
-
-	// --tags is OCM-registered as a string slice, so registerIfNew skips the Seaplane
-	// flag and input.Tags stays empty. Bridge args.tags into spec.tags, which the
-	// Platform API applies to the AWS resources created for this cluster.
-	if input.Tags == "" {
-		tags, err := parseSeaplaneClusterTags(args.tags)
-		if err != nil {
-			return err
-		}
-		if len(tags) > 0 {
-			encoded, err := json.Marshal(tags)
-			if err != nil {
-				return fmt.Errorf("failed to encode --tags: %w", err)
-			}
-			input.Tags = string(encoded)
-		}
-	}
-
-	// Derive VPC ID and availability zone from the subnet.
-	subnetOut, err := h.describeSubnets(ctx, r.AWSConfig, input.SubnetID)
-	if err != nil {
-		return fmt.Errorf("failed to describe subnet %q: %w", input.SubnetID, err)
-	}
-	if len(subnetOut.Subnets) == 0 {
-		return fmt.Errorf("subnet %q not found", input.SubnetID)
-	}
-	if err := validateSeaplaneSubnets(args.machineCIDR, args.serviceCIDR, subnetOut.Subnets); err != nil {
-		return err
-	}
-	input.VPC = awssdk.ToString(subnetOut.Subnets[0].VpcId)
-	if input.VPC == "" {
-		return fmt.Errorf("subnet %q has no VPC ID", input.SubnetID)
-	}
-	input.Zone = awssdk.ToString(subnetOut.Subnets[0].AvailabilityZone)
-	if input.Zone == "" {
-		return fmt.Errorf("subnet %q has no availability zone", input.SubnetID)
-	}
-
-	input.Region = r.Region
-
-	// Convert individual networking flags to JSON format if provided
-	if err := convertNetworkingFlags(input); err != nil {
-		return err
-	}
-	if err := convertAutoscalerFlags(h.cmd, input); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // validateSeaplaneSubnets ensures the selected subnet is usable with the requested
