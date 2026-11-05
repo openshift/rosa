@@ -1368,7 +1368,7 @@ var _ = Describe("Additional security groups validation",
 			if seaplaneMode {
 				profile.Region, err = seaplane.ExtractRegion(seaplaneURL)
 				Expect(err).ToNot(HaveOccurred())
-				profile.Version = "latest"
+				profile.Version = customProfileVersion(seaplaneMode)
 				profile.ClusterConfig.HCP = true
 				profile.ClusterConfig.STS = true
 				profile.ClusterConfig.OIDCConfig = "managed"
@@ -3178,7 +3178,7 @@ var _ = Describe("HCP cluster creation negative testing",
 				Region:       region,
 			}
 			if seaplaneMode {
-				customProfile.Version = "latest"
+				customProfile.Version = customProfileVersion(seaplaneMode)
 			}
 			customProfile.NamePrefix = constants.DefaultNamePrefix
 			clusterHandler, err = handler.NewTempClusterHandler(rosaClient, customProfile)
@@ -3842,7 +3842,7 @@ var _ = Describe("HCP cluster creation subnets validation",
 					Path:               "",
 					PermissionBoundary: "",
 				},
-				Version:      "latest",
+				Version:      customProfileVersion(seaplaneMode),
 				ChannelGroup: "stable",
 				Region:       region,
 			}
