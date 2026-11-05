@@ -567,6 +567,17 @@ Seaplane e2e Ginkgo labels (`tests/ci/labels/seaplane.go`):
 Default `make e2e-seaplane` runs `seaplane-validated`. Set
 `LABEL_FILTER=seaplane-sanity` for the sanity spec.
 
+For profile-driven Day 1/Day 2 coverage, `TEST_PROFILE` is process-wide and is
+read once per Ginkgo process. Run one process per shared profile, then run the
+dedicated no-CNI and disabled-capabilities profiles separately:
+
+```sh
+make -k e2e-seaplane-profiles e2e-seaplane-profile-tests
+```
+
+The orchestration model, required inputs, and focused profile targets are
+documented in `tests/e2e/seaplane-profile-matrix.md`.
+
 **Day1-post on an existing Seaplane cluster** (after day1 wrote
 `tests/output/<TEST_PROFILE>/`): use a filter that matches CI-style exclusions.
 A bare `day1-post` filter still runs specs tagged `Exclude`.

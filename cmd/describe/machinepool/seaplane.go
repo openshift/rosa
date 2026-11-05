@@ -65,6 +65,7 @@ func runSeaplaneDescribe(r *rosa.Runtime, userOptions *DescribeMachinepoolUserOp
 	var np *v1alpha1.NodePool
 	for i := range nodePools.Items {
 		if nodePools.Items[i].Name == nodePoolName ||
+			string(nodePools.Items[i].UID) == nodePoolName ||
 			strings.TrimPrefix(nodePools.Items[i].Name, cluster.Name+".") == nodePoolName {
 			np = &nodePools.Items[i]
 			break
