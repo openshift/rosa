@@ -254,23 +254,22 @@ mocks: $(MOCKGEN)
 	perl -pi -e 's|github\.com/openshift/rosa/vendor/github\.com/openshift-online/rosa-seaplane-api/clientset/platform|github.com/openshift-online/rosa-seaplane-api/clientset/platform|g' pkg/seaplane/mocks/wrappers_mock.go
 
 
-.PHONY: e2e_test
-e2e_test: install
-	ginkgo run \
-        --label-filter $(LabelFilter)\
-        --timeout 5h \
-        -r \
-        --focus-file tests/e2e/.* \
-		$(NULL)
-
 # Label selection shared by every Seaplane validated phase.
 SEAPLANE_LABEL_BASE := seaplane-validated && !seaplane-na && !seaplane-deferred
 
-# test-validate-seaplane: run every Seaplane-validated E2E spec in one command.
+# e2e_test: run the E2E suite.
 #
-# Ginkgo randomizes top-level containers, so a single invocation can tear the
-# cluster down before it is created. The run is split into ordered phases
-# instead, mirroring the runbook in tests/e2e/seaplane-guidelines.md:
+# Two modes, chosen automatically:
+#
+#   OCM       the historical single ginkgo invocation, filtered by LabelFilter.
+#   Seaplane  an ordered, phased run. Used when the rosa config has a
+#             seaplane_url and LabelFilter is either unset or
+#             seaplane-validated. Any other LabelFilter (seaplane-sanity, a
+#             compound expression, an OCM filter) takes the OCM path, so
+#             existing callers are unaffected.
+#
+# The Seaplane run is phased because ginkgo randomizes top-level containers,
+# so a single invocation can tear the cluster down before it is created:
 #
 #   1 day1            cluster preparation by profile
 #   2 day1-readiness  wait for the cluster to be ready
@@ -279,35 +278,30 @@ SEAPLANE_LABEL_BASE := seaplane-validated && !seaplane-na && !seaplane-deferred
 #   4 destroy         profile teardown
 #   5 destroy-post    verify deletion
 #
-# Phases 4-5 always run, even when an earlier phase fails, so a failed test
-# never leaks a cluster. The exit code is the test failure when there is one,
-# otherwise the teardown failure.
+# Phase 4 always runs, even when an earlier phase fails, so a failed test never
+# leaks a cluster. Phase 5 only runs when setup and tests succeeded, since with
+# no cluster there is nothing whose deletion can be verified. The exit code is
+# the test failure when there is one, otherwise the teardown failure.
 #
-# Required:
-#   SEAPLANE_URL — Platform API v2 base URL
+# Seaplane mode reads the endpoint from the rosa config written by
+# `rosa login --seaplane-url`; that is the value the CLI itself uses.
 #
 # Optional:
+#   LabelFilter        — ginkgo label expression; selects the mode as above
 #   TEST_PROFILE       — profile in tests/ci/data/profiles/rosa-seaplane.yaml
 #                        (defaults to rosa-seaplane-basic)
 #   CLUSTER_NAME       — defaults to sp-e2e-<unix timestamp> (≤18 chars)
-#   AWS_DEFAULT_REGION — fallback when region cannot be derived from SEAPLANE_URL
+#   SEAPLANE_URL       — optional override; must match the rosa config
+#   AWS_DEFAULT_REGION — fallback when region cannot be derived from the URL
 #   GINKGO_SEED        — pin the seed to reproduce a failing run
+#   CLUSTER_TIMEOUT    — minutes to wait for the cluster (default 60)
+#   NODEPOOL_TIMEOUT   — minutes to wait for node pools (default 45)
 #
 # Two validated specs are gated to their own profiles and report as skipped
 # unless selected: rosa-seaplane-nocni and rosa-seaplane-disable-capabilities.
-.PHONY: test-validate-seaplane
-test-validate-seaplane: install
-	@name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
-	profile='$(TEST_PROFILE)'; profile=$${profile:-rosa-seaplane-basic}; \
-	seed=''; test -z "$${GINKGO_SEED}" || seed="--seed=$${GINKGO_SEED}"; \
-	gobin=$$(go env GOBIN); test -n "$$gobin" || gobin=$$(go env GOPATH)/bin; \
-	PATH="$$gobin:$$PATH"; export PATH; \
-	if ! grep -qE "^ *- as: *$$profile *$$" tests/ci/data/profiles/*.yaml; then \
-		echo "TEST_PROFILE '$$profile' is not a known profile. Valid seaplane profiles:"; \
-		grep -rhoE "^ *- as: *rosa-seaplane-[a-z-]+" tests/ci/data/profiles/*.yaml \
-			| sed 's/.*as: */  /' | sort; \
-		exit 1; \
-	fi; \
+.PHONY: e2e_test
+e2e_test: install
+	@filter='$(LabelFilter)'; \
 	cfg="$${OCM_CONFIG}"; \
 	if [ -z "$$cfg" ] && [ -f "$$HOME/.ocm.json" ]; then cfg="$$HOME/.ocm.json"; fi; \
 	if [ -z "$$cfg" ]; then \
@@ -318,12 +312,29 @@ test-validate-seaplane: install
 	fi; \
 	cfgurl=$$(sed -n 's/.*"seaplane_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
 		"$$cfg" 2>/dev/null | head -1); \
-	if [ -z "$$cfgurl" ]; then \
-		echo "rosa config ($$cfg) has no seaplane_url."; \
-		echo "The rosa CLI reads the endpoint from its config, not from SEAPLANE_URL, so"; \
-		echo "without it the suite silently takes the OCM path and fails somewhere"; \
-		echo "unrelated. Run:"; \
+	if [ "$$filter" = "seaplane-validated" ] && [ -z "$$cfgurl" ]; then \
+		echo "LabelFilter=seaplane-validated, but the rosa config ($$cfg) has no"; \
+		echo "seaplane_url. The CLI reads the endpoint from its config, so the run"; \
+		echo "would silently take the OCM path and fail somewhere unrelated. Run:"; \
 		echo "  rosa login --seaplane-url \"$${SEAPLANE_URL:-<endpoint>}\""; \
+		exit 1; \
+	fi; \
+	if [ -z "$$cfgurl" ] || { [ -n "$$filter" ] && [ "$$filter" != "seaplane-validated" ]; }; then \
+		exec ginkgo run \
+			--label-filter "$$filter" \
+			--timeout 5h \
+			-r \
+			--focus-file 'tests/e2e/.*'; \
+	fi; \
+	name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
+	profile='$(TEST_PROFILE)'; profile=$${profile:-rosa-seaplane-basic}; \
+	seed=''; test -z "$${GINKGO_SEED}" || seed="--seed=$${GINKGO_SEED}"; \
+	gobin=$$(go env GOBIN); test -n "$$gobin" || gobin=$$(go env GOPATH)/bin; \
+	PATH="$$gobin:$$PATH"; export PATH; \
+	if ! grep -qE "^ *- as: *$$profile *$$" tests/ci/data/profiles/*.yaml; then \
+		echo "TEST_PROFILE '$$profile' is not a known profile. Valid seaplane profiles:"; \
+		grep -rhoE "^ *- as: *rosa-seaplane-[a-z-]+" tests/ci/data/profiles/*.yaml \
+			| sed 's/.*as: */  /' | sort; \
 		exit 1; \
 	fi; \
 	if [ -n "$$SEAPLANE_URL" ] && [ "$$SEAPLANE_URL" != "$$cfgurl" ]; then \
@@ -421,33 +432,6 @@ clean-seaplane-cluster: install
 		rosa delete operator-roles --prefix "$${CLUSTER_NAME}" --yes || exit $$?; \
 	fi; \
 	echo "deleted '$${CLUSTER_NAME}'"
-
-# e2e-seaplane: compatibility entry point.
-#
-# Defaults to the phased validated run above. LABEL_FILTER stays available for
-# self-contained selections such as seaplane-sanity, which need no phasing.
-.PHONY: e2e-seaplane
-e2e-seaplane: install
-	@filter=$${LABEL_FILTER:-seaplane-validated}; \
-	if [ "$$filter" = "seaplane-validated" ]; then \
-		$(MAKE) test-validate-seaplane; \
-		exit $$?; \
-	fi; \
-	test -n "$${SEAPLANE_URL}" || { \
-		echo "SEAPLANE_URL is required (see guidelines/seaplane-guidelines.md)"; \
-		exit 1; \
-	}; \
-	name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
-	SEAPLANE_URL="$${SEAPLANE_URL}" \
-	TEST_PROFILE="$(TEST_PROFILE)" \
-	CLUSTER_NAME="$$name" \
-	OPERATOR_ROLES_PREFIX="$$name" \
-	AWS_DEFAULT_REGION="$${AWS_DEFAULT_REGION}" \
-	ginkgo run --label-filter "($$filter) && !seaplane-na && !seaplane-deferred" \
-		--timeout 3h \
-		-v \
-		./tests/e2e/... \
-		$(NULL)
 
 .PHONY: generate-docs
 generate-docs:

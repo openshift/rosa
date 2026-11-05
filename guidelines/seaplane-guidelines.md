@@ -564,8 +564,10 @@ Seaplane e2e Ginkgo labels (`tests/ci/labels/seaplane.go`):
 | `seaplane-na` | OCM/v1 checks that v2 does not replicate; excluded by the Seaplane harness | — |
 | `seaplane-deferred` | Should pass on Seaplane once CLI/API passthrough gaps close; excluded by the Seaplane harness | — |
 
-Default `make e2e-seaplane` runs `seaplane-validated`. Set
-`LABEL_FILTER=seaplane-sanity` for the sanity spec.
+`make e2e_test` runs `seaplane-validated` as an ordered, phased run whenever
+the rosa config has a `seaplane_url`. Pass
+`LabelFilter=seaplane-sanity` for the sanity spec, which takes the
+single-invocation path.
 
 **Day1-post on an existing Seaplane cluster** (after day1 wrote
 `tests/output/<TEST_PROFILE>/`): use a filter that matches CI-style exclusions.
@@ -587,8 +589,8 @@ debt while debugging; merge gates should keep it.
 ### Running the test
 
 ```sh
-make e2e-seaplane SEAPLANE_URL=https://<id>.execute-api.<region>.amazonaws.com/<stage> \
-  LABEL_FILTER=seaplane-sanity
+rosa login --seaplane-url https://<id>.execute-api.<region>.amazonaws.com/<stage>
+make e2e_test LabelFilter=seaplane-sanity
 ```
 
 Optional environment variables:

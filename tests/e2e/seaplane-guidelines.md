@@ -1,6 +1,6 @@
 # Seaplane E2E orchestration
 
-`make test-validate-seaplane` runs every Seaplane-validated spec end to end and
+`make e2e_test` runs every Seaplane-validated spec end to end and
 is the normal entry point. Use the manual phases further down when you need to
 drive a single spec, or to re-run one stage against a cluster already running.
 
@@ -37,13 +37,13 @@ as a `NAME_PREFIX` panic in `GenerateClusterCreateFlags`.
 One more trap: `make install` builds to `$(go env GOPATH)/bin`, but a `rosa`
 earlier on `PATH` (a `/usr/local/bin` or Homebrew install is common) will
 shadow it, so the suite exercises that binary instead of your working tree.
-`make test-validate-seaplane` prepends the build directory and prints the
+`make e2e_test` prepends the build directory and prints the
 resolved path. When driving `ginkgo` by hand, check `command -v rosa` first.
 
 ## Run all validated specs
 
 ```bash
-make test-validate-seaplane
+make e2e_test
 ```
 
 The endpoint comes from the rosa config written by `rosa login --seaplane-url`,
@@ -109,13 +109,15 @@ otherwise, so full coverage takes three runs:
 | `rosa-seaplane-nocni` | no-CNI cluster creation |
 | `rosa-seaplane-disable-capabilities` | disabled cluster capabilities |
 
-`make e2e-seaplane` delegates to the same phases. Set
-`LABEL_FILTER=seaplane-sanity` on it to run the self-contained sanity suite
-instead, which needs no phasing.
+`make e2e_test` picks this phased mode automatically when the rosa config has
+a `seaplane_url` and `LabelFilter` is unset or `seaplane-validated`. Any other
+`LabelFilter` takes the historical single-invocation path, so
+`make e2e_test LabelFilter=seaplane-sanity` runs the self-contained sanity
+suite, which needs no phasing.
 
 ## Profile lifecycle
 
-These are the individual phases that `make test-validate-seaplane` runs for
+These are the individual phases that `make e2e_test` runs for
 you. Drive them by hand when iterating on a single stage.
 
 Run the profile-based cluster preparation spec:
