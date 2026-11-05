@@ -181,5 +181,6 @@ children:
     - name: permissions
     - name: quota
     - name: rosa-client
+    - name: upgrade-eligibility
 - name: version
 - name: whoami

@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/rosa/cmd/verify/permissions"
 	"github.com/openshift/rosa/cmd/verify/quota"
 	"github.com/openshift/rosa/cmd/verify/rosa"
+	upgradeeligibility "github.com/openshift/rosa/cmd/verify/upgradeeligibility"
 )
 
 var Cmd = &cobra.Command{
@@ -39,4 +40,5 @@ func init() {
 	Cmd.AddCommand(permissions.Cmd)
 	Cmd.AddCommand(quota.Cmd)
 	Cmd.AddCommand(rosa.NewVerifyRosaCommand())
+	Cmd.AddCommand(upgradeeligibility.Cmd)
 }
