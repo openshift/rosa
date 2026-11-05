@@ -52,6 +52,7 @@ var _ = Describe("Config", Ordered, func() {
 		"client_id":     "OpenID client identifier.",
 		"client_secret": "OpenID client secret.",
 		"insecure":      "Enables insecure communication with the server.",
+		"allow_tls12":   "Allow TLS 1.2 connections (default: TLS 1.3).",
 		"refresh_token": "Offline or refresh token.",
 		"scopes":        "OpenID scope.",
 		"token_url":     "OpenID token URL.",
