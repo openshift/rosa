@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/rosa/pkg/aws/rolebridge"
 	rosaerrors "github.com/openshift/rosa/pkg/errors"
 	"github.com/openshift/rosa/pkg/iamserviceaccount"
+	"github.com/openshift/rosa/pkg/log"
 	iamServiceAccountOpts "github.com/openshift/rosa/pkg/options/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/rosa"
 )
@@ -165,6 +166,13 @@ func CreateIamServiceAccountRunner(
 			Partition:           creator.Partition,
 			IsGovcloud:          creator.IsGovcloud,
 		}
+
+		// Attach a contextual field to the structured logger so every log
+		// record the workflow emits below is scoped to this invocation,
+		// without the workflow needing a reporter.Logger parameter or a
+		// CLI-specific adapter. See guidelines/structured-logging.md.
+		// DefaultRunner already attached "command" to ctx.
+		ctx = log.WithLogger(ctx, log.FromContext(ctx).With("cluster", cluster.Name()))
 
 		adapter := rolebridge.New(r.AWSClient, r.Reporter)
 		service := &iamserviceaccount.Service{}

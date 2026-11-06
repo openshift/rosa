@@ -4,14 +4,20 @@
 package rosa
 
 import (
+	"context"
+	"io"
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/briandowns/spinner"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 
 	"github.com/openshift/rosa/pkg/aws"
+	"github.com/openshift/rosa/pkg/debug"
+	"github.com/openshift/rosa/pkg/log"
 	"github.com/openshift/rosa/pkg/logging"
 	"github.com/openshift/rosa/pkg/ocm"
 	"github.com/openshift/rosa/pkg/output"
@@ -19,21 +25,50 @@ import (
 )
 
 type Runtime struct {
-	Reporter   reporter.Logger
-	Logger     *logrus.Logger
-	OCMClient  *ocm.Client
-	AWSClient  aws.Client
-	Creator    *aws.Creator
-	ClusterKey string
-	Cluster    *cmv1.Cluster
-	Spinner    *spinner.Spinner
+	Reporter reporter.Logger
+	// TODO: rename to SdkLogger, and rename StructuredLogger to Logger.
+	// This logrus logger only feeds AWS/OCM SDK client builders their
+	// wire-level debug output. "Logger" should belong to the structured,
+	// diagnostic logger callers reach for by default. See
+	// guidelines/structured-logging.md.
+	Logger           *logrus.Logger
+	StructuredLogger *slog.Logger
+	OCMClient        *ocm.Client
+	AWSClient        aws.Client
+	Creator          *aws.Creator
+	ClusterKey       string
+	Cluster          *cmv1.Cluster
+	Spinner          *spinner.Spinner
 }
 
 func NewRuntime() *Runtime {
 	r := reporter.CreateReporter()
 	logger := logging.NewLogger()
+	// Structured logging is off by default: nothing is written unless
+	// --debug turns it on. See guidelines/structured-logging.md.
+	logWriter := io.Discard
+	logLevel := slog.LevelInfo
+	if debug.Enabled() {
+		logWriter = os.Stderr
+		logLevel = slog.LevelDebug
+	}
+	structuredLogger := log.New(logWriter, logLevel)
 	spinner := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	return &Runtime{Reporter: output.NewStructuredReporter(r), Logger: logger, Spinner: spinner}
+	return &Runtime{
+		Reporter:         output.NewStructuredReporter(r),
+		Logger:           logger,
+		StructuredLogger: structuredLogger,
+		Spinner:          spinner,
+	}
+}
+
+// AttachLogger returns a copy of ctx carrying r.StructuredLogger, scoped
+// with a "command" field from command. DefaultRunner calls this for every
+// command wired through it. A command still on the legacy `Run: run`
+// pattern can call it directly instead of reconstructing the same call.
+// See guidelines/structured-logging.md.
+func (r *Runtime) AttachLogger(ctx context.Context, command *cobra.Command) context.Context {
+	return log.WithLogger(ctx, r.StructuredLogger.With("command", command.CommandPath()))
 }
 
 // WithOCM Adds an OCM client to the runtime. Requires a deferred call to `.Cleanup()` to close connections.
