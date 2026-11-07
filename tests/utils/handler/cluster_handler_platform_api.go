@@ -326,6 +326,7 @@ func (ch *clusterHandler) waitForSeaplaneClusterReady(timeoutMin int) error {
 		if err != nil {
 			return err
 		}
+		ch.clusterDetail.ClusterID = description.ID
 		ch.clusterDetail.APIURL = description.APIURL
 		ch.clusterDetail.ConsoleURL = description.ConsoleURL
 		ch.clusterDetail.InfraID = description.InfraID

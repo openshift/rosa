@@ -352,6 +352,8 @@ e2e_test: install
 	export CLUSTER_NAME="$$name"; \
 	export OPERATOR_ROLES_PREFIX="$$name"; \
 	export AWS_DEFAULT_REGION; \
+	logfile="tests/output/$$profile/e2e-$$(date +%Y%m%d-%H%M%S).log"; \
+	mkdir -p "$$(dirname "$$logfile")"; \
 	run_phase() { \
 		echo ""; \
 		echo "=== seaplane phase $$1 ==="; \
@@ -361,11 +363,13 @@ e2e_test: install
 			-v \
 			$$seed \
 			$(SEAPLANE_GINKGO_EXTRA) \
-			./tests/e2e/...; \
+			./tests/e2e/... 2>&1 | tee -a "$$logfile"; \
+		return $${PIPESTATUS[0]}; \
 	}; \
-	echo "seaplane validated run: cluster=$$name profile=$$profile"; \
-	echo "  endpoint: $$SEAPLANE_URL"; \
-	echo "  rosa:     $$(command -v rosa)"; \
+	echo "seaplane validated run: cluster=$$name profile=$$profile" | tee "$$logfile"; \
+	echo "  endpoint: $$SEAPLANE_URL" | tee -a "$$logfile"; \
+	echo "  rosa:     $$(command -v rosa)" | tee -a "$$logfile"; \
+	echo "  log:      $$logfile" | tee -a "$$logfile"; \
 	rc=0; td=0; \
 	run_phase "1/5 setup" "day1" || rc=$$?; \
 	if [ $$rc -eq 0 ]; then \
@@ -379,21 +383,29 @@ e2e_test: install
 	if [ $$rc -eq 0 ]; then \
 		run_phase "5/5 destroy-post" "destroy-post" || td=$$?; \
 	else \
-		echo ""; \
-		echo "=== seaplane phase 5/5 destroy-post: skipped ==="; \
-		echo "setup or tests failed, so there is no cluster whose deletion can be"; \
-		echo "verified; running it would only bury the real failure above."; \
+		{ \
+			echo ""; \
+			echo "=== seaplane phase 5/5 destroy-post: skipped ==="; \
+			echo "setup or tests failed, so there is no cluster whose deletion can be"; \
+			echo "verified; running it would only bury the real failure above."; \
+		} | tee -a "$$logfile"; \
 	fi; \
 	if [ $$rc -ne 0 ]; then \
-		echo "seaplane validated run FAILED (tests rc=$$rc, teardown rc=$$td)"; \
+		echo "" | tee -a "$$logfile"; \
+		echo "seaplane validated run FAILED (tests rc=$$rc, teardown rc=$$td)" | tee -a "$$logfile"; \
+		echo "See full output in $$logfile" | tee -a "$$logfile"; \
 		exit $$rc; \
 	fi; \
 	if [ $$td -ne 0 ]; then \
-		echo "seaplane validated run: tests passed but teardown rc=$$td"; \
+		echo "" | tee -a "$$logfile"; \
+		echo "seaplane validated run: tests passed but teardown rc=$$td" | tee -a "$$logfile"; \
+		echo "See full output in $$logfile" | tee -a "$$logfile"; \
 		exit $$td; \
 	fi; \
-	echo "seaplane validated run OK"
-
+	echo "" | tee -a "$$logfile"; \
+	echo "seaplane validated run OK" | tee -a "$$logfile"; \
+	echo "Full output saved to $$logfile" | tee -a "$$logfile"
+	
 # clean-seaplane-cluster: delete one Seaplane cluster by name.
 #
 # For recovering from a run that left a cluster behind. The next run otherwise

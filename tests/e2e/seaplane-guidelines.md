@@ -53,7 +53,11 @@ variable while the CLI reads the config and a disagreement would point the two
 halves of the run at different endpoints. The target prints the endpoint and
 the resolved `rosa` binary before phase 1.
 
-This runs the 67 specs labelled `seaplane-validated` in five ordered phases:
+Output is logged to `tests/output/<profile>/e2e-<timestamp>.log` and streamed
+to the terminal in real time. Check the log file for detailed failure messages
+when debugging test failures.
+
+This runs the 67 specs labeled `seaplane-validated` in five ordered phases:
 `day1`, `day1-readiness`, the main test body, `destroy`, then `destroy-post`.
 The phases exist because Ginkgo randomizes top-level containers, so a single
 invocation can tear the cluster down before it is created.
@@ -96,7 +100,7 @@ Optional environment:
 - `GINKGO_SEED` — pin the seed to reproduce a failing run.
 - `CLUSTER_TIMEOUT` — minutes to wait for the cluster (default 60).
 - `NODEPOOL_TIMEOUT` — minutes to wait for node pools to reach Ready
-  (default 45). Raise it if day1 fails with
+  (default 90). Raise it if day1 fails with
   `timeout waiting for N node pool(s)` while the logged pool status still
   reads `Provisioning`; that means they were progressing, not stuck.
 

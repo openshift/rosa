@@ -1265,7 +1265,14 @@ func (ch *clusterHandler) destroyCluster() (errors []error, clusterRemoved bool)
 	}
 
 	log.Logger.Infof("Waiting for the cluster %s to be uninstalled", clusterID)
-	err := clusterService.WaitClusterDeleted(clusterID, 2, config.Test.GlobalENV.ClusterWaitingTime)
+	var err error
+	if usesSeaplane() {
+		// Seaplane environments may not support list operations (AUTH-002),
+		// so use describe-based polling which works reliably.
+		err = clusterService.WaitForClusterPassUninstalled(clusterID, 120, config.Test.GlobalENV.ClusterWaitingTime)
+	} else {
+		err = clusterService.WaitClusterDeleted(clusterID, 2, config.Test.GlobalENV.ClusterWaitingTime)
+	}
 	if err != nil {
 		log.Logger.Errorf("Error happened when waiting cluster uninstall: %s", err.Error())
 		// Fail fast: do not attempt OIDC/provider cleanup while the cluster may
