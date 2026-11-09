@@ -4178,11 +4178,13 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 			major, minor, _, err := helper.ParseVersion(clusterVersion)
 			Expect(err).To(BeNil())
 			originalMajorMinorVerson = fmt.Sprintf("%d.%d", major, minor)
-			testingRoleVersion := fmt.Sprintf("%d.%d", major, minor-1)
+			testMinor := minor - 1
 
 			isHosted, err := clusterService.IsHostedCPCluster(clusterID)
 			Expect(err).ToNot(HaveOccurred())
-			if !isHosted {
+			if !isHosted && testMinor >= 0 {
+				testingRoleVersion := fmt.Sprintf("%d.%d", major, testMinor)
+
 				By("Update the all operator policies tags to low version")
 				_, roleName, err := helper.ParseRoleARN(operatorRolesArns[1])
 				Expect(err).To(BeNil())
@@ -4207,6 +4209,12 @@ var _ = Describe("Reusing opeartor prefix and oidc config to create clsuter", la
 				stdout, err = rosaClient.Runner.RunCMD(strings.Split(rosalCommand.GetFullCommand(), " "))
 				Expect(err).NotTo(BeNil())
 				Expect(stdout.String()).To(ContainSubstring("is not compatible with cluster version"))
+			} else if !isHosted {
+				log.Logger.Infof(
+					"Skipping non-compatible version check: minor version is %d,"+
+						" cannot construct a valid lower minor version in the same major",
+					minor,
+				)
 			}
 		})
 })
