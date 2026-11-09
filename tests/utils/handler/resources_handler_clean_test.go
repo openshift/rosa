@@ -4,17 +4,21 @@
 package handler
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
 	"go.uber.org/mock/gomock"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
+
+	"github.com/openshift/rosa/tests/utils/log"
 )
 
 var _ = Describe("isAWSAuthorizationError", func() {
@@ -148,6 +152,109 @@ var _ = Describe("waitForVPCEndpointENIsClearedWithTimeout", func() {
 		err := waitForVPCEndpointENIsClearedWithTimeout(awsclient, "vpc-123", time.Millisecond, 50*time.Millisecond)
 		Expect(err).ToNot(HaveOccurred())
 	})
+
+	It("logs diagnostic details for blocking VPC endpoint ENIs", func() {
+		var buf bytes.Buffer
+		originalOut := log.Logger.Out
+		log.Logger.SetOutput(&buf)
+		defer log.Logger.SetOutput(originalOut)
+
+		mockEc2.EXPECT().DescribeVpcEndpoints(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeVpcEndpointsOutput{}, nil)
+		mockEc2.EXPECT().DescribeNetworkInterfaces(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeNetworkInterfacesOutput{
+				NetworkInterfaces: []types.NetworkInterface{
+					{
+						NetworkInterfaceId: aws.String("eni-diag"),
+						InterfaceType:      types.NetworkInterfaceTypeVpcEndpoint,
+						Status:             types.NetworkInterfaceStatusInUse,
+						Description:        aws.String("VPC Endpoint Interface vpce-abc"),
+						OwnerId:            aws.String("111122223333"),
+						SubnetId:           aws.String("subnet-abc"),
+						Attachment: &types.NetworkInterfaceAttachment{
+							InstanceId:      aws.String("i-worker"),
+							InstanceOwnerId: aws.String("444455556666"),
+							Status:          types.AttachmentStatusAttached,
+						},
+					},
+				},
+			}, nil).AnyTimes()
+
+		err := waitForVPCEndpointENIsClearedWithTimeout(awsclient, "vpc-123",
+			5*time.Millisecond, 30*time.Millisecond)
+		Expect(err).To(HaveOccurred(), "should time out while VPC endpoint ENIs remain")
+
+		logs := buf.String()
+		Expect(logs).To(ContainSubstring(`eni_id="eni-diag"`),
+			"log should contain the blocking ENI ID")
+		Expect(logs).To(ContainSubstring(`interface_type="vpc_endpoint"`),
+			"log should contain the interface type")
+		Expect(logs).To(ContainSubstring(`status="in-use"`),
+			"log should contain the ENI status")
+		Expect(logs).To(ContainSubstring(`description="VPC Endpoint Interface vpce-abc"`),
+			"log should contain the ENI description")
+		Expect(logs).To(ContainSubstring(`subnet_id="subnet-abc"`),
+			"log should contain the subnet ID")
+		Expect(logs).To(ContainSubstring(`instance_id="i-worker"`),
+			"log should contain the instance ID")
+		Expect(logs).To(ContainSubstring(`attachment_status="attached"`),
+			"log should contain the attachment status")
+		// Account IDs should be redacted by the SensitiveHook
+		Expect(logs).NotTo(ContainSubstring("111122223333"),
+			"owner account ID should be redacted from logs")
+		Expect(logs).NotTo(ContainSubstring("444455556666"),
+			"instance owner account ID should be redacted from logs")
+	})
+
+	It("redacts account IDs embedded in ENI description", func() {
+		var buf bytes.Buffer
+		originalOut := log.Logger.Out
+		log.Logger.SetOutput(&buf)
+		defer log.Logger.SetOutput(originalOut)
+
+		mockEc2.EXPECT().DescribeVpcEndpoints(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeVpcEndpointsOutput{}, nil)
+		mockEc2.EXPECT().DescribeNetworkInterfaces(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeNetworkInterfacesOutput{
+				NetworkInterfaces: []types.NetworkInterface{
+					{
+						NetworkInterfaceId: aws.String("eni-desc-redact"),
+						InterfaceType:      types.NetworkInterfaceTypeVpcEndpoint,
+						Description:        aws.String("Interface for NAT Gateway 999888777666"),
+					},
+				},
+			}, nil).AnyTimes()
+
+		err := waitForVPCEndpointENIsClearedWithTimeout(awsclient, "vpc-123",
+			5*time.Millisecond, 30*time.Millisecond)
+		Expect(err).To(HaveOccurred(), "should time out while VPC endpoint ENIs remain")
+
+		logs := buf.String()
+		Expect(logs).To(ContainSubstring(`eni_id="eni-desc-redact"`),
+			"log should contain the blocking ENI ID")
+		Expect(logs).NotTo(ContainSubstring("999888777666"),
+			"account ID in description should be redacted")
+		Expect(logs).To(ContainSubstring("Interface for NAT Gateway"),
+			"non-sensitive parts of description should be preserved")
+	})
+
+	It("does not log diagnostics when no VPC endpoint ENIs are present", func() {
+		var buf bytes.Buffer
+		originalOut := log.Logger.Out
+		log.Logger.SetOutput(&buf)
+		defer log.Logger.SetOutput(originalOut)
+
+		mockEc2.EXPECT().DescribeVpcEndpoints(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeVpcEndpointsOutput{}, nil)
+		mockEc2.EXPECT().DescribeNetworkInterfaces(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeNetworkInterfacesOutput{}, nil)
+
+		err := waitForVPCEndpointENIsClearedWithTimeout(awsclient, "vpc-123",
+			time.Millisecond, 50*time.Millisecond)
+		Expect(err).ToNot(HaveOccurred(), "should complete without error when no blocking ENIs exist")
+		Expect(buf.String()).NotTo(ContainSubstring("blocked by network interface"),
+			"should not log diagnostic messages when no VPC endpoint ENIs are present")
+	})
 })
 
 var _ = Describe("deleteForeignOwnedSecurityGroupsWithClient", func() {
@@ -216,5 +323,94 @@ var _ = Describe("deleteForeignOwnedSecurityGroupsWithClient", func() {
 
 		err := deleteForeignOwnedSecurityGroupsWithClient(awsclient, "vpc-123")
 		Expect(err).To(HaveOccurred())
+	})
+
+	It("logs blocking ENIs when security group deletion fails with a non-auth error", func() {
+		var buf bytes.Buffer
+		originalOut := log.Logger.Out
+		log.Logger.SetOutput(&buf)
+		defer log.Logger.SetOutput(originalOut)
+
+		sgID := "sg-blocked"
+		mockEc2.EXPECT().DescribeSecurityGroups(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeSecurityGroupsOutput{
+				SecurityGroups: []types.SecurityGroup{
+					{GroupId: &sgID, GroupName: &sgID, Description: &sgID},
+				},
+			}, nil)
+		mockEc2.EXPECT().DescribeSecurityGroupRules(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeSecurityGroupRulesOutput{}, nil)
+		mockEc2.EXPECT().DeleteSecurityGroup(gomock.Any(), gomock.Any()).
+			Return(nil, &smithy.GenericAPIError{
+				Code:    "DependencyViolation",
+				Message: "resource sg-blocked has a dependent object",
+			})
+		mockEc2.EXPECT().DescribeNetworkInterfaces(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeNetworkInterfacesOutput{
+				NetworkInterfaces: []types.NetworkInterface{
+					{
+						NetworkInterfaceId: aws.String("eni-blocking"),
+						InterfaceType:      types.NetworkInterfaceTypeInterface,
+						Status:             types.NetworkInterfaceStatusInUse,
+						Description:        aws.String("ELB app/my-lb"),
+						RequesterManaged:   aws.Bool(true),
+						RequesterId:        aws.String("amazon-elb"),
+						SubnetId:           aws.String("subnet-123"),
+						Attachment: &types.NetworkInterfaceAttachment{
+							InstanceOwnerId: aws.String("amazon-aws"),
+							Status:          types.AttachmentStatusAttached,
+						},
+					},
+				},
+			}, nil)
+
+		err := deleteForeignOwnedSecurityGroupsWithClient(awsclient, "vpc-456")
+		Expect(err).ToNot(HaveOccurred(),
+			"should delete security groups without returning an error")
+
+		logs := buf.String()
+		Expect(logs).To(ContainSubstring(`security_group_id="sg-blocked"`),
+			"log should contain the blocked security group ID")
+		Expect(logs).To(ContainSubstring(`eni_id="eni-blocking"`),
+			"log should contain the blocking ENI ID")
+		Expect(logs).To(ContainSubstring(`interface_type="interface"`),
+			"log should contain the interface type")
+		Expect(logs).To(ContainSubstring(`description="ELB app/my-lb"`),
+			"log should contain the ENI description")
+		Expect(logs).To(ContainSubstring(`requester_managed=true`),
+			"log should contain the requester managed flag")
+		// Service aliases like "amazon-elb" should NOT be redacted
+		Expect(logs).To(ContainSubstring(`requester_id="amazon-elb"`),
+			"service alias requester_id should not be redacted")
+		Expect(logs).To(ContainSubstring(`instance_owner_id="amazon-aws"`),
+			"service alias instance_owner_id should not be redacted")
+	})
+
+	It("does not log ENI diagnostics for auth errors", func() {
+		var buf bytes.Buffer
+		originalOut := log.Logger.Out
+		log.Logger.SetOutput(&buf)
+		defer log.Logger.SetOutput(originalOut)
+
+		sgID := "sg-foreign"
+		mockEc2.EXPECT().DescribeSecurityGroups(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeSecurityGroupsOutput{
+				SecurityGroups: []types.SecurityGroup{
+					{GroupId: &sgID, GroupName: &sgID, Description: &sgID},
+				},
+			}, nil)
+		mockEc2.EXPECT().DescribeSecurityGroupRules(gomock.Any(), gomock.Any()).
+			Return(&ec2.DescribeSecurityGroupRulesOutput{}, nil)
+		mockEc2.EXPECT().DeleteSecurityGroup(gomock.Any(), gomock.Any()).
+			Return(nil, &smithy.GenericAPIError{
+				Code:    "UnauthorizedOperation",
+				Message: "not authorized",
+			})
+
+		err := deleteForeignOwnedSecurityGroupsWithClient(awsclient, "vpc-123")
+		Expect(err).ToNot(HaveOccurred(),
+			"auth errors on security group deletion should not propagate")
+		Expect(buf.String()).NotTo(ContainSubstring("blocked by network interface"),
+			"should not log ENI diagnostics for authorization failures")
 	})
 })
