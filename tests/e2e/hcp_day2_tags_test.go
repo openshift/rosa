@@ -19,6 +19,7 @@ import (
 	"github.com/openshift/rosa/pkg/tagging"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
+	"github.com/openshift/rosa/tests/utils/constants"
 	"github.com/openshift/rosa/tests/utils/exec/rosacli"
 	"github.com/openshift/rosa/tests/utils/handler"
 	"github.com/openshift/rosa/tests/utils/helper"
@@ -287,14 +288,14 @@ func createDay2TagWorkerPool(cli *rosacli.Client, clusterKey string) (*vpc_clien
 		Expect(deleteErr).NotTo(HaveOccurred(), "delete tag-test pool %s: %s", poolID, out.String())
 	})
 	err = cli.MachinePool.WaitForNodePoolReplicasReady(clusterKey, poolID, false,
-		30*time.Second, 15*time.Minute)
+		constants.NodePoolCheckPoll, constants.NodePoolCheckTimeout)
 	Expect(err).NotTo(HaveOccurred(), "wait for fixed-size tag-test pool %s to reach one replica", poolID)
 	var running []ec2types.Instance
 	Eventually(func() (int, error) {
 		instances, listErr := vpc.AWSClient.GetInstancesByNodePoolID(poolID, clusterKey)
 		running = runningWorkerInstances(instances)
 		return len(running), listErr
-	}, 15*time.Minute, 30*time.Second).Should(Equal(1),
+	}, constants.NodePoolCheckTimeout, constants.NodePoolCheckPoll).Should(Equal(1),
 		"fixed-size tag-test pool %s should have one running worker", poolID)
 	return vpc, poolID, instanceIDs(running)
 }
