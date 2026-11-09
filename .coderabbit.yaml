@@ -5,6 +5,24 @@ language: en-US
 reviews:
   profile: chill
   high_level_summary: true
+  # Restates the dependency review section of AGENTS.md; keep them aligned.
+  high_level_summary_instructions: |
+    Keep the standard summary of the changes for every pull request.
+    When any go.mod changes dependency versions or replacements, including
+    Renovate pull requests, also add a "Dependency Impact Report" section
+    generated from your own analysis; do not ask the author to provide one.
+    For each changed module, state:
+    - Old and new versions, or replacement targets, from the diff.
+    - Upstream release notes and source comparisons inspected, including
+      intermediate releases, or that this evidence was unavailable.
+    - Affected usage and call paths in this repository, including code
+      outside the diff.
+    - Behavior changes that reach those paths, distinguishing source
+      inspection from runtime verification.
+    - Verification gaps and the targeted checks that would close them.
+    The report informs reviewers; it does not approve, block, or enforce
+    a merge.
+  high_level_summary_in_walkthrough: true
   collapse_walkthrough: true
   changed_files_summary: false
   sequence_diagrams: false
@@ -31,17 +49,7 @@ reviews:
         3. **Configuration & Flag Wiring:** Check whether CLI flags/options (such as `--insecure`, custom CA, or proxy settings) need to be explicitly passed into the updated library APIs to maintain expected user-facing options.
         4. **Feature Adoption & Code Refactoring:** Check if the new library version introduces features, options, or abstractions that could simplify existing workarounds or improve implementation efficiency.
 
-        5. **Required Dependency Impact Report:**
-           For each changed dependency, report:
-           - Exact old and new versions from the PR diff.
-           - Upstream release notes and source comparisons inspected,
-             including intermediate releases.
-           - Changed defaults and affected ROSA call paths, including
-             calling code outside the PR diff.
-           - Required configuration or flag wiring changes.
-           - Relevant test evidence and checks that remain unverified.
-           - Optional feature adoption, separate from compatibility risks.
-
+        5. **Compatibility Evidence:**
            For authentication or transport changes, explicitly inspect
            rosa login, authorization-code exchange, token refresh, and
            OCM requests. Check TLS minimum versions, certificate trust,
@@ -52,15 +60,16 @@ reviews:
            Distinguish source inspection from runtime verification.
            If upstream evidence is unavailable, report that limitation.
 
-        6. **Compatibility Recommendation:**
-           If an upstream behavior change reaches a ROSA call path and
-           compatibility with supported configurations remains unverified,
-           recommend deferring approval and merge until targeted checks
-           establish compatibility or maintainers accept a documented
-           support-policy change.
-           State the failure condition and the exact checks required.
-           Do not present a conditional risk as a confirmed deployment
-           failure. Do not treat optional feature adoption as a blocker.
+        6. **Finding Severity:**
+           Follow the dependency review section of AGENTS.md. Raise a blocking
+           finding only for a demonstrated incompatibility, or for a concrete
+           upstream behavior change that reaches an affected ROSA CLI call
+           path without the targeted compatibility tests needed to verify it;
+           state the failure condition and the exact checks required. Report
+           incomplete evidence or relevant unresolved upstream changes as
+           warnings. Treat optional improvements and new features from item 4
+           as informational. Do not present a conditional risk as a confirmed
+           failure.
     - path: "cmd/**/*.go"
       instructions: |
         - Treat Cobra wiring, flags, command UX, and error handling as high-signal review areas.
@@ -107,27 +116,40 @@ reviews:
         - Keep issue and PR metadata aligned with repo-local agent guidance and contributor workflow.
   pre_merge_checks:
     custom_checks:
+      # Restates the dependency review section of AGENTS.md; keep them aligned.
       - name: Dependency compatibility evidence
         mode: error
         instructions: |
-          Apply when go.mod changes dependency versions or replacements.
-          Otherwise, pass as not applicable.
+          Apply when any go.mod changes dependency versions or replacements,
+          including Renovate PRs. Otherwise, pass as not applicable.
 
-          Require a dependency impact report for the current PR head that
-          identifies the exact version changes, upstream sources inspected,
-          affected ROSA call paths, and verification gaps.
+          Assess compatibility independently from the PR diff, repository
+          source, and upstream release notes and source comparisons. Do not
+          require an author-supplied dependency impact report, and do not
+          depend on CodeRabbit summary, walkthrough, or review output.
 
-          Fail if that report is missing or upstream behavior cannot be
-          assessed because the required evidence is unavailable.
+          This check cannot run tests; treat committed tests and linked test
+          results only as evidence. For authentication or transport changes,
+          inspect rosa login, authorization-code exchange, token refresh, and
+          OCM request paths.
 
-          If an identified authentication or transport behavior change reaches
-          ROSA, require linked passing targeted test results for the affected
-          supported configurations, or an explicit maintainer decision accepting
-          a documented support-policy change.
+          Fail only when an upstream change is demonstrated to break an
+          affected ROSA CLI call path, or when a concrete upstream behavior
+          change reaches an affected ROSA CLI call path and neither targeted
+          tests that verify the affected supported configurations nor an
+          explicit maintainer decision accepting a documented support-policy
+          change is present. State the failure condition and the exact
+          targeted checks required.
 
-          Fail if neither form of evidence is available.
-          Do not accept compilation or unrelated CI results as compatibility
-          evidence. Do not fail solely for optional feature adoption.
+          Report Inconclusive instead of failing when upstream evidence is
+          unavailable or incomplete, or when it remains unresolved whether a
+          relevant upstream change reaches an affected ROSA CLI call path;
+          name the missing evidence. Do not accept compilation, unrelated CI,
+          patch-version bumps, or release-note titles alone as compatibility
+          evidence. Do not fail for optional improvements or new features.
+
+          This check evaluates evidence; it does not execute tests or itself
+          enforce repository merge protection.
   tools:
     checkov:
       enabled: false
