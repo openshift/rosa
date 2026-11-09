@@ -797,6 +797,10 @@ var _ = Describe("Edit nodepool",
 
 				upgradableVersion, err := versionList.FindZStreamUpgradableVersion(clusterVersion, 1)
 				Expect(err).ToNot(HaveOccurred())
+				if upgradableVersion == nil {
+					Skip(fmt.Sprintf("No compatible z-stream upgradable version found for "+
+						"cluster version %s", clusterVersion))
+				}
 
 				By("Create a machinepool with the upgradable version")
 				nodePoolAutoName := helper.GenerateRandomName("np-67412", 2)
