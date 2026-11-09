@@ -28,4 +28,8 @@ var RedactKeyList = []*regexp.Regexp{
 	regexp.MustCompile(`("billing_account_id"\:?\s*")([0-9]{12})(")`),
 	regexp.MustCompile(`(OCM AWS role on\s*')([0-9]{12})(')`),
 	regexp.MustCompile(`(_token\s*)([\w.-]+)([\s\S]*)`),
+	// Account IDs in network interface diagnostics, such as owner_id="123456789012".
+	// A value containing 12 consecutive digits is replaced entirely; other values,
+	// such as service aliases or empty values, are kept.
+	regexp.MustCompile("(\\b(?:instance_owner|owner|requester)_id=\")([^\"]*[0-9]{12}[^\"]*)(\")"),
 }

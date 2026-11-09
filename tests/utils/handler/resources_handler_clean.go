@@ -6,6 +6,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -25,6 +26,10 @@ import (
 )
 
 const hcpInternalHostedZoneSuffix = "hypershift.local"
+
+// accountIDPattern matches standalone 12-digit AWS account IDs so they can be
+// redacted from free-text fields like ENI descriptions before logging.
+var accountIDPattern = regexp.MustCompile(`[0-9]{12}`)
 
 func (rh *resourcesHandler) DeleteVPCChain(withSharedAccount bool) error {
 	var err error
@@ -81,6 +86,7 @@ func deleteForeignOwnedSecurityGroupsWithClient(primaryClient *aws_client.AWSCli
 	}
 	for _, sg := range sgs {
 		if _, err := primaryClient.DeleteSecurityGroup(*sg.GroupId); err != nil && !isAWSAuthorizationError(err) {
+			logBlockingENIsForSecurityGroup(primaryClient, vpcID, *sg.GroupId)
 			log.Logger.Warnf("Delete security group %s with primary account failed: %s", *sg.GroupId, err)
 		}
 	}
@@ -113,14 +119,72 @@ func waitForVPCEndpointENIsClearedWithTimeout(
 			if err != nil {
 				return false, err
 			}
+			blocking := false
+			msgPrefix := fmt.Sprintf(
+				"VPC endpoint cleanup blocked by network interface: vpc_id=%q", vpcID)
 			for _, eni := range enis {
 				if eni.InterfaceType == types.NetworkInterfaceTypeVpcEndpoint {
-					return false, nil
+					logBlockingENI(msgPrefix, eni)
+					blocking = true
 				}
 			}
-			return true, nil
+			return !blocking, nil
 		},
 	)
+}
+
+// logBlockingENI logs detailed diagnostic information about a network interface
+// that is blocking VPC cleanup. AWS account IDs in ownership fields are redacted
+// by the logger's SensitiveHook, and account IDs embedded in the free-text
+// Description field are redacted inline before logging.
+func logBlockingENI(msgPrefix string, eni types.NetworkInterface) {
+	attachment := eni.Attachment
+	if attachment == nil {
+		attachment = &types.NetworkInterfaceAttachment{}
+	}
+	requesterManaged := "unknown"
+	if eni.RequesterManaged != nil {
+		requesterManaged = fmt.Sprint(*eni.RequesterManaged)
+	}
+	log.Logger.Warnf(
+		"%s eni_id=%q "+
+			"interface_type=%q status=%q description=%q requester_managed=%s requester_id=%q owner_id=%q "+
+			"subnet_id=%q instance_id=%q instance_owner_id=%q attachment_status=%q",
+		msgPrefix, aws.ToString(eni.NetworkInterfaceId),
+		eni.InterfaceType, eni.Status, redactAccountID(aws.ToString(eni.Description)),
+		requesterManaged, aws.ToString(eni.RequesterId), aws.ToString(eni.OwnerId),
+		aws.ToString(eni.SubnetId), aws.ToString(attachment.InstanceId),
+		aws.ToString(attachment.InstanceOwnerId), attachment.Status,
+	)
+}
+
+// redactAccountID replaces any 12-digit AWS account ID found in s with the
+// standard redaction placeholder. This is used for free-text fields like ENI
+// descriptions where the SensitiveHook's field-name-based patterns do not apply.
+func redactAccountID(s string) string {
+	return accountIDPattern.ReplaceAllString(s, log.RedactValue)
+}
+
+// logBlockingENIsForSecurityGroup describes network interfaces attached to a
+// security group and logs each one to aid diagnosis of DependencyViolation
+// errors during security group deletion.
+func logBlockingENIsForSecurityGroup(awsclient *aws_client.AWSClient, vpcID, sgID string) {
+	output, err := awsclient.Ec2Client.DescribeNetworkInterfaces(context.TODO(),
+		&ec2.DescribeNetworkInterfacesInput{
+			Filters: []types.Filter{
+				{Name: aws.String("group-id"), Values: []string{sgID}},
+			},
+		})
+	if err != nil {
+		log.Logger.Warnf("Failed to describe network interfaces for security group %s: %s", sgID, err)
+		return
+	}
+	msgPrefix := fmt.Sprintf(
+		"Security group cleanup blocked by network interface: vpc_id=%q security_group_id=%q",
+		vpcID, sgID)
+	for _, eni := range output.NetworkInterfaces {
+		logBlockingENI(msgPrefix, eni)
+	}
 }
 
 func (rh *resourcesHandler) DeleteKMSKey(etcdKMS bool) (err error) {
