@@ -1066,6 +1066,9 @@ var _ = Describe("Create cluster with oprator roles which are attaching managed 
 				}
 				Expect(hasCreatePolicyFlag).To(BeFalse())
 
+				By("Wait for AWS IAM/OIDC propagation")
+				time.Sleep(constants.IAMOIDCPropagationDelay)
+
 				By("Check and wait cluster to installing status")
 				rosaClient.Runner.UnsetArgs()
 				clusterListout, err := clusterService.List()

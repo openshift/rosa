@@ -727,6 +727,14 @@ func evaluateReadyClusterState(clusterID string, description *ClusterDescription
 		return false, fmt.Errorf("cluster %s returned an empty state", clusterID)
 	}
 
+	// Detect STS assume-role failures in "waiting" state — fail fast instead of polling to timeout
+	if strings.Contains(description.State, "waiting") &&
+		strings.Contains(description.State, "Failed to assume") {
+		return false, fmt.Errorf(
+			"cluster %s has an STS assume-role failure that won't self-resolve: %s",
+			clusterID, description.State)
+	}
+
 	return false, nil
 }
 

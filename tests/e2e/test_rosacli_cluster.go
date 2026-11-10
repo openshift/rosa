@@ -4008,6 +4008,9 @@ var _ = Describe("create/delete operator-roles and oidc-provider to cluster",
 					Expect(err).To(BeNil())
 				}
 
+				By("Wait for AWS IAM/OIDC propagation")
+				time.Sleep(constants.IAMOIDCPropagationDelay)
+
 				By("Check cluster status to installing")
 				rosaClient.Runner.UnsetArgs()
 				err = clusterService.WaitClusterStatus(clusterID, "installing", 3, 24)
@@ -4661,6 +4664,9 @@ var _ = Describe("HCP cluster creation supplemental testing",
 					_, err := rosaClient.Runner.RunCMD(strings.Split(command, " "))
 					Expect(err).To(BeNil())
 				}
+
+				By("Wait for AWS IAM/OIDC propagation")
+				time.Sleep(constants.IAMOIDCPropagationDelay)
 
 				By("Retrieve cluster ID")
 				rosaClient.Runner.UnsetArgs()
