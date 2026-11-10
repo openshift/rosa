@@ -81,6 +81,14 @@ const (
 	ARM = "arm64"
 )
 
+// IAM/OIDC propagation
+const (
+	// IAMOIDCPropagationDelay is the time to wait after creating IAM roles
+	// and OIDC providers in manual mode, allowing AWS to propagate the
+	// trust chain before AssumeRoleWithWebIdentity calls.
+	IAMOIDCPropagationDelay = 30 * time.Second
+)
+
 // timeout for hcp node pool
 const (
 	// NodePoolCheckTimeout The timeout may depend on the resource
