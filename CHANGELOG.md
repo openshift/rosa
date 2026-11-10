@@ -1,3 +1,41 @@
+## 1.2.68 (09 Nov, 2026)
+
+BREAKING CHANGES:
+
+   * Make describe machinepool output more readable and parsable (#3667)
+
+
+FEATURES:
+   * Enable day-2 HCP AWS tag edits (#3697)
+   * Enable log forwarding on FedRAMP (#3646)
+
+ENHANCEMENTS:
+ * Bug fixes
+   * Ensure minor versions don't underflow (#3709)
+   * Ensure ROSA CLI version is set correctly and doesn't use Go version from base image (#3684)
+   * Fix e2e test assertions for operator roles (id:70859) and policy validation (id:74225) (#3676)
+   * Remove redundant DeferCleanup in machinepool test (#3672)
+   * Use the UTC schedule helper for remaining upgrade tests; reuse tags in operator-role scan (#3607)
+   * Replace error assertion pairs with ExpectErrorWithMessage (#3666)
+   * Fix e2e test assertions for operator roles, machinepool name length, and cleanup (#3661)
+   * Revert "OCM-0000 | fix: switch remaining error assertions to ExpectErrorWithMessage" (#3664)
+   * Ensure that e2e test helper functions can differeniate between classic and hcp versions (#3595)
+   * Allow https in http-proxy flag (#3653)
+   * Switch remaining error assertions to ExpectErrorWithMessage (#3658)
+   * Make repository hook installation optional (#3654)
+   * Update error message assertions to use ExpectErrorWithMessage (#3649)
+   * Use per-AZ private route tables for NAT gateways (#3640)
+   * Ensure that EOL version check during cluster creation can differeniate between classic and hcp versions (#3592)
+   * Ensure channel-group warning isn't printed unless channel-group passed in (#3637)
+   * Add CPE label to Dockerfile to fix Konflux releases (#3644)
+   * Ensure vCPUs are properly labeled (#3635)
+   * Honor insecure option in auth-code login (#3618)
+   * Enable source image build (#3609)
+   * Extract .zip files in Prow now due to Konflux limitation (#3600)
+ * Documentation
+   * Add agent-agnostic developer-docs hub (#3601)
+   * Add explanation about test ids (#3594)
+
 ## 1.2.66 (05 Oct, 2026)
 
 FEATURES:
