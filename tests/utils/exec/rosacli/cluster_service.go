@@ -764,8 +764,24 @@ func (c *clusterService) WaitClusterDeleted(clusterID string, interval int, dura
 	return err
 }
 
+// deleteStartGracePeriod is how long a cluster may remain in a non-deleting
+// state after a delete request before the wait fails. The Platform API can
+// keep reporting "ready" for a few seconds while the delete is processed.
+const deleteStartGracePeriod = 5 * time.Minute
+
+// clusterDeletionStarted reports whether the state indicates that the delete
+// request is being processed. An empty state is treated as transient because
+// describe output can be incomplete while the delete is in flight.
+func clusterDeletionStarted(state string) bool {
+	return state == "" ||
+		strings.Contains(state, constants.Uninstalling) ||
+		strings.Contains(strings.ToLower(state), "deleting")
+}
+
 func (c *clusterService) WaitForClusterPassUninstalled(clusterID string, interval int, timeoutMin int) error {
-	endTime := time.Now().Add(time.Duration(timeoutMin) * time.Minute)
+	startTime := time.Now()
+	endTime := startTime.Add(time.Duration(timeoutMin) * time.Minute)
+	graceEnd := startTime.Add(deleteStartGracePeriod)
 	for time.Now().Before(endTime) {
 		output, err := c.DescribeCluster(clusterID)
 		if err != nil {
@@ -774,19 +790,19 @@ func (c *clusterService) WaitForClusterPassUninstalled(clusterID string, interva
 				return nil
 			}
 			log.Logger.Warnf("Issue retrieving cluster: %v.", err)
-			continue
+		} else {
+			desc, err := c.ReflectClusterDescription(output)
+			if err != nil {
+				return err
+			}
+			if !clusterDeletionStarted(desc.State) {
+				if time.Now().After(graceEnd) {
+					return fmt.Errorf("cluster %s is in status of %s which won't be deleted, stop waiting", clusterID, desc.State)
+				}
+				log.Logger.Infof("Cluster %s is still in status %s; waiting for deletion to start", clusterID, desc.State)
+			}
 		}
-		desc, err := c.ReflectClusterDescription(output)
-		if err != nil {
-			return err
-		}
-		if desc.State == "" ||
-			strings.Contains(desc.State, constants.Uninstalling) ||
-			strings.Contains(strings.ToLower(desc.State), "deleting") {
-			time.Sleep(time.Duration(interval) * time.Second)
-			continue
-		}
-		return fmt.Errorf("cluster %s is in status of %s which won't be deleted, stop waiting", clusterID, desc.State)
+		time.Sleep(time.Duration(interval) * time.Second)
 	}
 	return fmt.Errorf("timeout for waiting for cluster deletion finished after %d mins", timeoutMin)
 }
