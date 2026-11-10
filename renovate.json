@@ -96,14 +96,14 @@
       "groupName": "govulncheck-jq"
     },
     {
-      "description": "Bump DefaultVersion one day after a ROSA GitHub release",
+      "description": "Bump DefaultVersion immediately after a ROSA GitHub release",
       "matchManagers": [
         "custom.regex"
       ],
       "matchDepNames": [
         "openshift/rosa"
       ],
-      "minimumReleaseAge": "1 day",
+      "minimumReleaseAge": "0 days",
       "groupName": "default-rosa-version"
     },
     {
