@@ -167,19 +167,47 @@ run_filter() {
 	return "${status}"
 }
 
-run_phase() {
+# Profile-scoped specs carry a seaplane-profile-* label. Specs without one run
+# on every profile; specs with one run only on the matching TEST_PROFILE. The
+# harness excludes the labels of every other known profile, so a spec written
+# for one profile never runs against another.
+known_profile_labels=(
+	seaplane-profile-basic
+	seaplane-profile-fips
+	seaplane-profile-advanced
+	seaplane-profile-private
+	seaplane-profile-nocni
+	seaplane-profile-disable-capabilities
+)
+current_profile_label="seaplane-profile-${TEST_PROFILE#rosa-seaplane-}"
+profile_filter=""
+profile_label_known=false
+for label in "${known_profile_labels[@]}"; do
+	if [[ "${label}" == "${current_profile_label}" ]]; then
+		profile_label_known=true
+	else
+		profile_filter+=" && !${label}"
+	fi
+done
+if [[ "${profile_label_known}" != "true" ]]; then
+	echo "WARNING: ${TEST_PROFILE} has no seaplane-profile-* label; running only profile-agnostic specs" >&2
+fi
+
+phase_filter() {
 	local phase="$1"
-	local filter
 	local shared_filter=""
 	if [[ "${E2E_SEAPLANE_RUN_SHARED}" != "true" ]]; then
 		shared_filter=" && !seaplane-shared"
 	fi
 	if [[ "${phase}" == "destroy" ]]; then
-		filter="destroy && seaplane-validated && !seaplane-na && !seaplane-deferred${shared_filter}"
+		printf 'destroy && seaplane-validated && !seaplane-na && !seaplane-deferred%s%s' "${shared_filter}" "${profile_filter}"
 	else
-		filter="(${phase}) && seaplane-validated && !seaplane-na && !seaplane-deferred${shared_filter}"
+		printf '(%s) && seaplane-validated && !seaplane-na && !seaplane-deferred%s%s' "${phase}" "${shared_filter}" "${profile_filter}"
 	fi
-	run_filter "${phase}" "${filter}"
+}
+
+run_phase() {
+	run_filter "$1" "$(phase_filter "$1")"
 }
 
 # cluster_destroy_state records what happened during teardown so that
@@ -202,7 +230,7 @@ destroy_cluster() {
 		cluster_destroy_state=skipped
 		return 0
 	fi
-	if run_filter "destroy" "destroy && seaplane-validated && !seaplane-na && !seaplane-deferred"; then
+	if run_filter "destroy" "$(phase_filter destroy)"; then
 		cluster_destroy_state=destroyed
 		return 0
 	fi
