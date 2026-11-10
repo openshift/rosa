@@ -2852,7 +2852,7 @@ var _ = Describe("HCP cluster creation negative testing",
 					To(
 						ContainSubstring(
 							`Failed to execute root command: invalid argument "ui" for "--no-cni" flag: ` +
-								`strconv.ParseBool: parsing "ui": invalid syntax`))
+								`must be true or false`))
 
 				By("Create HCP cluster with --no-cni and --network-type=OVNKubernetes at the same time")
 				rosalCommand.DeleteFlag("--no-cni=ui", false)
