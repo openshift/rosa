@@ -103,6 +103,7 @@ Optional environment:
   (default 90). Raise it if day1 fails with
   `timeout waiting for N node pool(s)` while the logged pool status still
   reads `Provisioning`; that means they were progressing, not stuck.
+  Note: Node pools can take 45-60 minutes to provision in some environments.
 
 Two validated specs are gated to their own profiles and report as skipped
 otherwise, so full coverage takes three runs:

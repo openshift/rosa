@@ -2678,7 +2678,8 @@ var _ = Describe("Create cluster with invalid options will",
 				}
 				if seaplaneMode {
 					baseCreateFlags = append(baseCreateFlags,
-						"--operator-roles-prefix", helper.TrimNameByLength(clusterName, constants.MaxRolePrefixLength))
+						"--operator-roles-prefix", helper.TrimNameByLength(clusterName, constants.MaxRolePrefixLength),
+						"--version", "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi")
 				}
 				runCreateDryRun := func(extraFlags ...string) (bytes.Buffer, error) {
 					flags := append(append([]string{}, baseCreateFlags...), extraFlags...)
@@ -3771,6 +3772,12 @@ var _ = Describe("HCP additional allowed principals negative testing",
 					"--additional-allowed-principals", "zzzz",
 					"-y",
 				}
+
+				// Platform API v2 requires --version before validating other parameters
+				if isSeaplaneMode() {
+					command = append(command, "--version", "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi")
+				}
+
 				_, err := rosaClient.Runner.RunCMD(command)
 				helper.ExpectErrorWithMessage(
 					err,

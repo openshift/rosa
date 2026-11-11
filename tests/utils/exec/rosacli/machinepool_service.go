@@ -207,10 +207,33 @@ func (m *machinepoolService) ListMachinePool(clusterID string, flags ...string) 
 // Describe MachinePool
 func (m *machinepoolService) DescribeMachinePool(clusterID string, mpID string) (bytes.Buffer, error) {
 	commandFlags := []string{mpID, "-c", clusterID}
-	return m.client.Runner.
+	output, err := m.client.Runner.
 		Cmd("describe", "machinepool").
 		CmdFlags(m.withPlatformAPIEndpoint(commandFlags...)...).
 		Run()
+
+	// Platform API v2 list/describe operations may be eventually consistent.
+	// If describe returns "not found", retry a few times with backoff.
+	if err != nil && strings.Contains(output.String(), "not found") {
+		maxRetries := 3
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			sleepDuration := time.Duration(attempt) * time.Second
+			Logger.Infof("Node pool describe returned 'not found', retrying after %v (attempt %d/%d)",
+				sleepDuration, attempt, maxRetries)
+			time.Sleep(sleepDuration)
+
+			output, err = m.client.Runner.
+				Cmd("describe", "machinepool").
+				CmdFlags(m.withPlatformAPIEndpoint(commandFlags...)...).
+				Run()
+
+			if err == nil || !strings.Contains(output.String(), "not found") {
+				break
+			}
+		}
+	}
+
+	return output, err
 }
 
 // DescribeAndReflectMachinePool

@@ -14,6 +14,7 @@ type seaplaneLabels struct {
 	One           Labels
 	Deferred      Labels
 	NotApplicable Labels
+	KnownIssue    Labels
 }
 
 var Seaplane = initSeaplane()
@@ -26,6 +27,7 @@ func initSeaplane() *seaplaneLabels {
 	hLabels.One = Label("seaplane-one")
 	hLabels.Deferred = Label("seaplane-deferred")
 	hLabels.NotApplicable = Label("seaplane-na")
+	hLabels.KnownIssue = Label("seaplane-known-issue")
 
 	return hLabels
 }
