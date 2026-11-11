@@ -372,6 +372,15 @@ e2e_test: install
 	echo "  log:      $$logfile" | tee -a "$$logfile"; \
 	rc=0; td=0; \
 	run_phase "1/5 setup" "day1" || rc=$$?; \
+	if [ -f "tests/output/$$profile/cluster-id" ] && [ -s "tests/output/$$profile/cluster-id" ]; then \
+		export CLUSTER_ID=$$(cat "tests/output/$$profile/cluster-id"); \
+		echo "  cluster ID: $$CLUSTER_ID" | tee -a "$$logfile"; \
+	elif [ -f "tests/output/$$profile/cluster-detail.json" ]; then \
+		export CLUSTER_ID=$$(jq -r '.cluster_id // empty' "tests/output/$$profile/cluster-detail.json"); \
+		if [ -n "$$CLUSTER_ID" ] && [ "$$CLUSTER_ID" != "null" ]; then \
+			echo "  cluster ID: $$CLUSTER_ID (from cluster-detail.json)" | tee -a "$$logfile"; \
+		fi; \
+	fi; \
 	if [ $$rc -eq 0 ]; then \
 		run_phase "2/5 readiness" "day1-readiness" || rc=$$?; \
 	fi; \

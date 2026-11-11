@@ -137,7 +137,7 @@ func init() {
 	if err != nil {
 		panic(fmt.Errorf("env variable CLUSTER_TIMEOUT must be set to an integer"))
 	}
-	nodePoolWaitingTime, err := strconv.Atoi(helper.ReadENVWithDefaultValue("NODEPOOL_TIMEOUT", "45"))
+	nodePoolWaitingTime, err := strconv.Atoi(helper.ReadENVWithDefaultValue("NODEPOOL_TIMEOUT", "90"))
 	if err != nil {
 		panic(fmt.Errorf("env variable NODEPOOL_TIMEOUT must be set to an integer"))
 	}

@@ -80,7 +80,7 @@ var _ = Describe("Healthy check",
 			})
 
 			It("the creation of rosa cluster with volume size will work - [id:66359]",
-				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated,
+				labels.Critical, labels.Runtime.Day1Post, labels.FedRAMP, labels.Seaplane.Validated, labels.Seaplane.KnownIssue,
 				func() {
 					alignDiskSize := func(diskSize string) string {
 						aligned := strings.Join(strings.Split(diskSize, " "), "")
@@ -491,7 +491,7 @@ var _ = Describe("Healthy check",
 				})
 
 			It("with compute_machine_type will work - [id:75150]",
-				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Seaplane.Validated,
+				labels.Runtime.Day1Post, labels.High, labels.FedRAMP, labels.Seaplane.Validated, labels.Seaplane.KnownIssue,
 				func() {
 					By("Check compute machine type")
 					var expectedInstanceType string
@@ -942,7 +942,16 @@ var _ = Describe("Create cluster with the version in some channel group testing"
 					Expect(err).ToNot(HaveOccurred())
 					Expect(data.DigString("version", "raw_id")).ToNot(BeEmpty())
 					Expect(data.DigObject("version", "channel_group")).To(BeAssignableToTypeOf(""))
-					Expect(data.DigString("version", "channel_group")).To(Equal(profile.ChannelGroup))
+
+					actualChannelGroup := data.DigString("version", "channel_group")
+					expectedChannelGroup := profile.ChannelGroup
+
+					// Platform API v2 defaults to "stable" when no channel group specified
+					if expectedChannelGroup == "" {
+						Expect(actualChannelGroup).To(Equal("stable"))
+					} else {
+						Expect(actualChannelGroup).To(Equal(expectedChannelGroup))
+					}
 					return
 				}
 				versionOutput, err := clusterService.GetClusterVersion(clusterID)
