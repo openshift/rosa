@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 
 	"go.uber.org/mock/gomock"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/openshift/rosa/pkg/ocm"
 	mpOpts "github.com/openshift/rosa/pkg/options/machinepool"
 	seaplanemocks "github.com/openshift/rosa/pkg/seaplane/mocks"
+	seaplanepathbind "github.com/openshift/rosa/pkg/seaplane/pathbind"
 	"github.com/openshift/rosa/pkg/test"
 )
 
@@ -128,6 +130,158 @@ var _ = Describe("runSeaplaneEdit (machinepool)", func() {
 
 		cmd := makeEditCmd("")
 		Expect(cmd.Flags().Set("tags", "owner:platform,environment:production")).To(Succeed())
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+		runSeaplaneEdit(t.RosaRuntime, &EditMachinepoolUserOptions{machinepool: "my-np"}, cmd, nil)
+	})
+
+	DescribeTable("returns AWS tag parse errors without a CLI-specific prefix",
+		func(tags string, expectedPrefix string) {
+			opts := &EditMachinepoolUserOptions{}
+			cmd := makeEditCmd("")
+			Expect(cmd.Flags().Set("tags", tags)).To(Succeed())
+			h := &seaplaneNodePoolUpdate{userOptions: opts, cmd: cmd}
+
+			err := h.PreRequest(context.Background(), t.RosaRuntime,
+				&seaplanepathbind.NodePoolUpdateInput{Tags: tags})
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(HavePrefix(expectedPrefix)))
+		},
+		Entry("too long tag key", strings.Repeat("z", 129)+":testValue",
+			"expected a valid user tag key 'zzz"),
+		Entry("too long tag value", "testKey:"+strings.Repeat("z", 257),
+			"expected a valid user tag value 'zzz"),
+		Entry("invalid tag key", "#:testValue",
+			"expected a valid user tag key '#'"),
+		Entry("invalid tag value", "testKey:#",
+			"expected a valid user tag value '#'"),
+		Entry("malformed tag", "aws:testKey:testValue",
+			"invalid tag format for tag '[aws testKey testValue]'"),
+		Entry("reserved aws: tag key", `"aws:testKey":testValue`,
+			"invalid tag key 'aws:testKey': keys starting with 'aws:' are reserved for AWS use"),
+	)
+
+	It("updates labels, taints, and replicas together on the success path", func() {
+		originalInput := seaplaneNodePoolUpdateInput
+		DeferCleanup(func() { seaplaneNodePoolUpdateInput = originalInput })
+
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, clusters, nodePools := newEditMPMocks(ctrl)
+		replicas := int32(0)
+		np := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas: &replicas,
+					Platform: v1alpha1.NodePoolPlatform{Type: hypershiftv1beta1.AWSPlatform},
+					Management: hypershiftv1beta1.NodePoolManagement{
+						UpgradeType: hypershiftv1beta1.UpgradeTypeReplace,
+					},
+				},
+			},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil).Times(2)
+		nodePools.EXPECT().Patch(gomock.Any(), "cluster1.my-np", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ platform.PatchOptions) (*v1alpha1.NodePool, error) {
+				Expect(string(data)).To(MatchJSON(`{"spec":{"labels":{"l3":"v3"},"nodePool":{"replicas":3,"taints":[{"key":"t3","value":"value3","effect":"NoExecute"}]}}}`))
+				return np, nil
+			})
+
+		cmd := makeEditCmd("3")
+		Expect(cmd.Flags().Set("labels", "l3=v3")).To(Succeed())
+		Expect(cmd.Flags().Set("taints", "t3=value3:NoExecute")).To(Succeed())
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+		runSeaplaneEdit(t.RosaRuntime, &EditMachinepoolUserOptions{
+			machinepool: "my-np",
+			replicas:    3,
+			labels:      "l3=v3",
+			taints:      "t3=value3:NoExecute",
+		}, cmd, nil)
+	})
+
+	It("updates autoscaling bounds on the success path", func() {
+		originalInput := seaplaneNodePoolUpdateInput
+		DeferCleanup(func() { seaplaneNodePoolUpdateInput = originalInput })
+
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, clusters, nodePools := newEditMPMocks(ctrl)
+		np := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					AutoScaling: &hypershiftv1beta1.NodePoolAutoScaling{Min: ptr.To(int32(1)), Max: 3},
+					Platform:    v1alpha1.NodePoolPlatform{Type: hypershiftv1beta1.AWSPlatform},
+					Management: hypershiftv1beta1.NodePoolManagement{
+						UpgradeType: hypershiftv1beta1.UpgradeTypeReplace,
+					},
+				},
+			},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil).Times(2)
+		nodePools.EXPECT().Patch(gomock.Any(), "cluster1.my-np", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ platform.PatchOptions) (*v1alpha1.NodePool, error) {
+				Expect(string(data)).To(MatchJSON(`{"spec":{"nodePool":{"autoScaling":{"max":5,"min":2}}}}`))
+				return np, nil
+			})
+
+		cmd := makeEditCmd("")
+		Expect(cmd.Flags().Set("enable-autoscaling", "true")).To(Succeed())
+		Expect(cmd.Flags().Set("min-replicas", "2")).To(Succeed())
+		Expect(cmd.Flags().Set("max-replicas", "5")).To(Succeed())
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+		runSeaplaneEdit(t.RosaRuntime, &EditMachinepoolUserOptions{
+			machinepool:        "my-np",
+			autoscalingEnabled: true,
+			minReplicas:        2,
+			maxReplicas:        5,
+		}, cmd, nil)
+	})
+
+	It("clears taints when --taints is set to empty", func() {
+		originalInput := seaplaneNodePoolUpdateInput
+		DeferCleanup(func() { seaplaneNodePoolUpdateInput = originalInput })
+
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, clusters, nodePools := newEditMPMocks(ctrl)
+		replicas := int32(3)
+		np := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
+			Spec: v1alpha1.NodePoolSpec{
+				NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Replicas: &replicas,
+					Platform: v1alpha1.NodePoolPlatform{Type: hypershiftv1beta1.AWSPlatform},
+					Management: hypershiftv1beta1.NodePoolManagement{
+						UpgradeType: hypershiftv1beta1.UpgradeTypeReplace,
+					},
+					Taints: []hypershiftv1beta1.Taint{
+						{Key: "old", Value: "value", Effect: "NoSchedule"},
+					},
+				},
+			},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Any()).Return(
+			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
+		nodePools.EXPECT().Get(gomock.Any(), "cluster1.my-np", gomock.Any()).Return(np, nil).Times(2)
+		nodePools.EXPECT().Patch(gomock.Any(), "cluster1.my-np", types.MergePatchType, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ types.PatchType, data []byte, _ platform.PatchOptions) (*v1alpha1.NodePool, error) {
+				Expect(string(data)).To(MatchJSON(`{"spec":{"nodePool":{"taints":[]}}}`))
+				return np, nil
+			})
+
+		cmd := makeEditCmd("")
+		Expect(cmd.Flags().Set("taints", "")).To(Succeed())
 		t.RosaRuntime.SeaplaneClient = seaplaneClient
 		runSeaplaneEdit(t.RosaRuntime, &EditMachinepoolUserOptions{machinepool: "my-np"}, cmd, nil)
 	})

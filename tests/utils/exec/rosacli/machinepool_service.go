@@ -427,7 +427,11 @@ func blockScalarizeNodePoolStatusField(str string) string {
 
 	var body strings.Builder
 	body.WriteString(before)
-	body.WriteString("Message: |-\n")
+	// Use an explicit indentation indicator: status lines may have different
+	// original indentation (for example a second "* Machine ..." bullet at
+	// column zero). Auto-detection takes the first non-empty line's indent,
+	// which would let a less-indented later line terminate the scalar early.
+	body.WriteString("Message: |2-\n")
 	for _, line := range lines {
 		body.WriteString("  ")
 		body.WriteString(line)
