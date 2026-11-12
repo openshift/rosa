@@ -5,6 +5,7 @@ package dnsdomains
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -27,15 +28,27 @@ var _ = Describe("Create Platform API DNS domain", func() {
 			Expect(cmd.Flags().Set("hosted-cp", "true")).To(Succeed())
 		}
 		server.AppendHandlers(ghttp.CombineHandlers(
-			ghttp.VerifyRequest("POST", "/api/v0/dns_domains"),
-			ghttp.VerifyJSON(`{"cluster_arch":"hcp"}`),
-			ghttp.RespondWithJSONEncoded(http.StatusCreated, map[string]any{"id": "abcd.0.example.com", "cluster_arch": "hcp"}),
+			ghttp.VerifyRequest("POST", "/api/v0/dns_reservations"),
+			func(_ http.ResponseWriter, req *http.Request) {
+				var body struct {
+					Metadata struct {
+						Name string `json:"name"`
+					} `json:"metadata"`
+				}
+				Expect(json.NewDecoder(req.Body).Decode(&body)).To(Succeed())
+				Expect(body.Metadata.Name).To(HavePrefix("rosa-"))
+			},
+			ghttp.RespondWithJSONEncoded(http.StatusCreated, map[string]any{
+				"kind":     "DNSReservation",
+				"metadata": map[string]any{"name": "rosa-1a2b3c4d", "creationTimestamp": "2026-10-08T12:00:00Z"},
+				"status":   map[string]any{"phase": "Pending"},
+			}),
 		))
 		stdout, _, err := test.RunWithOutputCapture(func(r *rosa.Runtime, cmd *cobra.Command) error { return createDNSDomainV2(cmd, r) }, r, cmd)
 		Expect(err).NotTo(HaveOccurred())
 		id, err := helper.ExtractDNSDomainID(*bytes.NewBufferString(stdout))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(id).To(Equal("abcd.0.example.com"))
+		Expect(id).To(Equal("rosa-1a2b3c4d"))
 		Expect(r.OCMClient).To(BeNil())
 	}, Entry("default architecture", false), Entry("explicit hosted-cp", true))
 	It("rejects explicitly requested Classic domains before calling the API", func() {

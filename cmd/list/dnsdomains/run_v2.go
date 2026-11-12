@@ -56,7 +56,11 @@ func printDNSDomainsV2(out io.Writer, domains []seaplane.DNSDomain, clusterIDs m
 		if domain.UserDefined {
 			userDefined = "Yes"
 		}
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", domain.ID, clusterIDs[domain.ID],
+		baseDomain := domain.BaseDomain
+		if baseDomain == "" {
+			baseDomain = domain.ID
+		}
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", domain.ID, clusterIDs[baseDomain],
 			domain.ReservedAtTimestamp.Format(time.RFC3339), userDefined, domain.ClusterArch)
 	}
 	return writer.Flush()

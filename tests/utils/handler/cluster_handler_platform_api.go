@@ -21,22 +21,60 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
-const rosaAutoConfirmFlag = "-y" // skip interactive rosa prompts in FVT
+const (
+	rosaAutoConfirmFlag          = "-y" // skip interactive rosa prompts in FVT
+	seaplaneMaxClusterNameLength = 18   // Platform API namespace limit
+)
 
 const seaplaneCustomKMSError = "seaplane e2e setup does not support custom KMS keys; " +
 	"set kms_key and etcd_kms to false"
 
 func (ch *clusterHandler) generateSeaplaneCreateFlags() ([]string, error) {
+	if ch.seaplaneFlagsSet {
+		return append([]string(nil), ch.seaplaneFlags...), ch.seaplaneFlagsErr
+	}
+	flags, err := ch.buildSeaplaneCreateFlags()
+	ch.seaplaneFlagsSet = true
+	ch.seaplaneFlags = append([]string(nil), flags...)
+	ch.seaplaneFlagsErr = err
+	return flags, err
+}
+
+// seaplaneClusterName returns the cluster name used for Platform API resources.
+// Persistent profile handlers create the cluster named by CLUSTER_NAME, while
+// temporary handlers must use a unique generated name so their VPC, OIDC config,
+// and operator roles cannot collide with the profile cluster.
+func (ch *clusterHandler) seaplaneClusterName() (string, error) {
+	if ch.persist {
+		clusterName := strings.TrimSpace(os.Getenv("CLUSTER_NAME"))
+		if clusterName == "" {
+			return "", errors.New("CLUSTER_NAME is required and must be ≤18 chars")
+		}
+		if len(clusterName) > seaplaneMaxClusterNameLength {
+			return "", fmt.Errorf("CLUSTER_NAME %q is %d chars, exceeding the %d-char Platform API limit",
+				clusterName, len(clusterName), seaplaneMaxClusterNameLength)
+		}
+		return clusterName, nil
+	}
+
+	namePrefix := strings.TrimSpace(ch.profile.NamePrefix)
+	if namePrefix == "" {
+		namePrefix = constants.DefaultNamePrefix
+	}
+	nameLength := ch.profile.ClusterConfig.NameLength
+	if nameLength == 0 || nameLength > seaplaneMaxClusterNameLength {
+		nameLength = constants.DefaultNameLength
+	}
+	return ch.resourcesHandler.PreparePrefix(namePrefix, nameLength), nil
+}
+
+func (ch *clusterHandler) buildSeaplaneCreateFlags() ([]string, error) {
 	if ch.profile.ClusterConfig.KMSKey || ch.profile.ClusterConfig.EtcdKMS {
 		return nil, errors.New(seaplaneCustomKMSError)
 	}
-	clusterName := strings.TrimSpace(os.Getenv("CLUSTER_NAME"))
-	if clusterName == "" {
-		return nil, errors.New("CLUSTER_NAME is required and must be ≤18 chars")
-	}
-	if len(clusterName) > 18 {
-		return nil, fmt.Errorf("CLUSTER_NAME %q is %d chars, exceeding the 18-char Platform API limit",
-			clusterName, len(clusterName))
+	clusterName, err := ch.seaplaneClusterName()
+	if err != nil {
+		return nil, err
 	}
 	ch.profile.ClusterConfig.Name = clusterName
 	ch.clusterConfig.Name = clusterName
@@ -326,6 +364,7 @@ func (ch *clusterHandler) waitForSeaplaneClusterReady(timeoutMin int) error {
 		if err != nil {
 			return err
 		}
+		ch.clusterDetail.ClusterID = description.ID
 		ch.clusterDetail.APIURL = description.APIURL
 		ch.clusterDetail.ConsoleURL = description.ConsoleURL
 		ch.clusterDetail.InfraID = description.InfraID
@@ -437,12 +476,27 @@ func (ch *clusterHandler) createSeaplaneNodePoolsAfterReady() error {
 	return ch.waitForSeaplaneNodePools(clusterKey, poolNames)
 }
 
+// defaultSeaplaneNodePoolTimeoutMin is the fallback wait for node pools to
+// reach Ready. The previous fixed 20 minutes expired while pools were still
+// Provisioning on an ephemeral environment, so NODEPOOL_TIMEOUT makes it
+// configurable the way CLUSTER_TIMEOUT already is for the cluster itself.
+const defaultSeaplaneNodePoolTimeoutMin = 45
+
+func seaplaneNodePoolTimeout(timeoutMin int) time.Duration {
+	if timeoutMin <= 0 {
+		timeoutMin = defaultSeaplaneNodePoolTimeoutMin
+	}
+	return time.Duration(timeoutMin) * time.Minute
+}
+
 func (ch *clusterHandler) waitForSeaplaneNodePools(clusterKey string, poolNames []string) error {
 	startTime := time.Now()
-	end := startTime.Add(20 * time.Minute)
+	timeout := seaplaneNodePoolTimeout(config.Test.GlobalENV.NodePoolWaitingTime)
+	end := startTime.Add(timeout)
 	var lastErr error
-	log.Logger.Infof("Waiting for %d Seaplane node pool(s) on cluster %s to become Ready",
-		len(poolNames), clusterKey)
+	var lastPoolStates []string
+	log.Logger.Infof("Waiting up to %s for %d Seaplane node pool(s) on cluster %s to become Ready",
+		timeout, len(poolNames), clusterKey)
 	for time.Now().Before(end) {
 		lastErr = nil
 		allReady := true
@@ -462,12 +516,9 @@ func (ch *clusterHandler) waitForSeaplaneNodePools(clusterKey string, poolNames 
 				poolStates = append(poolStates, fmt.Sprintf("%s=unavailable", name))
 				continue
 			}
-			state := strings.TrimSpace(nodePool.State)
-			if state == "" {
-				state = "unknown"
-			}
+			phase, state := seaplaneNodePoolStatus(nodePool.State, nodePool.Message)
 			poolStates = append(poolStates, fmt.Sprintf("%s=%s", name, state))
-			if state != string(v1alpha1.NodePoolPhaseReady) {
+			if phase != string(v1alpha1.NodePoolPhaseReady) {
 				allReady = false
 			}
 		}
@@ -477,12 +528,37 @@ func (ch *clusterHandler) waitForSeaplaneNodePools(clusterKey string, poolNames 
 		}
 		log.Logger.Infof("Cluster %s node pool status after %s: %s; waiting for Ready",
 			clusterKey, time.Since(startTime).Round(time.Second), strings.Join(poolStates, ", "))
+		lastPoolStates = poolStates
 		time.Sleep(30 * time.Second)
 	}
+	summary := strings.Join(lastPoolStates, ", ")
 	if lastErr != nil {
-		return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s: %w", len(poolNames), clusterKey, lastErr)
+		return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s; last observed: %s: %w",
+			len(poolNames), clusterKey, summary, lastErr)
 	}
-	return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s", len(poolNames), clusterKey)
+	return fmt.Errorf("timeout waiting for %d node pool(s) on cluster %s; last observed: %s",
+		len(poolNames), clusterKey, summary)
+}
+
+func seaplaneNodePoolStatus(state, message string) (phase, summary string) {
+	phase = strings.TrimSpace(state)
+	if phase == "" {
+		phase = "unknown"
+	}
+	summary = phase
+	if details := compactSeaplaneNodePoolConditions(message); details != "" {
+		summary = fmt.Sprintf("%s (%s)", phase, details)
+	}
+	return phase, summary
+}
+
+func compactSeaplaneNodePoolConditions(message string) string {
+	compact := strings.Join(strings.Fields(message), " ")
+	const maxLength = 300
+	if len(compact) > maxLength {
+		return compact[:maxLength-3] + "..."
+	}
+	return compact
 }
 
 func (ch *clusterHandler) recordSeaplaneClusterVersion(clusterKey string) {

@@ -5,6 +5,7 @@ package seaplane
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -30,38 +31,56 @@ var _ = Describe("Platform API DNS domains", func() {
 		client = NewDNSDomainClient(sdkClient)
 	})
 
-	It("creates an HCP reservation using the signed account-scoped transport", func() {
+	reservation := func(name, baseDomain string) map[string]any {
+		return map[string]any{
+			"kind":     "DNSReservation",
+			"metadata": map[string]any{"name": name, "creationTimestamp": "2026-10-08T12:00:00Z"},
+			"status":   map[string]any{"phase": "Ready", "baseDomain": baseDomain},
+		}
+	}
+
+	It("creates a named reservation on the DNS reservation route", func() {
 		server.AppendHandlers(ghttp.CombineHandlers(
-			ghttp.VerifyRequest("POST", "/stage/api/v0/dns_domains"),
-			ghttp.VerifyJSON(`{"cluster_arch":"hcp"}`),
+			ghttp.VerifyRequest("POST", "/stage/api/v0/dns_reservations"),
 			func(_ http.ResponseWriter, req *http.Request) {
 				Expect(req.Header.Get("Authorization")).To(HavePrefix("AWS4-HMAC-SHA256 "))
 				Expect(req.Header.Get("X-Amz-Account-Id")).To(Equal("123456789012"))
+				var body struct {
+					Metadata struct {
+						Name string `json:"name"`
+					} `json:"metadata"`
+				}
+				Expect(json.NewDecoder(req.Body).Decode(&body)).To(Succeed())
+				Expect(body.Metadata.Name).To(HavePrefix("rosa-"))
 			},
-			ghttp.RespondWithJSONEncoded(http.StatusCreated, map[string]any{
-				"kind": "DNSDomain", "id": "abcd.0.example.com", "cluster_arch": "hcp",
-				"user_defined": true, "reserved_at_timestamp": "2026-10-08T12:00:00Z",
-			}),
+			ghttp.RespondWithJSONEncoded(http.StatusCreated, reservation("rosa-1a2b3c4d", "abcd.0.example.com")),
 		))
 		domain, err := client.Create(context.Background())
 		Expect(err).NotTo(HaveOccurred())
-		Expect(domain.ID).To(Equal("abcd.0.example.com"))
+		Expect(domain.ID).To(Equal("rosa-1a2b3c4d"))
+		Expect(domain.BaseDomain).To(Equal("abcd.0.example.com"))
 		Expect(domain.ClusterArch).To(Equal("hcp"))
 		Expect(domain.UserDefined).To(BeTrue())
 		Expect(domain.ReservedAtTimestamp.IsZero()).To(BeFalse())
 	})
 
-	It("lists reservations without an OCM organization filter", func() {
+	It("maps the reservation list to OCM-shaped domains", func() {
 		server.AppendHandlers(ghttp.CombineHandlers(
-			ghttp.VerifyRequest("GET", "/stage/api/v0/dns_domains", ""),
+			ghttp.VerifyRequest("GET", "/stage/api/v0/dns_reservations", ""),
 			ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]any{
-				"kind": "DNSDomainList", "items": []map[string]any{{"id": "abcd.0.example.com", "cluster_arch": "hcp"}},
+				"kind": "DNSReservationList",
+				"items": []map[string]any{
+					reservation("rosa-1a2b3c4d", "abcd.0.example.com"),
+					reservation("rosa-5e6f7a8b", ""),
+				},
 			}),
 		))
 		domains, err := client.List(context.Background())
 		Expect(err).NotTo(HaveOccurred())
-		Expect(domains).To(HaveLen(1))
-		Expect(domains[0].ID).To(Equal("abcd.0.example.com"))
+		Expect(domains).To(HaveLen(2))
+		Expect(domains[0].ID).To(Equal("rosa-1a2b3c4d"))
+		Expect(domains[0].BaseDomain).To(Equal("abcd.0.example.com"))
+		Expect(domains[1].BaseDomain).To(BeEmpty())
 	})
 
 	It("returns an empty collection for no reservations", func() {
@@ -72,12 +91,12 @@ var _ = Describe("Platform API DNS domains", func() {
 		Expect(domains).To(Equal([]DNSDomain{}))
 	})
 
-	It("deletes the reservation by its domain name", func() {
+	It("deletes the reservation by name", func() {
 		server.AppendHandlers(ghttp.CombineHandlers(
-			ghttp.VerifyRequest("DELETE", "/stage/api/v0/dns_domains/abcd.0.example.com"),
+			ghttp.VerifyRequest("DELETE", "/stage/api/v0/dns_reservations/rosa-1a2b3c4d"),
 			ghttp.RespondWith(http.StatusNoContent, nil),
 		))
-		Expect(client.Delete(context.Background(), "abcd.0.example.com")).To(Succeed())
+		Expect(client.Delete(context.Background(), "rosa-1a2b3c4d")).To(Succeed())
 	})
 
 	It("rejects a missing ID without sending a request", func() {
@@ -97,7 +116,7 @@ var _ = Describe("Platform API DNS domains", func() {
 		case "list":
 			_, err = client.List(context.Background())
 		case "delete":
-			err = client.Delete(context.Background(), "abcd.0.example.com")
+			err = client.Delete(context.Background(), "rosa-1a2b3c4d")
 		}
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("DNS domain request rejected"))
@@ -120,7 +139,7 @@ var _ = Describe("Platform API DNS domains", func() {
 		Expect(err).To(HaveOccurred())
 	},
 		Entry("invalid create JSON", "create", "invalid"),
-		Entry("create missing ID", "create", `{}`),
+		Entry("create missing name", "create", `{"metadata":{}}`),
 		Entry("invalid list JSON", "list", "invalid"),
 	)
 })
