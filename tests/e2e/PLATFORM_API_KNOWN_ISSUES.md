@@ -199,38 +199,24 @@ Modify tests to use `rosa describe machinepool` for each pool instead of parsing
 
 ---
 
-## DNS Domain Route Not Found
+## DNS Domain Route Not Found (Resolved)
 
-**Status:** Known Issue - Labeled with `seaplane-known-issue`  
-**Bug Filed:** [Pending]  
-**Affects:** Platform API v2 (Seaplane)
+**Status:** Resolved - `seaplane-known-issue` label removed from id:65793
 
 ### Description
 
-The Platform API v2 `rosa create dns-domain` command fails with a backend error: `ROUTE-001: route not found`.
-
-### Evidence
-
-```bash
-$ rosa create dns-domain
-ERR: Failed to create dns domain: create DNS domain: ROUTE-001: route not found
-```
-
-Log evidence: `tests/output/rosa-seaplane-basic/e2e-20261111-123729.log` line 13128
-
-### Affected Tests
-
-| Test ID | Test Name | File | Line |
-|---------|-----------|------|------|
-| id:65793 | create/list/delete dns-domain | test_rosacli_dns_domain.go | 37 |
+The Platform API v2 `rosa create dns-domain` command used to fail with `ROUTE-001: route not found`.
 
 ### Root Cause
 
-Platform API backend error - route resource is missing or not configured.
+The Platform API does not expose a `dns_domains` route. It exposes named DNS reservations on
+`dns_reservations`, where the reservation name is the identifier and the allocated domain is
+reported in `status.baseDomain` once the reservation is Ready.
 
-### Action
+### Fix
 
-File bug with Platform API team to investigate backend route configuration.
+`pkg/seaplane/dnsdomains.go` now creates, lists, and deletes `dns_reservations` and maps each
+reservation to the OCM-shaped `DNSDomain` view the CLI prints.
 
 ---
 
