@@ -434,6 +434,17 @@ func (vl *OpenShiftVersionTableList) FindZStreamUpgradableVersion(throttleVersio
 		if err != nil {
 			return nil, err
 		}
+		// Constrain to the same major.minor stream so we never cross stream
+		// boundaries (e.g. picking 4.22.x when the throttle is 5.0.0).
+		throttleSemVer, parseErr := semver.NewVersion(throttleVersion)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		vl, err = vl.FilterVersionsSameMajorAndEqualOrLowerThanMinor(
+			throttleSemVer.Major(), throttleSemVer.Minor(), true)
+		if err != nil {
+			return nil, err
+		}
 	}
 	log.Logger.Debugf("Got %d versions for version scan", vl.Len())
 	for _, version := range vl.OpenShiftVersions {

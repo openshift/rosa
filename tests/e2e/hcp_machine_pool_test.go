@@ -775,6 +775,10 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			upgradableVersion, err := versionList.FindZStreamUpgradableVersion(clusterVersion, 1)
 			Expect(err).ToNot(HaveOccurred())
+			if upgradableVersion == nil {
+				Skip(fmt.Sprintf("No z-stream upgradable version found for "+
+					"cluster version %s", clusterVersion))
+			}
 
 			By("Create a machinepool with the upgradable version")
 			nodePoolAutoName := helper.GenerateRandomName("np-67419", 2)
