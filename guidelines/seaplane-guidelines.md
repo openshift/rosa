@@ -564,6 +564,12 @@ Seaplane e2e Ginkgo labels (`tests/ci/labels/seaplane.go`):
 | `seaplane-shared` | Profile-independent specs; the lifecycle matrix runs them once on the first selected profile | Yes (inherits that profile) |
 | `seaplane-na` | OCM/v1 checks that v2 does not replicate; excluded by the Seaplane harness | — |
 | `seaplane-deferred` | Should pass on Seaplane once CLI/API passthrough gaps close; excluded by the Seaplane harness | — |
+| `seaplane-profile-basic` | Runs only with `TEST_PROFILE=rosa-seaplane-basic` | Yes |
+| `seaplane-profile-fips` | Runs only with `TEST_PROFILE=rosa-seaplane-fips` | Yes |
+| `seaplane-profile-advanced` | Runs only with `TEST_PROFILE=rosa-seaplane-advanced` | Yes |
+| `seaplane-profile-private` | Runs only with `TEST_PROFILE=rosa-seaplane-private` | Yes |
+| `seaplane-profile-nocni` | Runs only with `TEST_PROFILE=rosa-seaplane-nocni` | Yes |
+| `seaplane-profile-disable-capabilities` | Runs only with `TEST_PROFILE=rosa-seaplane-disable-capabilities` | Yes |
 
 `make e2e_test` runs `seaplane-validated` as an ordered, phased run whenever
 the rosa config has a `seaplane_url`. Pass
@@ -605,6 +611,15 @@ profile the full suite, which is what you want when a result has to be proven
 per profile rather than once across the matrix. A run that invokes
 `hack/e2e-seaplane-day1-day2.sh` directly for one profile has no ledger and
 deduplicates nothing.
+
+Profile-scoped specs use the `seaplane-profile-*` labels from the table above.
+Specs without a profile label run on every profile; specs with one or more
+profile labels run only when `TEST_PROFILE` matches. The lifecycle harness
+derives the current label from `TEST_PROFILE` and appends
+`!<label>` for every other known profile, so a spec written for one profile is
+never exercised against another. Prefer profile labels over
+`if profile.Name != ... { Skip(...) }` guards for new specs; keep the in-spec
+guard only where a focused target bypasses the lifecycle harness.
 **Day1-post on an existing Seaplane cluster** (after day1 wrote
 `tests/output/<TEST_PROFILE>/`): use a filter that matches CI-style exclusions.
 A bare `day1-post` filter still runs specs tagged `Exclude`.
