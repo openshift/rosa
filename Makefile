@@ -329,11 +329,7 @@ e2e_test: install
 			-r \
 			--focus-file 'tests/e2e/.*'; \
 	fi; \
-	name=$${CLUSTER_NAME:-sp-e2e-$$(date +%s)}; \
 	profile='$(TEST_PROFILE)'; profile=$${profile:-rosa-seaplane-basic}; \
-	seed=''; test -z "$${GINKGO_SEED}" || seed="--seed=$${GINKGO_SEED}"; \
-	gobin=$$(go env GOBIN); test -n "$$gobin" || gobin=$$(go env GOPATH)/bin; \
-	PATH="$$gobin:$$PATH"; export PATH; \
 	if ! grep -qE "^ *- as: *$$profile *$$" tests/ci/data/profiles/*.yaml; then \
 		echo "TEST_PROFILE '$$profile' is not a known profile. Valid seaplane profiles:"; \
 		grep -rhoE "^ *- as: *rosa-seaplane-[a-z-]+" tests/ci/data/profiles/*.yaml \
@@ -349,74 +345,11 @@ e2e_test: install
 		echo "this account. Unset SEAPLANE_URL to use the config, or re-run rosa login."; \
 		exit 1; \
 	fi; \
-	SEAPLANE_URL="$$cfgurl"; \
-	export SEAPLANE_URL; \
-	export TEST_PROFILE="$$profile"; \
-	export CLUSTER_NAME="$$name"; \
-	export OPERATOR_ROLES_PREFIX="$$name"; \
-	export AWS_DEFAULT_REGION; \
-	logfile="tests/output/$$profile/e2e-$$(date +%Y%m%d-%H%M%S).log"; \
-	mkdir -p "$$(dirname "$$logfile")"; \
-	run_phase() { \
-		echo ""; \
-		echo "=== seaplane phase $$1 ==="; \
-		ginkgo run \
-			--label-filter "$(SEAPLANE_LABEL_BASE) && ($$2)" \
-			--timeout 3h \
-			-v \
-			$$seed \
-			$(SEAPLANE_GINKGO_EXTRA) \
-			./tests/e2e/... 2>&1 | tee -a "$$logfile"; \
-		return $${PIPESTATUS[0]}; \
-	}; \
-	echo "seaplane validated run: cluster=$$name profile=$$profile" | tee "$$logfile"; \
-	echo "  endpoint: $$SEAPLANE_URL" | tee -a "$$logfile"; \
-	echo "  rosa:     $$(command -v rosa)" | tee -a "$$logfile"; \
-	echo "  log:      $$logfile" | tee -a "$$logfile"; \
-	rc=0; td=0; \
-	run_phase "1/5 setup" "day1" || rc=$$?; \
-	if [ -f "tests/output/$$profile/cluster-id" ] && [ -s "tests/output/$$profile/cluster-id" ]; then \
-		export CLUSTER_ID=$$(cat "tests/output/$$profile/cluster-id"); \
-		echo "  cluster ID: $$CLUSTER_ID" | tee -a "$$logfile"; \
-	elif [ -f "tests/output/$$profile/cluster-detail.json" ]; then \
-		export CLUSTER_ID=$$(jq -r '.cluster_id // empty' "tests/output/$$profile/cluster-detail.json"); \
-		if [ -n "$$CLUSTER_ID" ] && [ "$$CLUSTER_ID" != "null" ]; then \
-			echo "  cluster ID: $$CLUSTER_ID (from cluster-detail.json)" | tee -a "$$logfile"; \
-		fi; \
-	fi; \
-	if [ $$rc -eq 0 ]; then \
-		run_phase "2/5 readiness" "day1-readiness" || rc=$$?; \
-	fi; \
-	if [ $$rc -eq 0 ]; then \
-		run_phase "3/5 tests" \
-			"!day1 && !day1-readiness && !destroy && !destroy-post" || rc=$$?; \
-	fi; \
-	run_phase "4/5 destroy" "destroy" || td=$$?; \
-	if [ $$rc -eq 0 ]; then \
-		run_phase "5/5 destroy-post" "destroy-post" || td=$$?; \
-	else \
-		{ \
-			echo ""; \
-			echo "=== seaplane phase 5/5 destroy-post: skipped ==="; \
-			echo "setup or tests failed, so there is no cluster whose deletion can be"; \
-			echo "verified; running it would only bury the real failure above."; \
-		} | tee -a "$$logfile"; \
-	fi; \
-	if [ $$rc -ne 0 ]; then \
-		echo "" | tee -a "$$logfile"; \
-		echo "seaplane validated run FAILED (tests rc=$$rc, teardown rc=$$td)" | tee -a "$$logfile"; \
-		echo "See full output in $$logfile" | tee -a "$$logfile"; \
-		exit $$rc; \
-	fi; \
-	if [ $$td -ne 0 ]; then \
-		echo "" | tee -a "$$logfile"; \
-		echo "seaplane validated run: tests passed but teardown rc=$$td" | tee -a "$$logfile"; \
-		echo "See full output in $$logfile" | tee -a "$$logfile"; \
-		exit $$td; \
-	fi; \
-	echo "" | tee -a "$$logfile"; \
-	echo "seaplane validated run OK" | tee -a "$$logfile"; \
-	echo "Full output saved to $$logfile" | tee -a "$$logfile"
+	SEAPLANE_URL="$$cfgurl" \
+	TEST_PROFILE="$$profile" \
+	GINKGO_BIN="$(GINKGO_BIN)" \
+	ROSA_BIN="$(ROSA_BIN)" \
+	./hack/e2e-seaplane-day1-day2.sh
 	
 # clean-seaplane-cluster: delete one Seaplane cluster by name.
 #
