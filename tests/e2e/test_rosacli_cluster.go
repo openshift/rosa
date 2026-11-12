@@ -3117,6 +3117,7 @@ var _ = Describe("Seaplane HCP cluster creation with no CNI",
 
 		It("creates an HCP cluster with no CNI and reports Other network type",
 			labels.High, labels.Runtime.Day1, labels.Seaplane.Validated,
+			labels.Seaplane.Profile.NoCNI,
 			func() {
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).NotTo(HaveOccurred())

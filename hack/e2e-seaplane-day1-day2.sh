@@ -55,17 +55,20 @@ default_phases=(
 	day1-supplemental
 	day1-negative
 	day2
+	destroy-post
 )
 
+explicit_phases=false
 if [[ -n "${E2E_SEAPLANE_PHASES:-}" ]]; then
 	read -r -a phases <<<"${E2E_SEAPLANE_PHASES}"
+	explicit_phases=true
 else
 	phases=("${default_phases[@]}")
 fi
 
 for phase in "${phases[@]}"; do
 	case "${phase}" in
-	day1 | day1-readiness | day1-post | day1-supplemental | day1-negative | day2 | destroy) ;;
+	day1 | day1-readiness | day1-post | day1-supplemental | day1-negative | day2 | destroy | destroy-post) ;;
 	*)
 		echo "unsupported Seaplane E2E phase: ${phase}" >&2
 		exit 2
@@ -164,58 +167,139 @@ run_filter() {
 	return "${status}"
 }
 
-run_phase() {
+# Profile-scoped specs carry a seaplane-profile-* label. Specs without one run
+# on every profile; specs with one run only on the matching TEST_PROFILE. The
+# harness excludes the labels of every other known profile, so a spec written
+# for one profile never runs against another.
+known_profile_labels=(
+	seaplane-profile-basic
+	seaplane-profile-fips
+	seaplane-profile-advanced
+	seaplane-profile-private
+	seaplane-profile-nocni
+	seaplane-profile-disable-capabilities
+)
+current_profile_label="seaplane-profile-${TEST_PROFILE#rosa-seaplane-}"
+profile_filter=""
+profile_label_known=false
+for label in "${known_profile_labels[@]}"; do
+	if [[ "${label}" == "${current_profile_label}" ]]; then
+		profile_label_known=true
+	else
+		profile_filter+=" && !${label}"
+	fi
+done
+if [[ "${profile_label_known}" != "true" ]]; then
+	echo "WARNING: ${TEST_PROFILE} has no seaplane-profile-* label; running only profile-agnostic specs" >&2
+fi
+
+phase_filter() {
 	local phase="$1"
-	local filter
 	local shared_filter=""
 	if [[ "${E2E_SEAPLANE_RUN_SHARED}" != "true" ]]; then
 		shared_filter=" && !seaplane-shared"
 	fi
 	if [[ "${phase}" == "destroy" ]]; then
-		filter="destroy && seaplane-validated && !seaplane-na && !seaplane-deferred${shared_filter}"
+		printf 'destroy && seaplane-validated && !seaplane-na && !seaplane-deferred%s%s' "${shared_filter}" "${profile_filter}"
 	else
-		filter="(${phase}) && seaplane-validated && !seaplane-na && !seaplane-deferred${shared_filter}"
+		printf '(%s) && seaplane-validated && !seaplane-na && !seaplane-deferred%s%s' "${phase}" "${shared_filter}" "${profile_filter}"
 	fi
-	run_filter "${phase}" "${filter}"
 }
 
+run_phase() {
+	run_filter "$1" "$(phase_filter "$1")"
+}
+
+# cluster_destroy_state records what happened during teardown so that
+# destroy-post runs exactly once, and only after the cluster is actually gone.
+cluster_destroy_state=pending
+
 destroy_cluster() {
-	if [[ " ${phases[*]} " == *" destroy "* ]]; then
-		echo "Skipping automatic destroy; explicit destroy phase requested"
-		return 0
-	fi
 	if [[ "${E2E_SEAPLANE_DESTROY}" != "true" ]]; then
 		echo "Skipping cluster destroy (E2E_SEAPLANE_DESTROY=${E2E_SEAPLANE_DESTROY})"
+		cluster_destroy_state=skipped
 		return 0
 	fi
 	if [[ "${E2E_SEAPLANE_KEEP_CLUSTER}" == "true" ]]; then
 		echo "Retaining cluster ${CLUSTER_NAME} (E2E_SEAPLANE_KEEP_CLUSTER=true)"
+		cluster_destroy_state=skipped
 		return 0
 	fi
 	if [[ ! -f "${SHARED_DIR}/cluster-detail.json" ]]; then
 		echo "No profile-managed cluster state found in ${SHARED_DIR}; skipping destroy"
+		cluster_destroy_state=skipped
 		return 0
 	fi
-	run_filter "destroy" "destroy && seaplane-validated && !seaplane-na && !seaplane-deferred"
+	if run_filter "destroy" "$(phase_filter destroy)"; then
+		cluster_destroy_state=destroyed
+		return 0
+	fi
+	cluster_destroy_state=failed
+	return 1
 }
 
 cleanup() {
 	local status=$?
 	trap - EXIT
-	if ! destroy_cluster; then
+	case "${cluster_destroy_state}" in
+	pending)
+		if ! destroy_cluster; then
+			echo "Cluster destroy failed; check junit-destroy.xml in ${ARTIFACT_DIR}" >&2
+			[[ "${status}" -eq 0 ]] && status=1
+		fi
+		;;
+	failed)
 		echo "Cluster destroy failed; check junit-destroy.xml in ${ARTIFACT_DIR}" >&2
-		status=1
-	fi
+		[[ "${status}" -eq 0 ]] && status=1
+		;;
+	esac
 	exit "${status}"
 }
 trap cleanup EXIT
 
 failed_phases=()
 for phase in "${phases[@]}"; do
-	if run_phase "${phase}"; then
-		continue
-	fi
-	failed_phases+=("${phase}")
+	case "${phase}" in
+	destroy)
+		if run_phase destroy; then
+			cluster_destroy_state=destroyed
+			continue
+		fi
+		cluster_destroy_state=failed
+		failed_phases+=("destroy")
+		;;
+	destroy-post)
+		# An explicit phase list means each phase may run in its own CI step, so
+		# teardown can have happened in an earlier process. Only the default
+		# sequence needs to prove the cluster was destroyed here.
+		if [[ "${explicit_phases}" != "true" && "${cluster_destroy_state}" == "pending" ]]; then
+			destroy_cluster || true
+		fi
+		if [[ "${explicit_phases}" != "true" && "${cluster_destroy_state}" != "destroyed" ]]; then
+			echo "Skipping destroy-post: cluster teardown state is ${cluster_destroy_state}" >&2
+			if [[ "${cluster_destroy_state}" == "failed" ]]; then
+				failed_phases+=("destroy")
+			fi
+			continue
+		fi
+		if run_phase destroy-post; then
+			# With an explicit phase list, teardown ran in an earlier step and the
+			# post-check just proved the cluster is gone, so the exit-time safety
+			# net would only try to delete it a second time.
+			if [[ "${explicit_phases}" == "true" ]]; then
+				cluster_destroy_state=destroyed
+			fi
+			continue
+		fi
+		failed_phases+=("destroy-post")
+		;;
+	*)
+		if run_phase "${phase}"; then
+			continue
+		fi
+		failed_phases+=("${phase}")
+		;;
+	esac
 	if [[ "${E2E_SEAPLANE_CONTINUE_ON_FAILURE}" != "true" ]]; then
 		exit 1
 	fi
