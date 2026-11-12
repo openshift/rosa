@@ -31,4 +31,7 @@ var _ = BeforeEach(func() {
 	if isSeaplaneMode() && slices.Contains(CurrentSpecReport().Labels(), "seaplane-na") {
 		Skip("This test is not applicable to Platform API v2")
 	}
+	if isSeaplaneMode() && slices.Contains(CurrentSpecReport().Labels(), "seaplane-known-issue") {
+		Skip("This test has a known Platform API v2 issue")
+	}
 })

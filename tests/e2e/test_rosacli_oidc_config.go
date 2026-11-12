@@ -42,7 +42,8 @@ var _ = Describe("Edit OIDC config",
 		})
 
 		It("can create/list/delete BYO oidc config in auto mode - [id:57570]",
-			labels.High, labels.Runtime.OCMResources, labels.Seaplane.Validated,
+			labels.High, labels.Runtime.OCMResources, labels.Runtime.Day1Supplemental,
+			labels.Seaplane.Validated,
 			func() {
 
 				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
@@ -260,7 +261,7 @@ var _ = Describe("Register OIDC config testing",
 			}
 		})
 		It("to register successfully - [id:64620]", labels.High, labels.Runtime.OCMResources,
-			labels.Seaplane.Validated, func() {
+			labels.Runtime.Day1Supplemental, labels.Seaplane.Validated, func() {
 				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
 					By("Use the managed OIDC config flow supported by Seaplane")
 					helper_v2_oidc_configs(rosaClient, ocmResourceService)

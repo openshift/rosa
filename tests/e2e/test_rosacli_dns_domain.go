@@ -35,7 +35,8 @@ var _ = Describe("DNS domain tests",
 		})
 
 		It("can create/list/delete dns-domain via rosacli - [id:65793]",
-			labels.Critical, labels.Runtime.OCMResources, labels.Seaplane.Validated,
+			labels.Critical, labels.Runtime.OCMResources, labels.Runtime.Day1Supplemental,
+			labels.Seaplane.Validated,
 			func() {
 				isV2 := isSeaplaneMode()
 				defaultArchitecture := "classic"

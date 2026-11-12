@@ -105,6 +105,21 @@ var _ = Describe("PrepareAdditionalPrincipalsRole", func() {
 	})
 })
 
+var _ = Describe("proxyRestartCommand", func() {
+	It("streams large bodies without proxy authentication", func() {
+		command := proxyRestartCommand(false)
+		Expect(command).To(ContainSubstring("--set stream_large_bodies=1"))
+		Expect(command).NotTo(ContainSubstring("proxy_auth.py"))
+		Expect(command).To(ContainSubstring("grep -q ':8080'"))
+	})
+
+	It("preserves the authentication script when credentials are configured", func() {
+		command := proxyRestartCommand(true)
+		Expect(command).To(ContainSubstring("--set stream_large_bodies=1"))
+		Expect(command).To(ContainSubstring("--script ~/proxy_auth.py"))
+	})
+})
+
 var _ = Describe("waitForAdditionalPrincipalRole", func() {
 	It("adapts the AWS role response to its ARN", func() {
 		creator := newAdditionalPrincipalRoleCreator(

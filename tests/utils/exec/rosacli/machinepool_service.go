@@ -207,10 +207,33 @@ func (m *machinepoolService) ListMachinePool(clusterID string, flags ...string) 
 // Describe MachinePool
 func (m *machinepoolService) DescribeMachinePool(clusterID string, mpID string) (bytes.Buffer, error) {
 	commandFlags := []string{mpID, "-c", clusterID}
-	return m.client.Runner.
+	output, err := m.client.Runner.
 		Cmd("describe", "machinepool").
 		CmdFlags(m.withPlatformAPIEndpoint(commandFlags...)...).
 		Run()
+
+	// Platform API v2 list/describe operations may be eventually consistent.
+	// If describe returns "not found", retry a few times with backoff.
+	if err != nil && strings.Contains(output.String(), "not found") {
+		maxRetries := 3
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			sleepDuration := time.Duration(attempt) * time.Second
+			Logger.Infof("Node pool describe returned 'not found', retrying after %v (attempt %d/%d)",
+				sleepDuration, attempt, maxRetries)
+			time.Sleep(sleepDuration)
+
+			output, err = m.client.Runner.
+				Cmd("describe", "machinepool").
+				CmdFlags(m.withPlatformAPIEndpoint(commandFlags...)...).
+				Run()
+
+			if err == nil || !strings.Contains(output.String(), "not found") {
+				break
+			}
+		}
+	}
+
+	return output, err
 }
 
 // DescribeAndReflectMachinePool
@@ -404,7 +427,11 @@ func blockScalarizeNodePoolStatusField(str string) string {
 
 	var body strings.Builder
 	body.WriteString(before)
-	body.WriteString("Message: |-\n")
+	// Use an explicit indentation indicator: status lines may have different
+	// original indentation (for example a second "* Machine ..." bullet at
+	// column zero). Auto-detection takes the first non-empty line's indent,
+	// which would let a less-indented later line terminate the scalar early.
+	body.WriteString("Message: |2-\n")
 	for _, line := range lines {
 		body.WriteString("  ")
 		body.WriteString(line)
@@ -474,6 +501,7 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 	isAutoscale bool,
 	interval, timeout time.Duration,
 ) error {
+	lastObserved := ""
 	err := wait.PollUntilContextTimeout(
 		context.Background(),
 		interval,
@@ -504,6 +532,8 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 					}
 					return false, err
 				}
+				lastObserved = fmt.Sprintf("state=%q desired=%v current=%q", mpDesc.State,
+					mpDesc.DesiredReplicas, mpDesc.CurrentReplicas)
 
 				if mpDesc.CurrentReplicas == fmt.Sprintf("%v", mpDesc.DesiredReplicas) {
 					return true, nil
@@ -511,11 +541,26 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 			}
 			return false, nil
 		})
+	if err != nil && lastObserved != "" {
+		return fmt.Errorf("wait for node pool %q replicas: %w (last observed %s)", mpName, err, lastObserved)
+	}
 	return err
 }
 
 func isTransientNodePoolPollError(err error) bool {
-	return strings.Contains(err.Error(), "the server is currently unable to handle the request")
+	message := err.Error()
+	for _, transient := range []string{
+		"the server is currently unable to handle the request",
+		"502 Bad Gateway",
+		"503 Service Unavailable",
+		"504 Gateway Timeout",
+		"Client.Timeout exceeded while awaiting headers",
+	} {
+		if strings.Contains(message, transient) {
+			return true
+		}
+	}
+	return false
 }
 
 // ScaleNodePool Scale node pool and return its check result

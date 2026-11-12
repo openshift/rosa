@@ -89,6 +89,8 @@ func SaveConfig(arg, value string) error {
 		if err != nil {
 			return fmt.Errorf("Failed to set fedramp: %v", value)
 		}
+	case "seaplane_url":
+		cfg.SeaplaneURL = value
 	default:
 		return fmt.Errorf("'%s' is not a supported setting", arg)
 	}

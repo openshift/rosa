@@ -4,12 +4,14 @@
 package e2e
 
 import (
+	"os"
 	"path"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/openshift/rosa/pkg/seaplane"
 	"github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	utilConfig "github.com/openshift/rosa/tests/utils/config"
@@ -31,11 +33,16 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 			profile := handler.LoadProfileYamlFileByENV()
 			clusterHandler, err := handler.NewClusterHandler(client, profile)
 			Expect(err).ToNot(HaveOccurred())
-			//Prepare ocm role and user role before cluster creation
-			_, err = clusterHandler.GetResourcesHandler().PrepareOCMRole(constants.OCMRolePreifx, true, "/test/")
-			Expect(err).ToNot(HaveOccurred())
-			_, err = clusterHandler.GetResourcesHandler().PrepareUserRole(constants.UserRolePreifx, "/test/")
-			Expect(err).ToNot(HaveOccurred())
+			// Seaplane authenticates with AWS SigV4 and has no OCM org linkage,
+			// so ocm-role and user-role do not apply and preparing them would
+			// require an OCM token the Seaplane path never uses.
+			if os.Getenv("SEAPLANE_URL") == "" && !seaplane.Enabled() {
+				//Prepare ocm role and user role before cluster creation
+				_, err = clusterHandler.GetResourcesHandler().PrepareOCMRole(constants.OCMRolePreifx, true, "/test/")
+				Expect(err).ToNot(HaveOccurred())
+				_, err = clusterHandler.GetResourcesHandler().PrepareUserRole(constants.UserRolePreifx, "/test/")
+				Expect(err).ToNot(HaveOccurred())
+			}
 
 			err = clusterHandler.CreateCluster(config.Test.GlobalENV.WaitSetupClusterReady)
 			Expect(err).ToNot(HaveOccurred())

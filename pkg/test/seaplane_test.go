@@ -19,7 +19,7 @@ var _ = Describe("Seaplane test runtime", func() {
 		r, server := NewSeaplaneTestRuntime()
 		Expect(r.OCMClient).To(BeNil())
 		server.AppendHandlers(ghttp.CombineHandlers(
-			ghttp.VerifyRequest("GET", "/api/v0/dns_domains"),
+			ghttp.VerifyRequest("GET", "/api/v0/dns_reservations"),
 			func(_ http.ResponseWriter, req *http.Request) {
 				Expect(req.Header.Get("Authorization")).To(HavePrefix("AWS4-HMAC-SHA256 Credential=test/"))
 				Expect(req.Header.Get("X-Amz-Account-Id")).To(Equal("123456789012"))
