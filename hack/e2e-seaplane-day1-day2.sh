@@ -135,8 +135,8 @@ record_passed_specs() {
 			cat "${passed_ledger}"
 		fi
 		jq -r '
-			.[]
-			| .SpecReports[]
+			.[]?
+			| (.SpecReports? // [])[]
 			| select(.LeafNodeType == "It" and .State == "passed")
 			| "\(.LeafNodeLocation.FileName):\(.LeafNodeLocation.LineNumber)"' "${report}"
 	} | sort -u >"${new_entries}"

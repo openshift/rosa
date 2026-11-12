@@ -4,6 +4,8 @@
 package e2e
 
 import (
+	"time"
+
 	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
 	//nolint:staticcheck
@@ -38,6 +40,14 @@ var _ = Describe("DNS domain tests",
 			labels.Critical, labels.Runtime.OCMResources, labels.Runtime.Day1Supplemental,
 			labels.Seaplane.Validated,
 			func() {
+				waitForDNSDomainDeletion := func(domainID string) {
+					Eventually(func(g Gomega) {
+						out, err := dnsDomainService.ListDNSDomain()
+						g.Expect(err).ToNot(HaveOccurred())
+						g.Expect(out.String()).ToNot(ContainSubstring(domainID))
+					}, 2*time.Minute, 5*time.Second).Should(Succeed())
+				}
+
 				isV2 := isSeaplaneMode()
 				defaultArchitecture := "classic"
 				if isV2 {
@@ -55,9 +65,7 @@ var _ = Describe("DNS domain tests",
 					Expect(output.String()).To(ContainSubstring("Successfully deleted dns domain '%s'", dnsDomainC))
 
 					By("Check the created dns-domain using the default architecture delete")
-					out, err := dnsDomainService.ListDNSDomain()
-					Expect(err).ToNot(HaveOccurred())
-					Expect(out.String()).ToNot(ContainSubstring(dnsDomainC))
+					waitForDNSDomainDeletion(dnsDomainC)
 				})
 
 				By("List the created dns-domain using the default architecture")
@@ -82,9 +90,7 @@ var _ = Describe("DNS domain tests",
 					Expect(output.String()).To(ContainSubstring("Successfully deleted dns domain '%s'", dnsDomainH))
 
 					By("Check the created dns-domain for hosted-cp cluster delete")
-					out, err := dnsDomainService.ListDNSDomain()
-					Expect(err).ToNot(HaveOccurred())
-					Expect(out.String()).ToNot(ContainSubstring(dnsDomainH))
+					waitForDNSDomainDeletion(dnsDomainH)
 				})
 
 				By("List the created dns-domain for hosted-cp cluster")

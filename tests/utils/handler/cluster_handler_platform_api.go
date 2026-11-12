@@ -21,7 +21,10 @@ import (
 	"github.com/openshift/rosa/tests/utils/log"
 )
 
-const rosaAutoConfirmFlag = "-y" // skip interactive rosa prompts in FVT
+const (
+	rosaAutoConfirmFlag          = "-y" // skip interactive rosa prompts in FVT
+	seaplaneMaxClusterNameLength = 18   // Platform API namespace limit
+)
 
 const seaplaneCustomKMSError = "seaplane e2e setup does not support custom KMS keys; " +
 	"set kms_key and etcd_kms to false"
@@ -37,17 +40,41 @@ func (ch *clusterHandler) generateSeaplaneCreateFlags() ([]string, error) {
 	return flags, err
 }
 
+// seaplaneClusterName returns the cluster name used for Platform API resources.
+// Persistent profile handlers create the cluster named by CLUSTER_NAME, while
+// temporary handlers must use a unique generated name so their VPC, OIDC config,
+// and operator roles cannot collide with the profile cluster.
+func (ch *clusterHandler) seaplaneClusterName() (string, error) {
+	if ch.persist {
+		clusterName := strings.TrimSpace(os.Getenv("CLUSTER_NAME"))
+		if clusterName == "" {
+			return "", errors.New("CLUSTER_NAME is required and must be ≤18 chars")
+		}
+		if len(clusterName) > seaplaneMaxClusterNameLength {
+			return "", fmt.Errorf("CLUSTER_NAME %q is %d chars, exceeding the %d-char Platform API limit",
+				clusterName, len(clusterName), seaplaneMaxClusterNameLength)
+		}
+		return clusterName, nil
+	}
+
+	namePrefix := strings.TrimSpace(ch.profile.NamePrefix)
+	if namePrefix == "" {
+		namePrefix = constants.DefaultNamePrefix
+	}
+	nameLength := ch.profile.ClusterConfig.NameLength
+	if nameLength == 0 || nameLength > seaplaneMaxClusterNameLength {
+		nameLength = constants.DefaultNameLength
+	}
+	return ch.resourcesHandler.PreparePrefix(namePrefix, nameLength), nil
+}
+
 func (ch *clusterHandler) buildSeaplaneCreateFlags() ([]string, error) {
 	if ch.profile.ClusterConfig.KMSKey || ch.profile.ClusterConfig.EtcdKMS {
 		return nil, errors.New(seaplaneCustomKMSError)
 	}
-	clusterName := strings.TrimSpace(os.Getenv("CLUSTER_NAME"))
-	if clusterName == "" {
-		return nil, errors.New("CLUSTER_NAME is required and must be ≤18 chars")
-	}
-	if len(clusterName) > 18 {
-		return nil, fmt.Errorf("CLUSTER_NAME %q is %d chars, exceeding the 18-char Platform API limit",
-			clusterName, len(clusterName))
+	clusterName, err := ch.seaplaneClusterName()
+	if err != nil {
+		return nil, err
 	}
 	ch.profile.ClusterConfig.Name = clusterName
 	ch.clusterConfig.Name = clusterName

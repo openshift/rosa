@@ -225,11 +225,38 @@ var _ = Describe("GenerateClusterCreateFlags seaplane", func() {
 			clusterConfig:    &ClusterConfigure.ClusterConfig{},
 			clusterDetail:    &ClusterDetail{},
 			resourcesHandler: &resourcesHandler{persist: false, resources: &Resources{}},
+			persist:          true,
 		}
 		flags, err := ch.GenerateClusterCreateFlags()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ch.profile.ClusterConfig.Name).To(Equal("seaplane-e2e-12345"))
 		Expect(flags).To(ContainElement("seaplane-e2e-12345"))
+	})
+
+	It("generates a unique name for temporary handlers", func() {
+		const releaseImage = "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi"
+		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
+		GinkgoT().Setenv("SEAPLANE_VERSION", "")
+		GinkgoT().Setenv("OCP_IMAGE", releaseImage)
+		ch := &clusterHandler{
+			profile: &Profile{
+				Region:        "us-east-1",
+				NamePrefix:    constants.DefaultNamePrefix,
+				ClusterConfig: &ClusterConfig{},
+			},
+			clusterConfig:    &ClusterConfigure.ClusterConfig{},
+			clusterDetail:    &ClusterDetail{},
+			resourcesHandler: &resourcesHandler{persist: false, resources: &Resources{}},
+		}
+
+		flags, err := ch.GenerateClusterCreateFlags()
+		Expect(err).ToNot(HaveOccurred())
+		clusterName := ch.profile.ClusterConfig.Name
+		Expect(clusterName).NotTo(Equal("seaplane-e2e-12345"))
+		Expect(clusterName).To(HavePrefix(constants.DefaultNamePrefix + "-"))
+		Expect(len(clusterName)).To(BeNumerically("<=", seaplaneMaxClusterNameLength))
+		Expect(flags).To(ContainElements("--operator-roles-prefix", clusterName))
 	})
 
 	It("reuses generated Seaplane flags instead of preparing resources twice", func() {

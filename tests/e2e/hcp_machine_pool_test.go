@@ -242,7 +242,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--tags", tag,
 			)
 			Expect(err).To(HaveOccurred())
-			Expect(out.String()).Should(ContainSubstring("ERR: expected a valid user tag key 'zzz"))
+			Expect(out.String()).Should(
+				ContainSubstring("ERR: invalid machine pool AWS tags: expected a valid user tag key 'zzz"))
 
 			tooLongValueTag := strings.Repeat("z", maxValueTagLength+1)
 			tag = "testKey:" + tooLongValueTag
@@ -252,7 +253,8 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--tags", tag,
 			)
 			Expect(err).To(HaveOccurred())
-			Expect(out.String()).Should(ContainSubstring("ERR: expected a valid user tag value 'zzz"))
+			Expect(out.String()).Should(
+				ContainSubstring("ERR: invalid machine pool AWS tags: expected a valid user tag value 'zzz"))
 
 			By("Create machinepool using aws as a prefix with three-part unquoted format")
 			tag = "aws:testKey:" + "testValue"
