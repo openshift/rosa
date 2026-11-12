@@ -205,4 +205,43 @@ exit 1
 		)).To(BeTrue())
 		Expect(isTransientNodePoolPollError(errors.New("exit status 1: cluster not found"))).To(BeFalse())
 	})
+
+	It("identifies gateway and client timeouts as transient node pool polling errors", func() {
+		for _, message := range []string{
+			"exit status 1: 502 Bad Gateway",
+			"exit status 1: 503 Service Unavailable",
+			"exit status 1: 504 Gateway Timeout",
+			"context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+		} {
+			Expect(isTransientNodePoolPollError(errors.New(message))).To(BeTrue(), message)
+		}
+	})
+
+	It("reports the last observed node pool state when replicas never become ready", func() {
+		binDir := GinkgoT().TempDir()
+		script := filepath.Join(binDir, "rosa")
+		scriptContent := `#!/bin/sh
+cat <<'EOF'
+Name:                                  node-pool
+ID:                                    node-pool
+State:                                 Provisioning
+Desired replicas:                      1
+Current replicas:                      0
+EOF
+`
+		Expect(os.WriteFile(script, []byte(scriptContent), 0700)).To(Succeed())
+
+		originalPath := os.Getenv("PATH")
+		os.Setenv("PATH", binDir+":"+originalPath)
+		DeferCleanup(func() {
+			os.Setenv("PATH", originalPath)
+		})
+
+		service := NewMachinePoolService(NewClient())
+		err := service.WaitForNodePoolReplicasReady(
+			"cluster-id", "node-pool", false, time.Millisecond, 5*time.Millisecond)
+
+		Expect(err).To(MatchError(ContainSubstring("context deadline exceeded")))
+		Expect(err.Error()).To(ContainSubstring(`state="Provisioning" desired=1 current="0"`))
+	})
 })
