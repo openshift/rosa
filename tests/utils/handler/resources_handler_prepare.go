@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/openshift-online/ocm-common/pkg/aws/aws_client"
+	ocmCommonConsts "github.com/openshift-online/ocm-common/pkg/aws/consts"
 	awserrors "github.com/openshift-online/ocm-common/pkg/aws/errors"
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
@@ -442,6 +444,16 @@ func (rh *resourcesHandler) PrepareProxyWithAuth(zone string, sshPemFileName str
 		return nil, err
 	}
 	err = rh.registerProxyInstanceID(*instance.InstanceId)
+	if err != nil {
+		return nil, err
+	}
+	// mitmproxy buffers large response bodies by default. Image pulls exhaust the
+	// proxy instance's memory and trigger an OOM kill during node provisioning.
+	// Stream large bodies until the proxy launcher in ocm-common does this itself.
+	err = rh.enableProxyBodyStreaming(*instance.InstanceId, sshPemFileName, sshPemFileRecordDir, username, password)
+	if err != nil {
+		return nil, err
+	}
 	return &ProxyDetail{
 		HTTPsProxy:       rh.vpc.GetHTTPSProxyURL(privateIP, username, password),
 		HTTPProxy:        rh.vpc.GetProxyURL(privateIP, username, password),
@@ -449,6 +461,41 @@ func (rh *resourcesHandler) PrepareProxyWithAuth(zone string, sshPemFileName str
 		NoProxy:          "quay.io",
 		InstanceID:       *instance.InstanceId,
 	}, err
+}
+
+func (rh *resourcesHandler) enableProxyBodyStreaming(instanceID, keypairName, keyDirectory,
+	username, password string) error {
+	instances, err := rh.vpc.AWSClient.ListInstances([]string{instanceID})
+	if err != nil {
+		return fmt.Errorf("describing proxy instance %s: %w", instanceID, err)
+	}
+	if len(instances) != 1 || instances[0].PublicIpAddress == nil || *instances[0].PublicIpAddress == "" {
+		return fmt.Errorf("proxy instance %s does not have a public IP address", instanceID)
+	}
+
+	keyPath := filepath.Join(keyDirectory, fmt.Sprintf("%s-keyPair.pem", keypairName))
+	host := fmt.Sprintf("%s:22", *instances[0].PublicIpAddress)
+	_, err = vpc_client.Exec_CMD(
+		ocmCommonConsts.AWSInstanceUser,
+		keyPath,
+		host,
+		proxyRestartCommand(username != "" && password != ""),
+	)
+	if err != nil {
+		return fmt.Errorf("restarting proxy with body streaming: %w", err)
+	}
+	return nil
+}
+
+func proxyRestartCommand(authenticated bool) string {
+	script := ""
+	if authenticated {
+		script = " --script ~/proxy_auth.py"
+	}
+	return "pkill -x mitmdump 2>/dev/null || true; sleep 1; " +
+		"setsid ./mitm/mitmdump --showhost --ssl-insecure --set stream_large_bodies=1" + script +
+		" > mitm.log 2>&1 < /dev/null & sleep 5; " +
+		"pgrep -x mitmdump >/dev/null && ss -ltn | grep -q ':8080'"
 }
 
 func (rh *resourcesHandler) PrepareKMSKey(multiRegion bool, testClient string, hcp bool, etcdKMS bool) (string, error) {

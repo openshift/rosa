@@ -55,5 +55,7 @@ else
         -ignore "**/vendor/**" \
         -ignore "**/*_mock.go" \
         -ignore "assets/bindata.go" \
+        -ignore "tests/output/**" \
+        -ignore ".idea/**" \
         .
 fi

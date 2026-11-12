@@ -561,6 +561,7 @@ Seaplane e2e Ginkgo labels (`tests/ci/labels/seaplane.go`):
 |-------|-------|----------------------|
 | `seaplane-sanity` | Full CLI/SDK lifecycle in `seaplane_sanity_test.go` | No |
 | `seaplane-validated` | Profile-driven day1 FVT in `e2e_setup_test.go` | Yes (`rosa-seaplane-basic`) |
+| `seaplane-shared` | Profile-independent specs; the lifecycle matrix runs them once on the first selected profile | Yes (inherits that profile) |
 | `seaplane-na` | OCM/v1 checks that v2 does not replicate; excluded by the Seaplane harness | — |
 | `seaplane-deferred` | Should pass on Seaplane once CLI/API passthrough gaps close; excluded by the Seaplane harness | — |
 
@@ -569,6 +570,41 @@ the rosa config has a `seaplane_url`. Pass
 `LabelFilter=seaplane-sanity` for the sanity spec, which takes the
 single-invocation path.
 
+For profile-driven Day 1/Day 2 coverage, `TEST_PROFILE` is process-wide and is
+read once per Ginkgo process. Run one process per shared profile, then run the
+dedicated no-CNI and disabled-capabilities profiles separately:
+
+```sh
+make -k e2e-seaplane-profiles e2e-seaplane-profile-tests
+```
+
+The orchestration model and required inputs are documented above; the focused
+profile targets are defined in the `Makefile`.
+
+The lifecycle matrix deduplicates specs labeled `seaplane-shared` by default:
+the first selected profile runs them, and later profiles add
+`!seaplane-shared` to their phase filter. Use this label only for specs whose
+behavior does not depend on the selected `TEST_PROFILE`; specs that assert
+FIPS, proxy, private endpoint, multi-AZ, subnet, compute, disk, scheduler, or
+additional-principal settings must remain profile-specific. Set
+`E2E_SEAPLANE_DEDUPE_SHARED=false` to force the full matrix when auditing a
+shared spec against every profile.
+
+The matrix also deduplicates by result. After each deduped phase, every spec
+that passed is written to a ledger owned by the `make e2e-seaplane-profiles`
+run, and the profiles that follow pass those code locations to Ginkgo as
+`--skip-file`, so a spec that already passed is not executed again. Specs that
+failed stay out of the ledger and are retried on the next profile. Only
+`day1-post`, `day1-supplemental`, `day1-negative`, and `day2` are deduped:
+`day1`, `day1-readiness`, and `destroy` manage each profile's own cluster and
+always run, as does any other phase that creates or tears one down. The ledger
+lives at
+`$(E2E_SEAPLANE_OUTPUT_ROOT)/seaplane-passed-<run-id>.txt` and is recreated for
+every matrix run. Set `E2E_SEAPLANE_DEDUPE_PASSED=false` to give every selected
+profile the full suite, which is what you want when a result has to be proven
+per profile rather than once across the matrix. A run that invokes
+`hack/e2e-seaplane-day1-day2.sh` directly for one profile has no ledger and
+deduplicates nothing.
 **Day1-post on an existing Seaplane cluster** (after day1 wrote
 `tests/output/<TEST_PROFILE>/`): use a filter that matches CI-style exclusions.
 A bare `day1-post` filter still runs specs tagged `Exclude`.
@@ -602,7 +638,7 @@ Optional environment variables:
 | `CLUSTER_NAME` | `sp-e2e-<unix timestamp>` | Cluster name (≤ 18 chars — namespace constraint) |
 | `OPERATOR_ROLES_PREFIX` | same as `CLUSTER_NAME` | IAM roles prefix |
 | `AWS_DEFAULT_REGION` | derived from URL | Fallback region when URL has no region in hostname |
-| `SEAPLANE_VERSION` | empty (server picks default) | OCP version string for cluster creation |
+| `SEAPLANE_VERSION` | empty (server picks default) | OCP release image pullspec for cluster creation; overrides `OCP_IMAGE` when both are set |
 | `SEAPLANE_INSTANCE_TYPE` | `m5.xlarge` | EC2 instance type for node pools |
 
 > **CLUSTER_NAME ≤ 18 chars:** The Platform API creates a namespace of the
