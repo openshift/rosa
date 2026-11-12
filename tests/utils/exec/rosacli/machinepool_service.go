@@ -497,6 +497,7 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 	isAutoscale bool,
 	interval, timeout time.Duration,
 ) error {
+	lastObserved := ""
 	err := wait.PollUntilContextTimeout(
 		context.Background(),
 		interval,
@@ -527,6 +528,8 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 					}
 					return false, err
 				}
+				lastObserved = fmt.Sprintf("state=%q desired=%v current=%q", mpDesc.State,
+					mpDesc.DesiredReplicas, mpDesc.CurrentReplicas)
 
 				if mpDesc.CurrentReplicas == fmt.Sprintf("%v", mpDesc.DesiredReplicas) {
 					return true, nil
@@ -534,11 +537,26 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 			}
 			return false, nil
 		})
+	if err != nil && lastObserved != "" {
+		return fmt.Errorf("wait for node pool %q replicas: %w (last observed %s)", mpName, err, lastObserved)
+	}
 	return err
 }
 
 func isTransientNodePoolPollError(err error) bool {
-	return strings.Contains(err.Error(), "the server is currently unable to handle the request")
+	message := err.Error()
+	for _, transient := range []string{
+		"the server is currently unable to handle the request",
+		"502 Bad Gateway",
+		"503 Service Unavailable",
+		"504 Gateway Timeout",
+		"Client.Timeout exceeded while awaiting headers",
+	} {
+		if strings.Contains(message, transient) {
+			return true
+		}
+	}
+	return false
 }
 
 // ScaleNodePool Scale node pool and return its check result
