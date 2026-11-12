@@ -18,16 +18,16 @@ import (
 var _ = Describe("Delete Platform API DNS domain", func() {
 	It("deletes the reservation and preserves the success message", func() {
 		r, server := test.NewSeaplaneTestRuntime()
-		server.AppendHandlers(ghttp.CombineHandlers(ghttp.VerifyRequest("DELETE", "/api/v0/dns_domains/abcd.0.example.com"), ghttp.RespondWith(http.StatusNoContent, nil)))
-		stdout, _, err := test.RunWithOutputCapture(func(r *rosa.Runtime, _ *cobra.Command) error { return deleteDNSDomainV2(r, "abcd.0.example.com") }, r, nil)
+		server.AppendHandlers(ghttp.CombineHandlers(ghttp.VerifyRequest("DELETE", "/api/v0/dns_reservations/rosa-1a2b3c4d"), ghttp.RespondWith(http.StatusNoContent, nil)))
+		stdout, _, err := test.RunWithOutputCapture(func(r *rosa.Runtime, _ *cobra.Command) error { return deleteDNSDomainV2(r, "rosa-1a2b3c4d") }, r, nil)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(stdout).To(ContainSubstring("Successfully deleted dns domain 'abcd.0.example.com'"))
+		Expect(stdout).To(ContainSubstring("Successfully deleted dns domain 'rosa-1a2b3c4d'"))
 		Expect(r.OCMClient).To(BeNil())
 	})
 	DescribeTable("propagates deletion errors without reporting success", func(status int) {
 		r, server := test.NewSeaplaneTestRuntime()
 		server.AppendHandlers(ghttp.RespondWith(status, `{"kind":"Status","apiVersion":"v1","status":"Failure","message":"DNS domain cannot be deleted","reason":"Conflict","code":409}`, http.Header{"Content-Type": {"application/json"}}))
-		stdout, _, err := test.RunWithOutputCapture(func(r *rosa.Runtime, _ *cobra.Command) error { return deleteDNSDomainV2(r, "abcd.0.example.com") }, r, nil)
+		stdout, _, err := test.RunWithOutputCapture(func(r *rosa.Runtime, _ *cobra.Command) error { return deleteDNSDomainV2(r, "rosa-1a2b3c4d") }, r, nil)
 		Expect(err).To(HaveOccurred())
 		Expect(stdout).NotTo(ContainSubstring("Successfully deleted"))
 	}, Entry("in use", http.StatusConflict), Entry("not found", http.StatusNotFound))
