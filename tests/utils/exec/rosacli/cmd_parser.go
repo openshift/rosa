@@ -24,6 +24,11 @@ import (
 // CLI tip output) and blockScalarizeNodePoolStatusField (to survive YAML parsing).
 var reNodePoolStatusField = regexp.MustCompile(`(?m)^(?:Message|Conditions):[ \t]*`)
 
+// reBlockScalarValue matches a YAML block scalar header value, including an
+// optional indentation indicator and chomping indicator (for example "|-" and
+// "|2-").
+var reBlockScalarValue = regexp.MustCompile(`^[|>][1-9]?[+-]?$`)
+
 type Parser struct {
 	JsonData  *jsonData
 	TableData *tableData
@@ -199,7 +204,7 @@ func escapeYamlStringValues(input string) (string, error) {
 			value = strings.TrimSpace(value)
 
 			// Checks to perform
-			if value == "|" || value == "|-" || value == "|+" {
+			if reBlockScalarValue.MatchString(value) {
 				inBlockScalar = true
 			} else if reLeadingZeroNum.MatchString(value) {
 				// If the value is a number with leading zero, add quotes
