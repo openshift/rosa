@@ -388,7 +388,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 		Entry("Scale replica too large [id:60278]", constants.M52XLarge, "1000", "exceeds the maximum allowed"),
 		Entry("Scale replica to -1 [id:60278]", constants.M52XLarge, "-1", "must be a non-negative number"),
-		Entry("Scale replica to a char [id:60278]", constants.M52XLarge, "a", "invalid syntax"),
+		Entry("Scale replica to a char [id:60278]", constants.M52XLarge, "a", "must be an integer"),
 	)
 
 	Describe("Scale up/down a machine pool enabling autoscale", func() {
@@ -506,7 +506,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				"--max-replicas", fmt.Sprintf("%v", "b"),
 				"-y",
 			)
-			helper.ExpectErrorWithMessage(err, "invalid syntax")
+			helper.ExpectErrorWithMessage(err, "must be an integer")
 		})
 	})
 
@@ -612,7 +612,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 
 			By("with auto-repair wrong value")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--autorepair=v")
-			helper.ExpectErrorWithMessage(err, "strconv.ParseBool: parsing \"v\": invalid syntax")
+			helper.ExpectErrorWithMessage(err, "must be true or false")
 
 			By("with unsupported version")
 			_, err = machinePoolService.CreateMachinePool(clusterID, "anything", "--replicas", "2", "--version", "4.12.1")

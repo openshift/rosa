@@ -189,7 +189,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				}
 				By("Check Validation for pod-priority-threshold")
 				pptValidationMap := map[string]string{
-					"-11.1":      "strconv.ParseInt: parsing",
+					"-11.1":      "must be an integer",
 					"1000000003": "value should be between -21474836485 and 1000000000",
 				}
 				for ppt, expectedMsg := range pptValidationMap {
@@ -205,7 +205,7 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				By("Check Validation for max-pod-grace-period")
 				mpgpValidationMap := map[string]string{
 					"-100":  "must be greater or equal to zero",
-					"700.1": "strconv.ParseInt: parsing",
+					"700.1": "must be an integer",
 					"500":   "value should be larger than 600",
 				}
 				for mpgp, expectedMsg := range mpgpValidationMap {
@@ -631,11 +631,9 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						errAndFlagCreateMap := map[string][]string{
 							"Error: unknown flag: --invalid": {"--invalid", "invalid"},
 							"Error: invalid argument \"ty\" for \"--balance-similar-node-groups\" " +
-								"flag: strconv.ParseBool: parsing \"ty\": " +
-								"invalid syntax": {"--balance-similar-node-groups=ty"},
+								"flag: must be true or false": {"--balance-similar-node-groups=ty"},
 							"Error: invalid argument \"ty\" for \"--skip-nodes-with-local-storage\" flag" +
-								": strconv.ParseBool: parsing \"ty\": " +
-								"invalid syntax": {"--skip-nodes-with-local-storage=ty"},
+								": must be true or false": {"--skip-nodes-with-local-storage=ty"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s'"+
 								": error validating log-verbosity: "+
 								"number must be greater or "+
@@ -645,11 +643,9 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"number must be greater or equal to zero",
 								clusterID): {"--max-pod-grace-period", "-1"},
 							"Error: invalid argument \"ss\" for \"--pod-priority-threshold\" " +
-								"flag: strconv.ParseInt: parsing \"ss\": " +
-								"invalid syntax": {"--pod-priority-threshold", "ss"},
+								"flag: must be an integer": {"--pod-priority-threshold", "ss"},
 							"Error: invalid argument \"ty\" for \"--ignore-daemonsets-utilization\" " +
-								"flag: strconv.ParseBool: parsing \"ty\": " +
-								"invalid syntax": {"--ignore-daemonsets-utilization=ty"},
+								"flag: must be true or false": {"--ignore-daemonsets-utilization=ty"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
 								"time: unknown unit \"-\" in duration \"9-\"",
 								clusterID): {"--max-node-provision-time", "9-"},
@@ -688,15 +684,13 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"error validating memory range: max value must be greater or equal than min value 10",
 								clusterID): {"--min-memory", "10", "--max-memory", "8"},
 							"Error: invalid argument \"ty\" for \"--scale-down-enabled\" flag: " +
-								"strconv.ParseBool: parsing \"ty\": " +
-								"invalid syntax": {"--scale-down-enabled=ty"},
+								"must be true or false": {"--scale-down-enabled=ty"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
 								"error validating delay-after-add: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-delay-after-add", "20-"},
 							"Error: invalid argument \"ss\" for \"--scale-down-utilization-threshold\" " +
-								"flag: strconv.ParseFloat: parsing \"ss\": " +
-								"invalid syntax": {"--scale-down-utilization-threshold", "ss"},
+								"flag: must be a number": {"--scale-down-utilization-threshold", "ss"},
 							fmt.Sprintf("ERR: Failed creating autoscaler configuration for cluster '%s': "+
 								"error validating utilization-threshold: "+
 								"expecting a floating-point number greater than 0 and less than 1, got -1",
@@ -735,13 +729,9 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								clusterID): {"--gpu-limit", "amd.com/gpu,5,1"},
 							"Error: invalid argument \"100000000000000000000000\" for " +
 								"\"--max-cores\" flag: " +
-								"strconv.ParseInt: parsing \"100000000000000000000000\": " +
-								"value out " +
-								"of range": {"--min-cores", "5", "--max-cores", "100000000000000000000000"},
+								"must be an integer": {"--min-cores", "5", "--max-cores", "100000000000000000000000"},
 							"Error: invalid argument \"100000000000000000000000\" for " +
-								"\"--max-memory\" flag: strconv.ParseInt: parsing \"100000000000000000000000\": " +
-								"value out " +
-								"of range": {"--min-memory", "5", "--max-memory", "100000000000000000000000"},
+								"\"--max-memory\" flag: must be an integer": {"--min-memory", "5", "--max-memory", "100000000000000000000000"},
 						}
 
 						for errMsg, flag := range errAndFlagCreateMap {
@@ -798,11 +788,9 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						errAndFlagEditMap := map[string][]string{
 							"Error: unknown flag: --invalid": {"--invalid", "invalid"},
 							"Error: invalid argument \"ty\" for \"--balance-similar-node-groups\" " +
-								"flag: strconv.ParseBool: parsing \"ty\": " +
-								"invalid syntax": {"--balance-similar-node-groups=ty"},
+								"flag: must be true or false": {"--balance-similar-node-groups=ty"},
 							"Error: invalid argument \"ty\" for \"--skip-nodes-with-local-storage\" flag" +
-								": strconv.ParseBool: parsing \"ty\": " +
-								"invalid syntax": {"--skip-nodes-with-local-storage=ty"},
+								": must be true or false": {"--skip-nodes-with-local-storage=ty"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s'"+
 								": error validating log-verbosity: "+
 								"number must be greater or "+
@@ -812,11 +800,9 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"number must be greater or equal to zero",
 								clusterID): {"--max-pod-grace-period", "-1"},
 							"Error: invalid argument \"ss\" for \"--pod-priority-threshold\" " +
-								"flag: strconv.ParseInt: parsing \"ss\": " +
-								"invalid syntax": {"--pod-priority-threshold", "ss"},
+								"flag: must be an integer": {"--pod-priority-threshold", "ss"},
 							"Error: invalid argument \"ty\" for \"--ignore-daemonsets-utilization\" " +
-								"flag: strconv.ParseBool: parsing \"ty\": " +
-								"invalid syntax": {"--ignore-daemonsets-utilization=ty"},
+								"flag: must be true or false": {"--ignore-daemonsets-utilization=ty"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 								"time: unknown unit \"-\" in duration \"9-\"",
 								clusterID): {"--max-node-provision-time", "9-"},
@@ -855,15 +841,13 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								"error validating memory range: max value must be greater or equal than min value 10",
 								clusterID): {"--min-memory", "10", "--max-memory", "8"},
 							"Error: invalid argument \"ty\" for \"--scale-down-enabled\" flag: " +
-								"strconv.ParseBool: parsing \"ty\": " +
-								"invalid syntax": {"--scale-down-enabled=ty"},
+								"must be true or false": {"--scale-down-enabled=ty"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 								"error validating delay-after-add: time: "+
 								"unknown unit \"-\" in duration \"20-\"",
 								clusterID): {"--scale-down-delay-after-add", "20-"},
 							"Error: invalid argument \"ss\" for \"--scale-down-utilization-threshold\" " +
-								"flag: strconv.ParseFloat: parsing \"ss\": " +
-								"invalid syntax": {"--scale-down-utilization-threshold", "ss"},
+								"flag: must be a number": {"--scale-down-utilization-threshold", "ss"},
 							fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 								"error validating utilization-threshold: "+
 								"expecting a floating-point number greater than 0 and less than 1, got -1",
@@ -902,13 +886,9 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 								clusterID): {"--gpu-limit", "amd.com/gpu,5,1"},
 							"Error: invalid argument \"100000000000000000000000\" for " +
 								"\"--max-cores\" flag: " +
-								"strconv.ParseInt: parsing \"100000000000000000000000\": " +
-								"value out " +
-								"of range": {"--min-cores", "5", "--max-cores", "100000000000000000000000"},
+								"must be an integer": {"--min-cores", "5", "--max-cores", "100000000000000000000000"},
 							"Error: invalid argument \"100000000000000000000000\" for " +
-								"\"--max-memory\" flag: strconv.ParseInt: parsing \"100000000000000000000000\": " +
-								"value out " +
-								"of range": {"--min-memory", "5", "--max-memory", "100000000000000000000000"},
+								"\"--max-memory\" flag: must be an integer": {"--min-memory", "5", "--max-memory", "100000000000000000000000"},
 						}
 
 						for errMsg, flag := range errAndFlagEditMap {
@@ -973,11 +953,9 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 				errAndFlagEditMap := map[string][]string{
 					"Error: unknown flag: --invalid": {"--invalid", "invalid"},
 					"Error: invalid argument \"ty\" for \"--balance-similar-node-groups\" " +
-						"flag: strconv.ParseBool: parsing \"ty\": " +
-						"invalid syntax": {"--balance-similar-node-groups=ty"},
+						"flag: must be true or false": {"--balance-similar-node-groups=ty"},
 					"Error: invalid argument \"ty\" for \"--skip-nodes-with-local-storage\" flag" +
-						": strconv.ParseBool: parsing \"ty\": " +
-						"invalid syntax": {"--skip-nodes-with-local-storage=ty"},
+						": must be true or false": {"--skip-nodes-with-local-storage=ty"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s'"+
 						": error validating log-verbosity: "+
 						"number must be greater or "+
@@ -987,11 +965,9 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"number must be greater or equal to zero",
 						clusterID): {"--max-pod-grace-period", "-1"},
 					"Error: invalid argument \"ss\" for \"--pod-priority-threshold\" " +
-						"flag: strconv.ParseInt: parsing \"ss\": " +
-						"invalid syntax": {"--pod-priority-threshold", "ss"},
+						"flag: must be an integer": {"--pod-priority-threshold", "ss"},
 					"Error: invalid argument \"ty\" for \"--ignore-daemonsets-utilization\" " +
-						"flag: strconv.ParseBool: parsing \"ty\": " +
-						"invalid syntax": {"--ignore-daemonsets-utilization=ty"},
+						"flag: must be true or false": {"--ignore-daemonsets-utilization=ty"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 						"time: unknown unit \"-\" in duration \"9-\"",
 						clusterID): {"--max-node-provision-time", "9-"},
@@ -1030,15 +1006,13 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						"error validating memory range: max value must be greater or equal than min value 10",
 						clusterID): {"--min-memory", "10", "--max-memory", "8"},
 					"Error: invalid argument \"ty\" for \"--scale-down-enabled\" flag: " +
-						"strconv.ParseBool: parsing \"ty\": " +
-						"invalid syntax": {"--scale-down-enabled=ty"},
+						"must be true or false": {"--scale-down-enabled=ty"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 						"error validating delay-after-add: time: "+
 						"unknown unit \"-\" in duration \"20-\"",
 						clusterID): {"--scale-down-delay-after-add", "20-"},
 					"Error: invalid argument \"ss\" for \"--scale-down-utilization-threshold\" " +
-						"flag: strconv.ParseFloat: parsing \"ss\": " +
-						"invalid syntax": {"--scale-down-utilization-threshold", "ss"},
+						"flag: must be a number": {"--scale-down-utilization-threshold", "ss"},
 					fmt.Sprintf("ERR: Failed updating autoscaler configuration for cluster '%s': "+
 						"error validating utilization-threshold: "+
 						"expecting a floating-point number greater than 0 and less than 1, got -1",
@@ -1077,13 +1051,9 @@ var _ = Describe("Autoscaler", labels.Feature.Autoscaler, func() {
 						clusterID): {"--gpu-limit", "amd.com/gpu,5,1"},
 					"Error: invalid argument \"100000000000000000000000\" for " +
 						"\"--max-cores\" flag: " +
-						"strconv.ParseInt: parsing \"100000000000000000000000\": " +
-						"value out " +
-						"of range": {"--min-cores", "5", "--max-cores", "100000000000000000000000"},
+						"must be an integer": {"--min-cores", "5", "--max-cores", "100000000000000000000000"},
 					"Error: invalid argument \"100000000000000000000000\" for " +
-						"\"--max-memory\" flag: strconv.ParseInt: parsing \"100000000000000000000000\": " +
-						"value out " +
-						"of range": {"--min-memory", "5", "--max-memory", "100000000000000000000000"},
+						"\"--max-memory\" flag: must be an integer": {"--min-memory", "5", "--max-memory", "100000000000000000000000"},
 				}
 
 				for errMsg, flag := range errAndFlagEditMap {

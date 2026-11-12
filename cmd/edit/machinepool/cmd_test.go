@@ -229,3 +229,12 @@ func formatNodePoolResource(nodePool *cmv1.NodePool) string {
 	Expect(cmv1.MarshalNodePool(nodePool, &output)).To(Succeed())
 	return output.String()
 }
+
+var _ = Describe("Edit machine pool flag parsing", func() {
+	It("rejects a non-integer min-replicas before the command runs", func() {
+		err := NewEditMachinePoolCommand().ParseFlags([]string{"--min-replicas", "a"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal(
+			`invalid argument "a" for "--min-replicas" flag: must be an integer`))
+	})
+})

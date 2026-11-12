@@ -113,3 +113,17 @@ var _ = Describe("Validation functions", func() {
 		})
 	})
 })
+
+var _ = Describe("Create machine pool flag parsing", func() {
+	DescribeTable("rejects invalid flag values before the command runs",
+		func(args []string, expectedErr string) {
+			err := NewCreateMachinePoolCommand().ParseFlags(args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(expectedErr))
+		},
+		Entry("replicas must be an integer", []string{"--replicas", "a"},
+			`invalid argument "a" for "--replicas" flag: must be an integer`),
+		Entry("autorepair must be true or false", []string{"--autorepair=v"},
+			`invalid argument "v" for "--autorepair" flag: must be true or false`),
+	)
+})

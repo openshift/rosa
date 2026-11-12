@@ -133,3 +133,35 @@ var _ = Describe("getAutoscalerMaxNodesTotalDefaultValue function", func() {
 		Expect(maxNodesTotalDefaultValue).To(Equal(100))
 	})
 })
+
+var _ = Describe("Cluster Autoscaler flag parsing", func() {
+	DescribeTable("rejects invalid flag values before the command runs",
+		func(args []string, expectedErr string) {
+			cmd := &cobra.Command{}
+			AddClusterAutoscalerFlags(cmd, "")
+			err := cmd.ParseFlags(args)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(expectedErr))
+		},
+		Entry("pod-priority-threshold must be an integer", []string{"--pod-priority-threshold=ss"},
+			`invalid argument "ss" for "--pod-priority-threshold" flag: must be an integer`),
+		Entry("pod-priority-threshold rejects a float", []string{"--pod-priority-threshold=-11.1"},
+			`invalid argument "-11.1" for "--pod-priority-threshold" flag: must be an integer`),
+		Entry("max-pod-grace-period must be an integer", []string{"--max-pod-grace-period=700.1"},
+			`invalid argument "700.1" for "--max-pod-grace-period" flag: must be an integer`),
+		Entry("max-cores must be an integer", []string{"--max-cores=100000000000000000000000"},
+			`invalid argument "100000000000000000000000" for "--max-cores" flag: must be an integer`),
+		Entry("max-memory must be an integer", []string{"--max-memory=100000000000000000000000"},
+			`invalid argument "100000000000000000000000" for "--max-memory" flag: must be an integer`),
+		Entry("balance-similar-node-groups must be true or false", []string{"--balance-similar-node-groups=ty"},
+			`invalid argument "ty" for "--balance-similar-node-groups" flag: must be true or false`),
+		Entry("skip-nodes-with-local-storage must be true or false", []string{"--skip-nodes-with-local-storage=ty"},
+			`invalid argument "ty" for "--skip-nodes-with-local-storage" flag: must be true or false`),
+		Entry("ignore-daemonsets-utilization must be true or false", []string{"--ignore-daemonsets-utilization=ty"},
+			`invalid argument "ty" for "--ignore-daemonsets-utilization" flag: must be true or false`),
+		Entry("scale-down-enabled must be true or false", []string{"--scale-down-enabled=ty"},
+			`invalid argument "ty" for "--scale-down-enabled" flag: must be true or false`),
+		Entry("scale-down-utilization-threshold must be a number", []string{"--scale-down-utilization-threshold=ss"},
+			`invalid argument "ss" for "--scale-down-utilization-threshold" flag: must be a number`),
+	)
+})
