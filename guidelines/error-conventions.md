@@ -313,7 +313,8 @@ return fmt.Errorf("failed to authenticate with token %s: %w", token, err)
 ### Reporter for recoverable messages
 
 Use `reporter.Infof` and `reporter.Debugf` in the CLI layer for progress
-messages, warnings, and diagnostic output that are not errors:
+messages, warnings, and output meant for the person running the command,
+including `--debug`-gated detail they can choose to see:
 
 ```go
 r.Reporter.Infof("Created IAM role '%s' with ARN '%s'", result.RoleName, result.RoleARN)
@@ -323,6 +324,17 @@ r.Reporter.Debugf("Trust policy attached for OIDC provider '%s'", req.OIDCProvid
 The core layer must not call reporter methods. If the core layer needs to
 surface recoverable warnings, return them as structured data in the Result
 type (see [workflow-conventions.md](workflow-conventions.md#what-a-result-contains)).
+
+`reporter.Debugf` is still for the CLI layer and still prints to the
+terminal under `--debug`, the same as `Infof`/`Warnf`/`Errorf`, just gated by
+that flag. It is not the tool for diagnostic detail that is never meant to
+be read as part of a command's output, things like internal branching,
+identifiers, and timings kept for troubleshooting, support, and future
+observability tooling. That belongs to the structured logger in `pkg/log`,
+usable from core-layer code where `reporter` is banned, carrying levels and
+structured fields instead of printf-style strings. See
+[structured-logging.md](structured-logging.md) for the full distinction and
+for converting existing `reporter.Logger` call sites in `pkg/`.
 
 ## Review Prompts
 
