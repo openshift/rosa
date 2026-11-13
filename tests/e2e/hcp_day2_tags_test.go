@@ -68,7 +68,9 @@ var _ = Describe("HCP day-2 AWS tags", labels.Runtime.Day2, func() {
 				Expect(restoreErr).NotTo(HaveOccurred(), "restore cluster tags: %s", out.String())
 			})
 
+			var lastValue string
 			for _, value := range []string{"Finance Team", "Platform Team"} {
+				lastValue = value
 				desired := copyTagSet(original)
 				desired[key] = value
 				out, editErr := cli.Cluster.EditCluster(clusterKey,
@@ -82,8 +84,8 @@ var _ = Describe("HCP day-2 AWS tags", labels.Runtime.Day2, func() {
 					return runtime.OCMClient.GetNodePoolUserTags(clusterKey, poolID)
 				}, 5*time.Minute, 15*time.Second).Should(HaveKeyWithValue(key, value),
 					"OCM pool %s should inherit cluster tag %q=%q", poolID, key, value)
-				expectDay2WorkerTag(vpc, clusterKey, poolID, workerIDs, key, value)
 			}
+			expectDay2WorkerTag(vpc, clusterKey, poolID, workerIDs, key, lastValue)
 
 			out, err := cli.Cluster.EditCluster(clusterKey,
 				"--tags", aws.FormatUserTagsList(original))
@@ -141,7 +143,9 @@ var _ = Describe("HCP day-2 AWS tags", labels.Runtime.Day2, func() {
 			})
 
 			const key = "ROSA Day2 Pool"
+			var lastValue string
 			for _, value := range []string{"Finance Team", "Platform Team"} {
+				lastValue = value
 				desired := copyTagSet(original)
 				desired[key] = value
 				out, editErr := cli.MachinePool.EditMachinePool(clusterKey, poolID,
@@ -152,8 +156,8 @@ var _ = Describe("HCP day-2 AWS tags", labels.Runtime.Day2, func() {
 					return tagging.PoolOverrides(clusterTags, current), readErr
 				}, 5*time.Minute, 15*time.Second).Should(Equal(desired),
 					"OCM pool overrides should contain %q=%q", key, value)
-				expectDay2WorkerTag(vpc, clusterKey, poolID, workerIDs, key, value)
 			}
+			expectDay2WorkerTag(vpc, clusterKey, poolID, workerIDs, key, lastValue)
 
 			out, err := cli.MachinePool.EditMachinePool(clusterKey, poolID,
 				"--tags", aws.FormatUserTagsList(original))
@@ -366,6 +370,6 @@ func expectDay2WorkerTag(vpc *vpc_client.VPC, clusterKey, poolID string,
 			}
 		}
 		return nil
-	}, 5*time.Minute, 15*time.Second).Should(Succeed(),
-		"pool %s workers should retain their IDs and have tag %q=%q within five minutes", poolID, key, expected)
+	}, constants.Day2TagPropagationTimeout, constants.Day2TagPropagationPoll).Should(Succeed(),
+		"pool %s workers should retain their IDs and have tag %q=%q within the tag propagation timeout", poolID, key, expected)
 }

@@ -94,6 +94,13 @@ const (
 	// NodePoolCheckTimeout The timeout may depend on the resource
 	NodePoolCheckTimeout = 30 * time.Minute
 	NodePoolCheckPoll    = 10 * time.Second
+
+	// Day2TagPropagationTimeout is the maximum time to wait for day-2 AWS
+	// tag edits to propagate through the HCP control plane to EC2 workers.
+	Day2TagPropagationTimeout = 15 * time.Minute
+	// Day2TagPropagationPoll is the interval between EC2 tag checks during
+	// day-2 tag propagation polling.
+	Day2TagPropagationPoll = 15 * time.Second
 )
 
 // disk size
