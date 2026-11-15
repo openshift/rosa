@@ -97,7 +97,7 @@ func LoginToKubeconfigFile(user string, password string) (kubeconfigFile string,
 		return
 	}
 
-	f, err := os.CreateTemp(config.Test.ArtifactDir, "temp-")
+	f, err := os.CreateTemp(config.Test.OutputDir, "temp-")
 	if err != nil {
 		log.Logger.Errorf("%s", err)
 		return

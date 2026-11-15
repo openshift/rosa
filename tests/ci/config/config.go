@@ -126,7 +126,8 @@ func init() {
 	Test.ClusterInstallLogArtifactFile = path.Join(Test.ArtifactDir, ".install.log")
 	Test.ClusterAdminFile = path.Join(Test.ArtifactDir, ".admin")
 	Test.ProxyAuthFile = path.Join(Test.ArtifactDir, ".proxy-auth")
-	Test.ClusterIDPAdminUsernamePassword = path.Join(Test.ArtifactDir, ".idp-admin-username-password")
+	// Share credentials between test steps without publishing them as artifacts.
+	Test.ClusterIDPAdminUsernamePassword = path.Join(Test.OutputDir, ".idp-admin-username-password")
 	Test.TestFocusFile = path.Join(Test.RootDir, "tests", "ci", "data", "commit-focus")
 	Test.TestLabelFilterFile = path.Join(Test.RootDir, "tests", "ci", "data", "label-filter")
 	Test.ProxySSHPemFile = "ocm-test-proxy"

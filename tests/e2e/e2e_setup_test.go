@@ -5,6 +5,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"time"
 
@@ -130,7 +131,8 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 					_, err = client.User.GrantUser(clusterID, "dedicated-admins", name)
 					Expect(err).ToNot(HaveOccurred())
 
-					helper.CreateFileWithContent(config.Test.ClusterIDPAdminUsernamePassword, usersValue)
+					err = os.WriteFile(config.Test.ClusterIDPAdminUsernamePassword, []byte(usersValue), 0600)
+					Expect(err).ToNot(HaveOccurred())
 				}
 			}
 
