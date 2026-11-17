@@ -59,12 +59,6 @@ func runSeaplaneCreateNetwork(r *rosa.Runtime, userOptions *opts.NetworkUserOpti
 		r.Reporter.Infof("Region not provided, using: %s", parsedParams["Region"])
 	}
 
-	// Add cluster tag to all resources
-	if parsedTags == nil {
-		parsedTags = make(map[string]string)
-	}
-	parsedTags[fmt.Sprintf("kubernetes.io/cluster/%s", clusterName)] = "owned"
-
 	// Get mode
 	mode, err := interactive.GetMode()
 	if err != nil {
