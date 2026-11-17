@@ -298,7 +298,7 @@ SEAPLANE_LABEL_BASE := seaplane-validated && !seaplane-na && !seaplane-deferred
 #   AWS_DEFAULT_REGION — fallback when region cannot be derived from the URL
 #   GINKGO_SEED        — pin the seed to reproduce a failing run
 #   CLUSTER_TIMEOUT    — minutes to wait for the cluster (default 60)
-#   NODEPOOL_TIMEOUT   — minutes to wait for node pools (default 45)
+#   NODEPOOL_TIMEOUT   — minutes to wait for node pools (default 90)
 #
 # Two validated specs are gated to their own profiles and report as skipped
 # unless selected: rosa-seaplane-nocni and rosa-seaplane-disable-capabilities.

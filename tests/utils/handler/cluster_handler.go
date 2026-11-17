@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/openshift-online/ocm-common/pkg/test/kms_key"
@@ -42,10 +43,10 @@ type clusterHandler struct {
 	clusterDetail    *ClusterDetail
 	clusterConfig    *ClusterConfigure.ClusterConfig
 	resourcesHandler *resourcesHandler
-	persist          bool
+	persist          bool // explicitly set by constructors; zero value (false) is safe for temp handlers, persisted handlers set true
 	seaplaneFlags    []string
-	seaplaneFlagsErr error
 	seaplaneFlagsSet bool
+	seaplaneFlagsMu  sync.Mutex // protects seaplaneFlags cache; errors are not cached to allow retry
 
 	rosaClient *rosacli.Client
 }
@@ -1277,12 +1278,14 @@ func (ch *clusterHandler) destroyCluster() (errors []error, clusterRemoved bool)
 
 	log.Logger.Infof("Waiting for the cluster %s to be uninstalled", clusterID)
 	var err error
+	const seaplanePollIntervalSec = 120 // 2m; avoids hammering Seaplane API (AUTH-002)
+	const ocmPollIntervalSec = 2
 	if usesSeaplane() {
 		// Seaplane environments may not support list operations (AUTH-002),
 		// so use describe-based polling which works reliably.
-		err = clusterService.WaitForClusterPassUninstalled(clusterID, 120, config.Test.GlobalENV.ClusterWaitingTime)
+		err = clusterService.WaitForClusterPassUninstalled(clusterID, seaplanePollIntervalSec, config.Test.GlobalENV.ClusterWaitingTime)
 	} else {
-		err = clusterService.WaitClusterDeleted(clusterID, 2, config.Test.GlobalENV.ClusterWaitingTime)
+		err = clusterService.WaitClusterDeleted(clusterID, ocmPollIntervalSec, config.Test.GlobalENV.ClusterWaitingTime)
 	}
 	if err != nil {
 		log.Logger.Errorf("Error happened when waiting cluster uninstall: %s", err.Error())

@@ -547,6 +547,10 @@ func (m *machinepoolService) WaitForNodePoolReplicasReady(
 	return err
 }
 
+// isTransientNodePoolPollError reports transient poll errors that merit a retry.
+// It matches full HTTP phrases (e.g. "502 Bad Gateway") rather than bare codes to avoid
+// false-positives on resource names like "pool-502". If an HTTP status code becomes
+// available from the response wrapper, prefer checking it directly.
 func isTransientNodePoolPollError(err error) bool {
 	message := err.Error()
 	for _, transient := range []string{
