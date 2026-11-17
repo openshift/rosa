@@ -26,9 +26,6 @@ type OCMClient interface {
 	GetLimitedSupportReasons(clusterID string) ([]*cmv1.LimitedSupportReason, error)
 	GetScheduledUpgrade(clusterID string) (*cmv1.UpgradePolicy, *cmv1.UpgradePolicyState, error)
 	GetUpgradePolicies(clusterID string) ([]*cmv1.UpgradePolicy, error)
-	GetAvailableUpgrades(versionID string) ([]string, error)
-	GetAvailableUpgradesWithProduct(product string, versionID string) ([]string, error)
-	GetRawAvailableUpgrades(versionID string) ([]string, error)
 	ListAllOcpGates(version string) ([]*cmv1.VersionGate, error)
 	ListGateAgreements(clusterID string) ([]*cmv1.VersionGateAgreement, error)
 }
@@ -54,18 +51,6 @@ func (a *ocmClientAdapter) GetScheduledUpgrade(
 
 func (a *ocmClientAdapter) GetUpgradePolicies(clusterID string) ([]*cmv1.UpgradePolicy, error) {
 	return a.client.GetUpgradePolicies(clusterID)
-}
-
-func (a *ocmClientAdapter) GetAvailableUpgrades(versionID string) ([]string, error) {
-	return a.client.GetAvailableUpgrades(versionID)
-}
-
-func (a *ocmClientAdapter) GetAvailableUpgradesWithProduct(product string, versionID string) ([]string, error) {
-	return a.client.GetAvailableUpgradesWithProduct(product, versionID)
-}
-
-func (a *ocmClientAdapter) GetRawAvailableUpgrades(versionID string) ([]string, error) {
-	return a.client.GetRawAvailableUpgrades(versionID)
 }
 
 func (a *ocmClientAdapter) ListAllOcpGates(version string) ([]*cmv1.VersionGate, error) {

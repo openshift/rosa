@@ -78,13 +78,11 @@ func CheckAll(ocmClient OCMClient, cluster *cmv1.Cluster, targetVersion string) 
 		return result, err
 	}
 
-	if err := checkAvailableTargets(result, ocmClient, cluster, targetVersion); err != nil {
+	if err := checkAvailableTargets(result, cluster, targetVersion); err != nil {
 		return result, err
 	}
 
-	// Gate checks run when a specific target is requested, or when targets are blocked
-	// (not when the cluster is simply at the latest version in its channel)
-	if targetVersion != "" || (len(result.AvailableUpgrades) == 0 && !result.atLatestVersion) {
+	if targetVersion != "" || !result.atLatestVersion {
 		if err := checkVersionGates(result, ocmClient, cluster, targetVersion); err != nil {
 			return result, err
 		}
@@ -248,66 +246,37 @@ func checkActiveUpgradesHypershift(result *Result, ocmClient OCMClient, cluster 
 }
 
 // checkAvailableTargets verifies upgrade targets exist and, if specified, that the target version is among them.
-func checkAvailableTargets(result *Result, ocmClient OCMClient, cluster *cmv1.Cluster, targetVersion string) error {
-	versionID := ocm.GetVersionID(cluster)
-	product := ""
-	if cluster.Hypershift().Enabled() {
-		product = ocm.HcpProduct
-	}
-	available, err := ocmClient.GetAvailableUpgradesWithProduct(product, versionID)
-	if err != nil {
-		return fmt.Errorf("failed to get available upgrades: %w", err)
-	}
-
+// It reads available upgrades directly from the cluster object (cluster-based endpoint),
+// consistent with how rosa list/upgrade commands source this data.
+func checkAvailableTargets(result *Result, cluster *cmv1.Cluster, targetVersion string) error {
+	available := ocm.GetAvailableUpgradesByCluster(cluster)
 	result.AvailableUpgrades = available
 
 	if len(available) == 0 {
-		rawUpgrades, rawErr := ocmClient.GetRawAvailableUpgrades(versionID)
-		if rawErr != nil {
-			return fmt.Errorf("failed to get raw available upgrades: %w", rawErr)
-		}
-
-		if len(rawUpgrades) == 0 {
-			if targetVersion != "" {
-				result.AddFinding(Finding{
-					Severity:   SeverityBlocker,
-					ReasonCode: ReasonTargetNotAvailable,
-					Owner:      OwnerCustomer,
-					Summary:    fmt.Sprintf("Requested version %s is not available — no upgrade targets exist", targetVersion),
-					Detail: fmt.Sprintf("The cluster is on %s and no upgrade targets exist in the '%s' channel.",
-						cluster.OpenshiftVersion(), cluster.Version().ChannelGroup()),
-					Action: "Verify the target version exists for this channel group, or switch " +
-						"to a different channel group (e.g., fast or candidate).",
-				})
-				return nil
-			}
-			result.atLatestVersion = true
-			result.AddFinding(Finding{
-				Severity:   SeverityOK,
-				ReasonCode: ReasonAtLatestVersion,
-				Summary: fmt.Sprintf("Already on the latest version (%s) in the '%s' channel",
-					cluster.OpenshiftVersion(), cluster.Version().ChannelGroup()),
-				Detail: "There are no newer versions available in this channel group. " +
-					"This is expected if the cluster is up to date.",
-				Action: "No action needed. To access newer versions, consider switching to " +
-					"a different channel group (e.g., fast or candidate).",
-			})
-		} else {
+		if targetVersion != "" {
 			result.AddFinding(Finding{
 				Severity:   SeverityBlocker,
-				ReasonCode: ReasonNoTargetsAvailable,
+				ReasonCode: ReasonTargetNotAvailable,
 				Owner:      OwnerCustomer,
-				Summary: fmt.Sprintf(
-					"No ROSA-enabled upgrade targets available (%d version(s) exist in channel but are not enabled)",
-					len(rawUpgrades)),
-				Detail: fmt.Sprintf("OCM lists %d version(s) in the upgrade graph (%s) but none are ROSA-enabled. "+
-					"This is typically caused by unacknowledged version gates blocking the next minor, "+
-					"or the target versions have not been published for ROSA yet.",
-					len(rawUpgrades), strings.Join(rawUpgrades, ", ")),
-				Action: "Check version gate agreements (see gates section below). If all gates are acknowledged, " +
-					"the target versions may not yet be available for ROSA — try again later or contact support.",
+				Summary:    fmt.Sprintf("Requested version %s is not available — no upgrade targets exist", targetVersion),
+				Detail: fmt.Sprintf("The cluster is on %s and no upgrade targets exist in the '%s' channel.",
+					cluster.OpenshiftVersion(), cluster.Version().ChannelGroup()),
+				Action: "Verify the target version exists for this channel group, or switch " +
+					"to a different channel group (e.g., fast or candidate).",
 			})
+			return nil
 		}
+		result.atLatestVersion = true
+		result.AddFinding(Finding{
+			Severity:   SeverityOK,
+			ReasonCode: ReasonAtLatestVersion,
+			Summary: fmt.Sprintf("Already on the latest version (%s) in the '%s' channel",
+				cluster.OpenshiftVersion(), cluster.Version().ChannelGroup()),
+			Detail: "There are no newer versions available in this channel group. " +
+				"This is expected if the cluster is up to date.",
+			Action: "No action needed. To access newer versions, consider switching to " +
+				"a different channel group (e.g., fast or candidate).",
+		})
 		return nil
 	}
 

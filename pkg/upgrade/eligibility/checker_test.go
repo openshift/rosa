@@ -24,13 +24,13 @@ import (
 )
 
 // mockOCMClient implements OCMClient for testing.
+// Available upgrades are set on the cluster builder (cluster.Version().AvailableUpgrades()),
+// not on the mock, matching the cluster-based endpoint approach.
 type mockOCMClient struct {
 	limitedSupportReasons []*cmv1.LimitedSupportReason
 	scheduledPolicy       *cmv1.UpgradePolicy
 	scheduledState        *cmv1.UpgradePolicyState
 	upgradePolicies       []*cmv1.UpgradePolicy
-	availableUpgrades     []string
-	rawAvailableUpgrades  []string
 	gates                 []*cmv1.VersionGate
 	gateAgreements        []*cmv1.VersionGateAgreement
 	err                   error
@@ -46,18 +46,6 @@ func (m *mockOCMClient) GetScheduledUpgrade(string) (*cmv1.UpgradePolicy, *cmv1.
 
 func (m *mockOCMClient) GetUpgradePolicies(string) ([]*cmv1.UpgradePolicy, error) {
 	return m.upgradePolicies, m.err
-}
-
-func (m *mockOCMClient) GetAvailableUpgrades(string) ([]string, error) {
-	return m.availableUpgrades, m.err
-}
-
-func (m *mockOCMClient) GetAvailableUpgradesWithProduct(string, string) ([]string, error) {
-	return m.availableUpgrades, m.err
-}
-
-func (m *mockOCMClient) GetRawAvailableUpgrades(string) ([]string, error) {
-	return m.rawAvailableUpgrades, m.err
 }
 
 func (m *mockOCMClient) ListAllOcpGates(string) ([]*cmv1.VersionGate, error) {
@@ -79,28 +67,36 @@ func mustBuildCluster(b *cmv1.ClusterBuilder) *cmv1.Cluster {
 	return c
 }
 
-func readyHCPCluster(version, channelGroup string) *cmv1.Cluster {
+func readyHCPCluster(version, channelGroup string, availableUpgrades ...string) *cmv1.Cluster {
+	v := cmv1.NewVersion().ID("openshift-v" + version).ChannelGroup(channelGroup)
+	if len(availableUpgrades) > 0 {
+		v = v.AvailableUpgrades(availableUpgrades...)
+	}
 	return mustBuildCluster(
 		cmv1.NewCluster().
 			ID("test-cluster-id").
 			Name("test-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion(version).
-			Version(cmv1.NewVersion().ID("openshift-v" + version).ChannelGroup(channelGroup)).
+			Version(v).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(true)).
 			CreationTimestamp(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 	)
 }
 
-func readyClassicCluster(version, channelGroup string) *cmv1.Cluster {
+func readyClassicCluster(version, channelGroup string, availableUpgrades ...string) *cmv1.Cluster {
+	v := cmv1.NewVersion().ID("openshift-v" + version).ChannelGroup(channelGroup)
+	if len(availableUpgrades) > 0 {
+		v = v.AvailableUpgrades(availableUpgrades...)
+	}
 	return mustBuildCluster(
 		cmv1.NewCluster().
 			ID("test-cluster-id").
 			Name("test-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion(version).
-			Version(cmv1.NewVersion().ID("openshift-v" + version).ChannelGroup(channelGroup)).
+			Version(v).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(false)).
 			CreationTimestamp(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)),
@@ -215,7 +211,8 @@ func TestOHSS52583_GateUnacknowledged(t *testing.T) {
 			Name("test-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion("4.17.33").
-			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable")).
+			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable").
+				AvailableUpgrades("4.18.12")).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(true)).
 			CreationTimestamp(time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)),
@@ -226,10 +223,8 @@ func TestOHSS52583_GateUnacknowledged(t *testing.T) {
 		time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
 
 	mock := &mockOCMClient{
-		availableUpgrades:    []string{},
-		rawAvailableUpgrades: []string{"4.18.12"},
-		gates:                []*cmv1.VersionGate{gate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{gate},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "")
@@ -254,7 +249,8 @@ func TestOHSS58695_GateUnackedWithTarget(t *testing.T) {
 			Name("test-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion("4.17.33").
-			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable")).
+			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable").
+				AvailableUpgrades("4.18.12")).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(true)).
 			CreationTimestamp(time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)),
@@ -264,10 +260,8 @@ func TestOHSS58695_GateUnackedWithTarget(t *testing.T) {
 		time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
 
 	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.18.12"},
-		rawAvailableUpgrades: []string{"4.18.12"},
-		gates:                []*cmv1.VersionGate{gate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{gate},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "4.18.12")
@@ -285,12 +279,9 @@ func TestOHSS58695_GateUnackedWithTarget(t *testing.T) {
 // POC catches: NO (Day 2) — pausedUntil is in-cluster state, not exposed via OCM API.
 // This test verifies the POC does NOT false-positive on this case.
 func TestOHSS52604_PausedUntilNotDetectable(t *testing.T) {
-	cluster := readyHCPCluster("4.19.20", "stable")
+	cluster := readyHCPCluster("4.19.20", "stable", "4.19.23")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.19.23"},
-		rawAvailableUpgrades: []string{"4.19.23"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "4.19.23")
 	if err != nil {
@@ -305,17 +296,15 @@ func TestOHSS52604_PausedUntilNotDetectable(t *testing.T) {
 // POC catches: NO (Day 2) — MUO controller state is in-cluster only.
 // But if there was an active upgrade policy, the POC would catch that.
 func TestOHSS55966_MUOStuckDetectsActivePolicy(t *testing.T) {
-	cluster := readyClassicCluster("4.17.33", "stable")
+	cluster := readyClassicCluster("4.17.33", "stable", "4.18.12")
 
 	policy := mustBuildUpgradePolicy("4.18.12", time.Now().Add(-2*time.Hour))
 
 	state, _ := cmv1.NewUpgradePolicyState().Value("started").Build()
 
 	mock := &mockOCMClient{
-		scheduledPolicy:      policy,
-		scheduledState:       state,
-		availableUpgrades:    []string{"4.18.12"},
-		rawAvailableUpgrades: []string{"4.18.12"},
+		scheduledPolicy: policy,
+		scheduledState:  state,
 	}
 
 	result, err := CheckAll(mock, cluster, "")
@@ -329,14 +318,12 @@ func TestOHSS55966_MUOStuckDetectsActivePolicy(t *testing.T) {
 // OHSS-52268: CLI and OCM reported conflicting upgrade state.
 // POC catches: PARTIAL — detects active upgrade policy, but not the surface disagreement itself.
 func TestOHSS52268_ConflictingState(t *testing.T) {
-	cluster := readyClassicCluster("4.17.33", "stable")
+	cluster := readyClassicCluster("4.17.33", "stable", "4.18.12")
 
 	policy := mustBuildUpgradePolicy("4.18.12", time.Now().Add(-1*time.Hour))
 
 	mock := &mockOCMClient{
-		scheduledPolicy:      policy,
-		availableUpgrades:    []string{"4.18.12"},
-		rawAvailableUpgrades: []string{"4.18.12"},
+		scheduledPolicy: policy,
 	}
 
 	result, err := CheckAll(mock, cluster, "")
@@ -354,14 +341,12 @@ func TestOHSS52268_ConflictingState(t *testing.T) {
 // OHSS-57359: Console Save disabled, CLI succeeds. Limited Support active.
 // POC catches: YES — LIMITED_SUPPORT
 func TestOHSS57359_LimitedSupportBlocks(t *testing.T) {
-	cluster := readyClassicCluster("4.17.33", "stable")
+	cluster := readyClassicCluster("4.17.33", "stable", "4.17.34")
 
 	mock := &mockOCMClient{
 		limitedSupportReasons: []*cmv1.LimitedSupportReason{
 			mustBuildLS("Network egress blocked — customer VPC has no route to required endpoints"),
 		},
-		availableUpgrades:    []string{"4.17.34"},
-		rawAvailableUpgrades: []string{"4.17.34"},
 	}
 
 	result, err := CheckAll(mock, cluster, "")
@@ -378,14 +363,12 @@ func TestOHSS57359_LimitedSupportBlocks(t *testing.T) {
 // Version EOL Limited Support should be WARNING, not BLOCKER.
 // Matt's feedback: if LS reason is "version is EOL", blocking upgrade is circular.
 func TestLimitedSupport_VersionEOL_IsWarning(t *testing.T) {
-	cluster := readyClassicCluster("4.14.1", "stable")
+	cluster := readyClassicCluster("4.14.1", "stable", "4.14.77")
 
 	mock := &mockOCMClient{
 		limitedSupportReasons: []*cmv1.LimitedSupportReason{
 			mustBuildLS("Cluster version has reached end of supported life cycle"),
 		},
-		availableUpgrades:    []string{"4.14.77"},
-		rawAvailableUpgrades: []string{"4.14.77"},
 	}
 
 	result, err := CheckAll(mock, cluster, "")
@@ -400,15 +383,13 @@ func TestLimitedSupport_VersionEOL_IsWarning(t *testing.T) {
 
 // Mixed LS: version EOL (WARNING) + network issue (BLOCKER).
 func TestLimitedSupport_MixedEOLAndOther(t *testing.T) {
-	cluster := readyClassicCluster("4.14.1", "stable")
+	cluster := readyClassicCluster("4.14.1", "stable", "4.14.77")
 
 	mock := &mockOCMClient{
 		limitedSupportReasons: []*cmv1.LimitedSupportReason{
 			mustBuildLS("Cluster version has reached end of supported life cycle"),
 			mustBuildLS("Network egress blocked — customer VPC has no route to required endpoints"),
 		},
-		availableUpgrades:    []string{"4.14.77"},
-		rawAvailableUpgrades: []string{"4.14.77"},
 	}
 
 	result, err := CheckAll(mock, cluster, "")
@@ -426,14 +407,12 @@ func TestLimitedSupport_MixedEOLAndOther(t *testing.T) {
 
 // Only version EOL LS — cluster should still be eligible to upgrade.
 func TestLimitedSupport_OnlyEOL_StillEligible(t *testing.T) {
-	cluster := readyClassicCluster("4.14.1", "stable")
+	cluster := readyClassicCluster("4.14.1", "stable", "4.14.77")
 
 	mock := &mockOCMClient{
 		limitedSupportReasons: []*cmv1.LimitedSupportReason{
 			mustBuildLS("Cluster version has reached end of life"),
 		},
-		availableUpgrades:    []string{"4.14.77"},
-		rawAvailableUpgrades: []string{"4.14.77"},
 	}
 
 	result, err := CheckAll(mock, cluster, "")
@@ -454,12 +433,9 @@ func TestLimitedSupport_OnlyEOL_StillEligible(t *testing.T) {
 // OHSS-58345: dedicated-admin missing UpgradeConfig aggregate ClusterRoles.
 // POC catches: NO (Day 2) — requires in-cluster RBAC check via backplane.
 func TestOHSS58345_RBACDriftNotDetectable(t *testing.T) {
-	cluster := readyClassicCluster("4.17.33", "stable")
+	cluster := readyClassicCluster("4.17.33", "stable", "4.17.34")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.17.34"},
-		rawAvailableUpgrades: []string{"4.17.34"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -477,12 +453,9 @@ func TestOHSS58345_RBACDriftNotDetectable(t *testing.T) {
 // OHSS-58084: Boot image skew gate, customer can't repair on OSD GCP.
 // POC catches: NO (Day 2) — ClusterBootImageSkewError is an in-cluster condition.
 func TestOHSS58084_BootImageSkewNotDetectable(t *testing.T) {
-	cluster := readyClassicCluster("4.14.1", "eus")
+	cluster := readyClassicCluster("4.14.1", "eus", "4.14.77")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.14.77"},
-		rawAvailableUpgrades: []string{"4.14.77"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -495,12 +468,9 @@ func TestOHSS58084_BootImageSkewNotDetectable(t *testing.T) {
 // OHSS-58032: WifConfig 404, scheduling fails silently.
 // POC catches: NO (Day 2) — WifConfig validation is in OCM console, not in CLI/API.
 func TestOHSS58032_WifConfigNotDetectable(t *testing.T) {
-	cluster := readyHCPCluster("4.17.33", "stable")
+	cluster := readyHCPCluster("4.17.33", "stable", "4.17.34")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.17.34"},
-		rawAvailableUpgrades: []string{"4.17.34"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -517,12 +487,9 @@ func TestOHSS58032_WifConfigNotDetectable(t *testing.T) {
 // OHSS-53365: Pull secret mismatch causes upgrade to cancel at Pre-Health Check.
 // POC catches: NO (Day 2) — requires in-cluster pull secret validation.
 func TestOHSS53365_PullSecretNotDetectable(t *testing.T) {
-	cluster := readyClassicCluster("4.18.6", "stable")
+	cluster := readyClassicCluster("4.18.6", "stable", "4.18.31")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.18.31"},
-		rawAvailableUpgrades: []string{"4.18.31"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -535,12 +502,9 @@ func TestOHSS53365_PullSecretNotDetectable(t *testing.T) {
 // OHSS-56299: Invalid ClusterAutoscaler utilizationThreshold: 0.
 // POC catches: NO (Day 3) — requires CLI input validation enhancement.
 func TestOHSS56299_InvalidAutoscalerNotDetectable(t *testing.T) {
-	cluster := readyClassicCluster("4.18.10", "stable")
+	cluster := readyClassicCluster("4.18.10", "stable", "4.18.31")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.18.31"},
-		rawAvailableUpgrades: []string{"4.18.31"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -553,12 +517,9 @@ func TestOHSS56299_InvalidAutoscalerNotDetectable(t *testing.T) {
 // OHSS-53041: Incompatible cluster-logging operator blocked y-stream upgrade.
 // POC catches: NO (Day 2) — IncompatibleOperatorsInstalled is in-cluster condition.
 func TestOHSS53041_IncompatibleOperatorNotDetectable(t *testing.T) {
-	cluster := readyHCPCluster("4.18.20", "stable")
+	cluster := readyHCPCluster("4.18.20", "stable", "4.19.10")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.19.10"},
-		rawAvailableUpgrades: []string{"4.19.10"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "4.19.10")
 	if err != nil {
@@ -577,12 +538,9 @@ func TestOHSS53041_IncompatibleOperatorNotDetectable(t *testing.T) {
 // OHSS-55964: Misconfigured console plugins blocked CVO.
 // POC catches: NO (Day 2) — in-cluster CVO state.
 func TestOHSS55964_ConsolePluginsNotDetectable(t *testing.T) {
-	cluster := readyClassicCluster("4.18.20", "stable")
+	cluster := readyClassicCluster("4.18.20", "stable", "4.18.31")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.18.31"},
-		rawAvailableUpgrades: []string{"4.18.31"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -595,12 +553,9 @@ func TestOHSS55964_ConsolePluginsNotDetectable(t *testing.T) {
 // OHSS-54695: "found 2 critical alerts" — specific alerts not named.
 // POC catches: NO (Day 2) — MUO pre-health check is in-cluster.
 func TestOHSS54695_CriticalAlertsNotDetectable(t *testing.T) {
-	cluster := readyClassicCluster("4.18.10", "stable")
+	cluster := readyClassicCluster("4.18.10", "stable", "4.18.31")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.18.31"},
-		rawAvailableUpgrades: []string{"4.18.31"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -617,12 +572,9 @@ func TestOHSS54695_CriticalAlertsNotDetectable(t *testing.T) {
 // OHSS-52380: Workers can't reach quay.io, no VPC egress route.
 // POC catches: NO (Day 3) — requires cloud API / network check.
 func TestOHSS52380_NoEgressNotDetectable(t *testing.T) {
-	cluster := readyHCPCluster("4.17.33", "stable")
+	cluster := readyHCPCluster("4.17.33", "stable", "4.17.34")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.17.34"},
-		rawAvailableUpgrades: []string{"4.17.34"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -635,12 +587,9 @@ func TestOHSS52380_NoEgressNotDetectable(t *testing.T) {
 // OHSS-54291: SCP enforcing IMDSv2 conflicts with httpTokens:optional.
 // POC catches: NO (Day 3) — requires cloud SCP/policy check.
 func TestOHSS54291_IMDSv2ConflictNotDetectable(t *testing.T) {
-	cluster := readyHCPCluster("4.17.33", "stable")
+	cluster := readyHCPCluster("4.17.33", "stable", "4.17.34")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.17.34"},
-		rawAvailableUpgrades: []string{"4.17.34"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -653,12 +602,9 @@ func TestOHSS54291_IMDSv2ConflictNotDetectable(t *testing.T) {
 // OHSS-57568: Invalid cloud configuration, SRE can't access cloud console.
 // POC catches: NO (Day 3) — requires cloud permission check.
 func TestOHSS57568_CloudConfigNotDetectable(t *testing.T) {
-	cluster := readyHCPCluster("4.17.33", "stable")
+	cluster := readyHCPCluster("4.17.33", "stable", "4.17.34")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.17.34"},
-		rawAvailableUpgrades: []string{"4.17.34"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -675,12 +621,9 @@ func TestOHSS57568_CloudConfigNotDetectable(t *testing.T) {
 // OHSS-54944: Degraded node, DNS operator stuck.
 // POC catches: NO (Day 2) — requires in-cluster node/operator health check.
 func TestOHSS54944_DegradedNodeNotDetectable(t *testing.T) {
-	cluster := readyClassicCluster("4.18.10", "stable")
+	cluster := readyClassicCluster("4.18.10", "stable", "4.18.31")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.18.31"},
-		rawAvailableUpgrades: []string{"4.18.31"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -693,12 +636,9 @@ func TestOHSS54944_DegradedNodeNotDetectable(t *testing.T) {
 // OHSS-52328: GPU NodePool upgrade InstanceProvisionFailed — AWS quota exhausted.
 // POC catches: NO (Day 3) — requires cloud quota check.
 func TestOHSS52328_GPUQuotaNotDetectable(t *testing.T) {
-	cluster := readyHCPCluster("4.17.33", "stable")
+	cluster := readyHCPCluster("4.17.33", "stable", "4.17.34")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.17.34"},
-		rawAvailableUpgrades: []string{"4.17.34"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -720,7 +660,8 @@ func TestGateImplicitAck_ClusterCreatedBeforeGate(t *testing.T) {
 			Name("old-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion("4.17.33").
-			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable")).
+			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable").
+				AvailableUpgrades("4.18.12")).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(true)).
 			CreationTimestamp(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
@@ -731,10 +672,8 @@ func TestGateImplicitAck_ClusterCreatedBeforeGate(t *testing.T) {
 		time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC))
 
 	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.18.12"},
-		rawAvailableUpgrades: []string{"4.18.12"},
-		gates:                []*cmv1.VersionGate{gate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{gate},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "4.18.12")
@@ -757,7 +696,8 @@ func TestGateNotImplicitAck_ClusterCreatedAfterGate(t *testing.T) {
 			Name("new-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion("4.17.33").
-			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable")).
+			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable").
+				AvailableUpgrades("4.18.12")).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(true)).
 			CreationTimestamp(time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)),
@@ -768,10 +708,8 @@ func TestGateNotImplicitAck_ClusterCreatedAfterGate(t *testing.T) {
 		time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
 
 	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.18.12"},
-		rawAvailableUpgrades: []string{"4.18.12"},
-		gates:                []*cmv1.VersionGate{gate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{gate},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "4.18.12")
@@ -790,7 +728,8 @@ func TestGateExplicitAck(t *testing.T) {
 			Name("new-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion("4.17.33").
-			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable")).
+			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable").
+				AvailableUpgrades("4.18.12")).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(true)).
 			CreationTimestamp(time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)),
@@ -800,10 +739,8 @@ func TestGateExplicitAck(t *testing.T) {
 		time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
 
 	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.18.12"},
-		rawAvailableUpgrades: []string{"4.18.12"},
-		gates:                []*cmv1.VersionGate{gate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{mustBuildGateAgreement("gate-418")},
+		gates:          []*cmv1.VersionGate{gate},
+		gateAgreements: []*cmv1.VersionGateAgreement{mustBuildGateAgreement("gate-418")},
 	}
 
 	result, err := CheckAll(mock, cluster, "4.18.12")
@@ -822,10 +759,7 @@ func TestGateExplicitAck(t *testing.T) {
 func TestAtLatestVersion(t *testing.T) {
 	cluster := readyHCPCluster("4.22.20", "stable")
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{},
-		rawAvailableUpgrades: []string{},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -836,33 +770,13 @@ func TestAtLatestVersion(t *testing.T) {
 	assertFinding(t, result, ReasonAtLatestVersion, SeverityOK)
 }
 
-// No ROSA-enabled targets but raw targets exist — BLOCKED.
-func TestNoRosaEnabledTargets(t *testing.T) {
-	cluster := readyHCPCluster("4.18.33", "stable")
-
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{},
-		rawAvailableUpgrades: []string{"4.19.1", "4.19.2"},
-	}
-
-	result, err := CheckAll(mock, cluster, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if result.Eligible {
-		t.Error("expected NOT eligible")
-	}
-	assertFinding(t, result, ReasonNoTargetsAvailable, SeverityBlocker)
-}
-
 // =============================================================================
 // CROSS-CUTTING: Multiple blockers in one pass
 // =============================================================================
 
 // Cluster with Limited Support AND unacked gates — should report BOTH.
 func TestMultipleBlockers(t *testing.T) {
-	cluster := readyClassicCluster("4.17.33", "stable")
+	cluster := readyClassicCluster("4.17.33", "stable", "4.18.12")
 
 	gate := mustBuildGate("gate-418", "API removals in 4.18", false,
 		time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
@@ -871,10 +785,8 @@ func TestMultipleBlockers(t *testing.T) {
 		limitedSupportReasons: []*cmv1.LimitedSupportReason{
 			mustBuildLS("Network egress blocked"),
 		},
-		availableUpgrades:    []string{},
-		rawAvailableUpgrades: []string{"4.18.12"},
-		gates:                []*cmv1.VersionGate{gate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{gate},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "")
@@ -886,11 +798,10 @@ func TestMultipleBlockers(t *testing.T) {
 		t.Error("expected NOT eligible")
 	}
 	assertFinding(t, result, ReasonLimitedSupport, SeverityBlocker)
-	assertFinding(t, result, ReasonNoTargetsAvailable, SeverityBlocker)
 	assertFinding(t, result, ReasonGateUnacked, SeverityBlocker)
 
-	if result.BlockerCount() < 3 {
-		t.Errorf("expected at least 3 blockers, got %d", result.BlockerCount())
+	if result.BlockerCount() < 2 {
+		t.Errorf("expected at least 2 blockers, got %d", result.BlockerCount())
 	}
 }
 
@@ -902,16 +813,14 @@ func TestClusterNotReady(t *testing.T) {
 			Name("error-cluster").
 			State(cmv1.ClusterStateError).
 			OpenshiftVersion("4.17.33").
-			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable")).
+			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable").
+				AvailableUpgrades("4.17.34")).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(true)).
 			CreationTimestamp(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)),
 	)
 
-	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.17.34"},
-		rawAvailableUpgrades: []string{"4.17.34"},
-	}
+	mock := &mockOCMClient{}
 
 	result, err := CheckAll(mock, cluster, "")
 	if err != nil {
@@ -968,10 +877,8 @@ func TestGateFiltering_STSOnlySkippedForNonSTS(t *testing.T) {
 		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 
 	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.21.40"},
-		rawAvailableUpgrades: []string{"4.21.40"},
-		gates:                []*cmv1.VersionGate{stsGate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{stsGate},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "4.21.40")
@@ -1006,10 +913,8 @@ func TestGateFiltering_WIFGateSkippedForNonGCP(t *testing.T) {
 		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 
 	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.21.40"},
-		rawAvailableUpgrades: []string{"4.21.40"},
-		gates:                []*cmv1.VersionGate{wifGate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{wifGate},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "4.21.40")
@@ -1041,10 +946,8 @@ func TestGateFiltering_STSGateShownForSTSCluster(t *testing.T) {
 		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 
 	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.21.40"},
-		rawAvailableUpgrades: []string{"4.21.40"},
-		gates:                []*cmv1.VersionGate{stsGate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{stsGate},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "4.21.40")
@@ -1066,7 +969,8 @@ func TestGateFiltering_ZStreamSkipsGates(t *testing.T) {
 			Name("test-cluster").
 			State(cmv1.ClusterStateReady).
 			OpenshiftVersion("4.17.33").
-			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable")).
+			Version(cmv1.NewVersion().ID("openshift-v4.17.33").ChannelGroup("stable").
+				AvailableUpgrades("4.17.34")).
 			Region(cmv1.NewCloudRegion().ID("us-east-1")).
 			Hypershift(cmv1.NewHypershift().Enabled(true)).
 			CreationTimestamp(time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)),
@@ -1076,10 +980,8 @@ func TestGateFiltering_ZStreamSkipsGates(t *testing.T) {
 		time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
 
 	mock := &mockOCMClient{
-		availableUpgrades:    []string{"4.17.34"},
-		rawAvailableUpgrades: []string{"4.17.34"},
-		gates:                []*cmv1.VersionGate{gate},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{gate},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "4.17.34")
@@ -1095,14 +997,11 @@ func TestGateFiltering_ZStreamSkipsGates(t *testing.T) {
 
 // Minor-only target (X.Y) must not match a prerelease when that is the only available version.
 func TestTargetVersion_MinorOnly_ExcludesPrerelease(t *testing.T) {
-	cluster := readyHCPCluster("4.18.20", "stable")
+	cluster := readyHCPCluster("4.18.20", "stable", "4.19.0-rc.2")
 
 	mock := &mockOCMClient{
-		// Only a prerelease candidate is available for 4.19
-		availableUpgrades:    []string{"4.19.0-rc.2"},
-		rawAvailableUpgrades: []string{"4.19.0-rc.2"},
-		gates:                []*cmv1.VersionGate{},
-		gateAgreements:       []*cmv1.VersionGateAgreement{},
+		gates:          []*cmv1.VersionGate{},
+		gateAgreements: []*cmv1.VersionGateAgreement{},
 	}
 
 	result, err := CheckAll(mock, cluster, "4.19")
