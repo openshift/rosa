@@ -128,6 +128,35 @@ Conditions:
 		Expect(npd.State).To(Equal("Provisioning"))
 		Expect(npd.CurrentReplicas).To(BeEmpty())
 	})
+
+	It("parses Platform API node pool conditions listing multiple machines", func() {
+		output := `
+ID:                                    autoscale-nt
+Cluster ID:                            2t63qi7a1shbrbh9etlq1kjcia07ib9t
+State:                                 Provisioning
+Autoscaling:                           Yes
+Desired replicas:
+ - Min replicas: 1
+ - Max replicas: 3
+Current replicas:
+Instance type:                         m5.2xlarge
+Conditions:
+ - Synced:    True   AllSynced: 1/1 desires applied successfully
+ - Ready:     Unknown  ReadyUnknown: * Machine autoscale-nt-2p7df-mw45x:
+  * NodeHealthy: Waiting for a Node with spec.providerID aws:///us-east-1c/i-041be47e18d732758 to exist
+* Machine autoscale-nt-2p7df-z5jvl:
+  * NodeHealthy: Waiting for a Node with spec.providerID aws:///us-east-1c/i-09c10389161bd9640 to exist
+`
+		m := &machinepoolService{ResourcesService: ResourcesService{client: &Client{Parser: NewParser()}}}
+		var buf bytes.Buffer
+		buf.WriteString(output)
+
+		npd, err := m.ReflectNodePoolDescription(buf)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(npd.ID).To(Equal("autoscale-nt"))
+		Expect(npd.State).To(Equal("Provisioning"))
+	})
 })
 
 var _ = Describe("Nodepool lookup", func() {

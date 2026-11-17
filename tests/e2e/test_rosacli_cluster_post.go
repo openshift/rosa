@@ -634,7 +634,7 @@ var _ = Describe("Healthy check",
 							Expect(pool.ID).ToNot(BeEmpty())
 							// Platform API list output is cluster-scoped. Describe-by-name can
 							// resolve a stale nodepool with the same name from another cluster.
-							name := pool.ID
+							name := pool.Name
 							isDefaultWorkerPool := name == constants.DefaultHostedWorkerPool
 							isMultiAZWorkerPool := strings.HasPrefix(name, constants.DefaultHostedWorkerPool+"-")
 							isExpectedWorkerPool := (!profile.ClusterConfig.MultiAZ && isDefaultWorkerPool) ||

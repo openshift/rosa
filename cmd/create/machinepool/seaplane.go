@@ -192,7 +192,7 @@ func (h *seaplaneNodePoolCreate) validateAndParseUserOptions() error {
 	if len(h.userOptions.Tags) > 0 {
 		tags, err = rosaaws.ParseUserTags(h.userOptions.Tags, rosaaws.UserTagOptions{})
 		if err != nil {
-			return fmt.Errorf("invalid machine pool AWS tags: %w", err)
+			return err
 		}
 	}
 	if len(tags) > maxAWSResourceTags {
