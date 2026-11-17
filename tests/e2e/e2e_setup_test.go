@@ -36,7 +36,7 @@ var _ = Describe("Cluster preparation", labels.Feature.Cluster, func() {
 			// Seaplane authenticates with AWS SigV4 and has no OCM org linkage,
 			// so ocm-role and user-role do not apply and preparing them would
 			// require an OCM token the Seaplane path never uses.
-			if os.Getenv("SEAPLANE_URL") == "" && !seaplane.Enabled() {
+			if !seaplane.Enabled() {
 				//Prepare ocm role and user role before cluster creation
 				_, err = clusterHandler.GetResourcesHandler().PrepareOCMRole(constants.OCMRolePreifx, true, "/test/")
 				Expect(err).ToNot(HaveOccurred())

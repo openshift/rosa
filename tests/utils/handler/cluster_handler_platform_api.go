@@ -27,14 +27,18 @@ const seaplaneCustomKMSError = "seaplane e2e setup does not support custom KMS k
 	"set kms_key and etcd_kms to false"
 
 func (ch *clusterHandler) generateSeaplaneCreateFlags() ([]string, error) {
+	ch.seaplaneFlagsMu.Lock()
+	defer ch.seaplaneFlagsMu.Unlock()
 	if ch.seaplaneFlagsSet {
-		return append([]string(nil), ch.seaplaneFlags...), ch.seaplaneFlagsErr
+		return append([]string(nil), ch.seaplaneFlags...), nil
 	}
 	flags, err := ch.buildSeaplaneCreateFlags()
-	ch.seaplaneFlagsSet = true
+	if err != nil {
+		return nil, err
+	}
 	ch.seaplaneFlags = append([]string(nil), flags...)
-	ch.seaplaneFlagsErr = err
-	return flags, err
+	ch.seaplaneFlagsSet = true
+	return flags, nil
 }
 
 func (ch *clusterHandler) buildSeaplaneCreateFlags() ([]string, error) {
