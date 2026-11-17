@@ -561,6 +561,7 @@ Seaplane e2e Ginkgo labels (`tests/ci/labels/seaplane.go`):
 |-------|-------|----------------------|
 | `seaplane-sanity` | Full CLI/SDK lifecycle in `seaplane_sanity_test.go` | No |
 | `seaplane-validated` | Profile-driven day1 FVT in `e2e_setup_test.go` | Yes (`rosa-seaplane-basic`) |
+| `seaplane-shared` | Profile-independent specs; the lifecycle matrix runs them once on the first selected profile | Yes (inherits that profile) |
 | `seaplane-na` | OCM/v1 checks that v2 does not replicate; excluded by the Seaplane harness | — |
 | `seaplane-deferred` | Should pass on Seaplane once CLI/API passthrough gaps close; excluded by the Seaplane harness | — |
 
@@ -577,6 +578,15 @@ make -k e2e-seaplane-profiles e2e-seaplane-profile-tests
 
 The orchestration model, required inputs, and focused profile targets are
 documented in `tests/e2e/seaplane-profile-matrix.md`.
+
+The lifecycle matrix deduplicates specs labeled `seaplane-shared` by default:
+the first selected profile runs them, and later profiles add
+`!seaplane-shared` to their phase filter. Use this label only for specs whose
+behavior does not depend on the selected `TEST_PROFILE`; specs that assert
+FIPS, proxy, private endpoint, multi-AZ, subnet, compute, disk, scheduler, or
+additional-principal settings must remain profile-specific. Set
+`E2E_SEAPLANE_DEDUPE_SHARED=false` to force the full matrix when auditing a
+shared spec against every profile.
 
 **Day1-post on an existing Seaplane cluster** (after day1 wrote
 `tests/output/<TEST_PROFILE>/`): use a filter that matches CI-style exclusions.
@@ -611,7 +621,7 @@ Optional environment variables:
 | `CLUSTER_NAME` | `sp-e2e-<unix timestamp>` | Cluster name (≤ 18 chars — namespace constraint) |
 | `OPERATOR_ROLES_PREFIX` | same as `CLUSTER_NAME` | IAM roles prefix |
 | `AWS_DEFAULT_REGION` | derived from URL | Fallback region when URL has no region in hostname |
-| `SEAPLANE_VERSION` | empty (server picks default) | OCP version string for cluster creation |
+| `SEAPLANE_VERSION` | empty (server picks default) | OCP release image pullspec for cluster creation; overrides `OCP_IMAGE` when both are set |
 | `SEAPLANE_INSTANCE_TYPE` | `m5.xlarge` | EC2 instance type for node pools |
 
 > **CLUSTER_NAME ≤ 18 chars:** The Platform API creates a namespace of the

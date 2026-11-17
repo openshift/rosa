@@ -81,12 +81,27 @@ This runs these phases in order, reusing one cluster and the same
 4. `day1-supplemental`
 5. `day1-negative`
 6. `day2`
+7. `destroy-post` — runs after the cluster is torn down
 
 The profile-managed cluster is destroyed on exit, including after a failure.
 Set `E2E_SEAPLANE_KEEP_CLUSTER=true` to retain it for debugging, or
 `E2E_SEAPLANE_DESTROY=false` when another system owns teardown. To run a subset
 in a CI step, set `E2E_SEAPLANE_PHASES`, for example
 `E2E_SEAPLANE_PHASES="day1 day1-readiness"`.
+
+In the default sequence `destroy-post` is only attempted when teardown actually
+removed a profile-managed cluster, so it is skipped when the run retained the
+cluster, found no cluster state, or failed to destroy it. Listing it explicitly
+in `E2E_SEAPLANE_PHASES` runs the check without a local teardown, which is how
+a multi-step CI chain runs it after its own destroy step.
+
+Before phase 1 the script proves the endpoint answers a read-only
+`rosa list oidc-config` call. Set `E2E_SEAPLANE_PREFLIGHT=false` to skip it.
+The script exits `3` for environment failures — a failed preflight, or a
+`POST /oidc_configs` rejection such as `unknown (post oidc_configs)` — instead
+of `1` for test failures. An OIDC config creation failure aborts the remaining
+phases even when `E2E_SEAPLANE_CONTINUE_ON_FAILURE=true`, because every later
+phase would fail the same way.
 
 The equivalent direct Ginkgo sequence is:
 
@@ -153,12 +168,13 @@ example:
 
 ```text
 day1 -> day1-readiness -> day1-post -> day1-supplemental -> day1-negative
-     -> day2 -> destroy -> check-failures
+     -> day2 -> destroy -> destroy-post -> check-failures
 ```
 
 Each phase step can call this target with `E2E_SEAPLANE_PHASES=<phase>` and
 `E2E_SEAPLANE_DESTROY=false`; use `E2E_SEAPLANE_PHASES=destroy` for a final
-destroy step. The step image must have `ginkgo` on `PATH`, or set `GINKGO_BIN`.
+destroy step and `E2E_SEAPLANE_PHASES=destroy-post` for the deletion check that
+follows it. The step image must have `ginkgo` on `PATH`, or set `GINKGO_BIN`.
 All steps must share `SHARED_DIR`, and each should get its own timeout and JUnit
 artifact. Add destroy as a `best_effort` post step as well so canceled jobs do
 not leak clusters.

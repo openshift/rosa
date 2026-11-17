@@ -303,12 +303,16 @@ e2e-seaplane: install
 # reusing one cluster and output directory for a single TEST_PROFILE.
 #
 # Phases: day1, day1-readiness, day1-post, day1-supplemental, day1-negative,
-# then day2. The profile-managed cluster is destroyed on exit unless
-# E2E_SEAPLANE_KEEP_CLUSTER=true or E2E_SEAPLANE_DESTROY=false.
+# day2, then destroy-post (which runs after teardown). The profile-managed
+# cluster is destroyed on exit unless E2E_SEAPLANE_KEEP_CLUSTER=true or
+# E2E_SEAPLANE_DESTROY=false.
 #
 # Optional:
 #   E2E_SEAPLANE_PHASES       — space-separated phase override; include
-#                              "destroy" for a destroy-only CI step
+#                              "destroy" for a destroy-only CI step, or
+#                              "destroy-post" to run only the deletion check
+#   E2E_SEAPLANE_PREFLIGHT    — set false to skip the read-only Platform API
+#                              preflight that runs before phase 1
 #   E2E_SEAPLANE_TIMEOUT      — per-phase ginkgo timeout (default: 4h)
 #   E2E_SEAPLANE_DESTROY      — set false to skip the final destroy phase
 #   E2E_SEAPLANE_KEEP_CLUSTER — set true to retain the cluster
@@ -334,6 +338,7 @@ E2E_SEAPLANE_TIMEOUT ?= 4h
 E2E_SEAPLANE_DESTROY ?= true
 E2E_SEAPLANE_KEEP_CLUSTER ?= false
 E2E_SEAPLANE_CONTINUE_ON_FAILURE ?= false
+E2E_SEAPLANE_DEDUPE_SHARED ?= true
 
 define run_seaplane_focused
 	@test -n "$(SEAPLANE_URL)" || { \
@@ -384,31 +389,48 @@ endef
 #   E2E_SEAPLANE_TIMEOUT            — per-phase Ginkgo timeout (default: 4h)
 #   E2E_SEAPLANE_CONTINUE_ON_FAILURE — set true to run remaining phases after
 #                                     a phase fails; the target still exits 1
+#   E2E_SEAPLANE_DEDUPE_SHARED      — run seaplane-shared specs only on the first
+#                                     selected profile (default: true); set false
+#                                     to run every spec against every profile
 #   OCP_IMAGE or SEAPLANE_VERSION   — required when a selected profile's version
 #                                     is not a release image pullspec
 #                                     (advanced and private currently use "latest")
 .PHONY: e2e-seaplane-profiles
 e2e-seaplane-profiles: install
 	@test -n "$(SEAPLANE_URL)" || { \
-		echo "SEAPLANE_URL is required (see tests/e2e/seaplane-guidelines.md)"; \
+		echo "ERROR: SEAPLANE_URL is required (see tests/e2e/seaplane-guidelines.md)"; \
+		echo "HINT: SEAPLANE_URL=https://... make e2e-seaplane-profiles"; \
 		exit 1; \
 	}; \
+	echo "=== Seaplane E2E preflight ==="; \
+	echo "  SEAPLANE_URL:     $(SEAPLANE_URL)"; \
+	echo "  OCP_IMAGE:        $(if $(OCP_IMAGE),$(OCP_IMAGE),<unset>)"; \
+	echo "  SEAPLANE_VERSION: $(if $(SEAPLANE_VERSION),$(SEAPLANE_VERSION),<unset>)"; \
+	echo "  profiles:         $(E2E_SEAPLANE_LIFECYCLE_PROFILES)"; \
+	echo "  artifacts:        $(E2E_SEAPLANE_OUTPUT_ROOT)"; \
+	echo "  dedupe shared:    $(E2E_SEAPLANE_DEDUPE_SHARED)"; \
 	for profile in $(E2E_SEAPLANE_LIFECYCLE_PROFILES); do \
 		case "$$profile" in \
 		rosa-seaplane-advanced | rosa-seaplane-private) \
 			if [ -z "$(OCP_IMAGE)" ] && [ -z "$(SEAPLANE_VERSION)" ]; then \
-				echo "OCP_IMAGE or SEAPLANE_VERSION is required for $$profile"; \
+				echo "ERROR: OCP_IMAGE or SEAPLANE_VERSION is required for $$profile"; \
+				echo "HINT: OCP_IMAGE=quay.io/openshift-release-dev/ocp-release:<tag>-multi make e2e-seaplane-profiles"; \
 				exit 1; \
 			fi; \
 			;; \
 		esac; \
 	done; \
 	status=0; \
+	failed_profiles=""; \
 	run_id=$$(date +%s | cut -c5-); \
 	index=0; \
 	for profile in $(E2E_SEAPLANE_LIFECYCLE_PROFILES); do \
 		index=$$((index + 1)); \
 		cluster_name="sp-e2e-$${run_id}-$${index}"; \
+		run_shared=true; \
+		if [ "$(E2E_SEAPLANE_DEDUPE_SHARED)" = "true" ] && [ $$index -gt 1 ]; then \
+			run_shared=false; \
+		fi; \
 		echo; \
 		echo "=== Seaplane E2E profile: $$profile (cluster: $$cluster_name) ==="; \
 		SEAPLANE_URL="$(SEAPLANE_URL)" \
@@ -422,12 +444,19 @@ e2e-seaplane-profiles: install
 		E2E_SEAPLANE_DESTROY="$(E2E_SEAPLANE_DESTROY)" \
 		E2E_SEAPLANE_KEEP_CLUSTER="$(E2E_SEAPLANE_KEEP_CLUSTER)" \
 		E2E_SEAPLANE_CONTINUE_ON_FAILURE="$(E2E_SEAPLANE_CONTINUE_ON_FAILURE)" \
+		E2E_SEAPLANE_RUN_SHARED="$$run_shared" \
 		OCP_IMAGE="$(OCP_IMAGE)" \
 		SEAPLANE_VERSION="$(SEAPLANE_VERSION)" \
 		GINKGO_BIN="$(GINKGO_BIN)" \
 		ROSA_BIN="$(ROSA_BIN)" \
-		./hack/e2e-seaplane-day1-day2.sh || status=1; \
+		./hack/e2e-seaplane-day1-day2.sh || { status=1; failed_profiles="$$failed_profiles $$profile"; }; \
 	done; \
+	echo; \
+	if [ $$status -eq 0 ]; then \
+		echo "All Seaplane lifecycle profiles passed."; \
+	else \
+		echo "Seaplane lifecycle profiles FAILED:$$failed_profiles"; \
+	fi; \
 	exit $$status
 
 .PHONY: e2e-seaplane-nocni
@@ -439,7 +468,21 @@ e2e-seaplane-disable-capabilities: install
 	$(call run_seaplane_focused,rosa-seaplane-disable-capabilities,tests/e2e/seaplane_capabilities_test.go,ImageRegistry capability disabled,c,junit-day1-disable-capabilities.xml)
 
 .PHONY: e2e-seaplane-profile-tests
-e2e-seaplane-profile-tests: e2e-seaplane-nocni e2e-seaplane-disable-capabilities
+e2e-seaplane-profile-tests: install
+	@status=0; \
+	failed_targets=""; \
+	for target in e2e-seaplane-nocni e2e-seaplane-disable-capabilities; do \
+		echo; \
+		echo "=== Seaplane focused suite: $$target ==="; \
+		$(MAKE) --no-print-directory $$target || { status=1; failed_targets="$$failed_targets $$target"; }; \
+	done; \
+	echo; \
+	if [ $$status -eq 0 ]; then \
+		echo "All Seaplane focused profile suites passed."; \
+	else \
+		echo "Seaplane focused profile suites FAILED:$$failed_targets"; \
+	fi; \
+	exit $$status
 
 .PHONY: generate-docs
 generate-docs:

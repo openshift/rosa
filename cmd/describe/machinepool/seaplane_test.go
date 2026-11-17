@@ -206,7 +206,7 @@ var _ = Describe("seaplaneNodePoolToString", func() {
 		np.Spec.Tags = map[string]string{"team": "compute"}
 
 		Expect(seaplaneNodePoolToString(np, "my-cluster")).To(
-			ContainSubstring("Tags:                                  team:compute"),
+			ContainSubstring("Tags:                                  team=compute"),
 		)
 	})
 

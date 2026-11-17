@@ -32,6 +32,21 @@ exits nonzero. Do not add `rosa-seaplane-nocni` or
 `E2E_SEAPLANE_LIFECYCLE_PROFILES`: those specs create their own clusters and
 must use the focused targets.
 
+## Reading the result
+
+Both targets print an explicit summary before exiting, so a nonzero `make`
+exit does not require reading the whole log:
+
+- `Seaplane lifecycle profiles FAILED: <profiles>` lists the lifecycle runs that
+  failed.
+- `Seaplane focused profile suites FAILED: <targets>` lists the focused specs
+  that failed.
+
+To locate the failure, grep the log for those summary lines and for
+`make: ***`. Do not use Ginkgo's `Test Suite Passed` line as the overall
+verdict: each profile runs in its own Ginkgo process, so that line only
+describes the most recently finished suite.
+
 ## Execution flow
 
 ```mermaid
@@ -99,6 +114,34 @@ make e2e-seaplane-profiles \
   E2E_SEAPLANE_LIFECYCLE_PROFILES="rosa-seaplane-basic rosa-seaplane-fips" \
   E2E_SEAPLANE_OUTPUT_ROOT="$PWD/tests/output/my-run"
 ```
+
+### Shared-spec deduplication
+
+Some specs create their own fixed test profiles and do not validate the
+lifecycle profile. Those specs carry the `seaplane-shared` label. By default,
+`e2e-seaplane-profiles` runs them only with the first selected profile and adds
+`!seaplane-shared` to every later profile's phase filter. This removes repeated
+cluster-creation work without skipping the profile-backed `day1`, readiness,
+`day1-post`, `day2`, or destroy checks, or profile-specific specs. The current
+shared set covers the self-contained supplemental cluster-creation suites and
+the generic dry-run validation checks.
+
+Keep the label off any spec that reads or asserts settings from the selected
+`TEST_PROFILE`, including FIPS, proxy, private endpoint, multi-AZ, subnet,
+compute type, disk size, scheduler, or additional-principal settings.
+
+To force a complete run against every profile, for example while auditing a
+newly labeled spec, disable deduplication:
+
+```bash
+SEAPLANE_URL=https://example.execute-api.us-east-1.amazonaws.com \
+  OCP_IMAGE=quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi \
+  make e2e-seaplane-profiles E2E_SEAPLANE_DEDUPE_SHARED=false
+```
+
+The preflight output prints `dedupe shared: true|false`. If the first profile
+fails before the shared phase, later profiles do not retry shared specs; use the
+override above when you need that cross-profile repetition.
 
 For a single profile, the existing target still applies:
 

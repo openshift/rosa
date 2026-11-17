@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"go.uber.org/mock/gomock"
 
@@ -421,6 +422,32 @@ var _ = Describe("runSeaplaneCreate (machinepool)", func() {
 		err := h.validateAndParseUserOptions()
 		Expect(err).To(MatchError("Invalid machine pool AWS tags: Resource has too many AWS tags"))
 	})
+
+	DescribeTable("returns AWS tag parse errors without a CLI-specific prefix",
+		func(tags []string, expectedPrefix string) {
+			h := &seaplaneNodePoolCreate{
+				userOptions: &mpOpts.CreateMachinepoolUserOptions{Tags: tags},
+			}
+
+			err := h.validateAndParseUserOptions()
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(HavePrefix(expectedPrefix)))
+		},
+		Entry("too long tag key", []string{strings.Repeat("z", 129) + ":testValue"},
+			"expected a valid user tag key 'zzz"),
+		Entry("too long tag value", []string{"testKey:" + strings.Repeat("z", 257)},
+			"expected a valid user tag value 'zzz"),
+		Entry("invalid tag key", []string{"#:testValue"},
+			"expected a valid user tag key '#'"),
+		Entry("invalid tag value", []string{"testKey:#"},
+			"expected a valid user tag value '#'"),
+		Entry("malformed tag", []string{"aws:testKey:testValue"},
+			"invalid tag format for tag '[aws testKey testValue]'"),
+		Entry("reserved aws: tag key", []string{`"aws:testKey":testValue`},
+			"invalid tag key 'aws:testKey': keys starting with 'aws:' are reserved for AWS use"),
+		Entry("empty tag value", []string{"owner:"},
+			"invalid tag format, tag key or tag value can not be empty"),
+	)
 
 	It("maps Spot NodePool options and warns when the cluster has no termination handler", func() {
 		ctrl := gomock.NewController(GinkgoT())

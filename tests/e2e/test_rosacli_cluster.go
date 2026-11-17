@@ -74,6 +74,16 @@ func customProfileVersion(seaplaneMode bool) string {
 	return handler.LoadProfileYamlFileByENV().Version
 }
 
+func seaplaneReleaseImageForTests() string {
+	if version := strings.TrimSpace(os.Getenv("SEAPLANE_VERSION")); version != "" {
+		return version
+	}
+	if image := strings.TrimSpace(os.Getenv("OCP_IMAGE")); image != "" {
+		return image
+	}
+	return handler.LoadProfileYamlFileByENV().Version
+}
+
 func seaplaneRegionForTests(defaultRegion string) string {
 	endpoint := seaplaneEndpointForTests()
 	if endpoint == "" {
@@ -955,7 +965,7 @@ var _ = Describe("Edit cluster help text validation", labels.Feature.Cluster, fu
 
 	// Test that UWM example was removed from help text
 	It("does not show UWM example in edit cluster help text - [id:UWM-HELP-001]",
-		labels.Low, labels.Runtime.Day1Supplemental, labels.Seaplane.Validated,
+		labels.Low, labels.Runtime.Day1Supplemental, labels.Seaplane.Validated, labels.Seaplane.Shared,
 		func() {
 			By("Check edit cluster help text for UWM example")
 			helpOutput, err := clusterService.EditCluster("", "-h")
@@ -2564,7 +2574,7 @@ var _ = Describe("Create cluster with invalid options will",
 			})
 
 		It("to validate the network when create cluster - [id:38857]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.Validated,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.Validated, labels.Seaplane.Shared,
 			func() {
 				clusterName := "rosaci-38857"
 				// --non-sts is a classic-only flag rejected by the Seaplane dispatch before
@@ -2641,7 +2651,7 @@ var _ = Describe("Create cluster with invalid options will",
 			})
 
 		It("to validate the invalid proxy when create cluster - [id:45509]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.Validated,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.Validated, labels.Seaplane.Shared,
 			func() {
 				region := seaplaneRegionForTests(constants.CommonAWSRegion)
 				seaplaneURL := seaplaneEndpointForTests()
@@ -2678,7 +2688,9 @@ var _ = Describe("Create cluster with invalid options will",
 				}
 				if seaplaneMode {
 					baseCreateFlags = append(baseCreateFlags,
-						"--operator-roles-prefix", helper.TrimNameByLength(clusterName, constants.MaxRolePrefixLength))
+						"--version", seaplaneReleaseImageForTests(),
+						"--operator-roles-prefix", helper.TrimNameByLength(clusterName, constants.MaxRolePrefixLength),
+					)
 				}
 				runCreateDryRun := func(extraFlags ...string) (bytes.Buffer, error) {
 					flags := append(append([]string{}, baseCreateFlags...), extraFlags...)
@@ -3756,9 +3768,10 @@ var _ = Describe("HCP additional allowed principals negative testing",
 		})
 
 		It("expose additional allowed principals for HCP negative - [id:74433]",
-			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.Validated,
+			labels.Medium, labels.Runtime.Day1Negative, labels.Seaplane.Validated, labels.Seaplane.Shared,
 			func() {
 				By("Create hcp cluster using --additional-allowed-principals and invalid formatted arn")
+				seaplaneMode := isSeaplaneMode()
 				clusterName := helper.GenerateRandomName("ocp74433", 2)
 				command := []string{
 					"rosa", "create", "cluster",
@@ -3771,13 +3784,16 @@ var _ = Describe("HCP additional allowed principals negative testing",
 					"--additional-allowed-principals", "zzzz",
 					"-y",
 				}
+				if seaplaneMode {
+					command = append(command, "--version", seaplaneReleaseImageForTests())
+				}
 				_, err := rosaClient.Runner.RunCMD(command)
 				helper.ExpectErrorWithMessage(
 					err,
 					"Expected valid ARNs for additional allowed principals list: Invalid ARN: arn: invalid prefix",
 				)
 
-				if isSeaplaneMode() {
+				if seaplaneMode {
 					return
 				}
 
@@ -4870,6 +4886,7 @@ var _ = Describe("Sts cluster creation with external id",
 
 var _ = Describe("HCP cluster creation supplemental testing",
 	labels.Feature.Cluster,
+	labels.Seaplane.Shared,
 	func() {
 		defer GinkgoRecover()
 
@@ -5247,6 +5264,7 @@ var _ = Describe("HCP cluster creation supplemental testing",
 
 var _ = Describe("Sts cluster creation supplemental testing",
 	labels.Feature.Cluster,
+	labels.Seaplane.Shared,
 	func() {
 		defer GinkgoRecover()
 
@@ -5578,6 +5596,7 @@ var _ = Describe("Sts cluster creation supplemental testing",
 
 var _ = Describe("Sts cluster with BYO oidc flow creation supplemental testing",
 	labels.Feature.Cluster,
+	labels.Seaplane.Shared,
 	func() {
 		defer GinkgoRecover()
 
