@@ -24,6 +24,7 @@ func DefaultRunner(visitor RuntimeVisitor, runner CommandRunner) func(command *c
 		ctx := context.Background()
 		r := NewRuntime()
 		defer r.Cleanup()
+		ctx = r.AttachLogger(ctx, command)
 
 		if visitor != nil {
 			visitor(ctx, r, command, args)
