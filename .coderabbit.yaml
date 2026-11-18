@@ -70,6 +70,11 @@ reviews:
            warnings. Treat optional improvements and new features from item 4
            as informational. Do not present a conditional risk as a confirmed
            failure.
+
+        7. **Renovate E2E Suggestion:**
+           For Renovate dependency-update PRs, suggest running a relevant E2E
+           test, if one is available, once per PR. Treat this as an
+           informational suggestion, not a merge requirement.
     - path: "cmd/**/*.go"
       instructions: |
         - Treat Cobra wiring, flags, command UX, and error handling as high-signal review areas.
