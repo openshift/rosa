@@ -67,8 +67,8 @@ var _ = Describe("Seaplane label and taint editing", func() {
 		Entry("taints only", map[string]string{"taints": "new=:NoExecute"}, map[string]string{"old": "value"}, []hypershiftv1beta1.Taint{{Key: "new", Effect: "NoExecute"}}),
 		Entry("both", map[string]string{"labels": "new=test", "taints": "new=test:PreferNoSchedule"}, map[string]string{"new": "test"}, []hypershiftv1beta1.Taint{{Key: "new", Value: "test", Effect: "PreferNoSchedule"}}),
 		Entry("clear labels", map[string]string{"labels": ""}, map[string]string{}, []hypershiftv1beta1.Taint{{Key: "old", Value: "value", Effect: "NoSchedule"}}),
-		Entry("clear taints", map[string]string{"taints": ""}, map[string]string{"old": "value"}, []hypershiftv1beta1.Taint(nil)),
-		Entry("clear both", map[string]string{"labels": `""`, "taints": `""`}, map[string]string{}, []hypershiftv1beta1.Taint(nil)),
+		Entry("clear taints", map[string]string{"taints": ""}, map[string]string{"old": "value"}, []hypershiftv1beta1.Taint{}),
+		Entry("clear both", map[string]string{"labels": `""`, "taints": `""`}, map[string]string{}, []hypershiftv1beta1.Taint{}),
 	)
 	DescribeTable("rejects invalid values before updating", func(flags map[string]string, expectedError string) {
 		opts := &EditMachinepoolUserOptions{}

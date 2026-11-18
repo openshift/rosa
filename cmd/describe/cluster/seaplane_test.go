@@ -320,8 +320,25 @@ var _ = Describe("seaplaneDefaultNodePoolInstanceTypeFromList", func() {
 				},
 			}},
 		}}}
-		Expect(seaplaneDefaultNodePoolInstanceTypeFromList(list)).To(BeEmpty())
+		Expect(seaplaneDefaultNodePoolInstanceTypeFromList("my-cluster", list)).To(BeEmpty())
 	})
+
+	DescribeTable("finds the default worker pool",
+		func(nodePoolName string) {
+			list := &v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{{
+				ObjectMeta: metav1.ObjectMeta{Name: nodePoolName},
+				Spec: v1alpha1.NodePoolSpec{NodePool: v1alpha1.NodePoolSpecPassthrough{
+					Platform: v1alpha1.NodePoolPlatform{
+						AWS: &v1alpha1.AWSNodePoolPlatform{InstanceType: "m5.xlarge"},
+					},
+				}},
+			}}}
+			Expect(seaplaneDefaultNodePoolInstanceTypeFromList("my-cluster", list)).To(Equal("m5.xlarge"))
+		},
+		Entry("single-AZ worker pool", "my-cluster.workers"),
+		Entry("multi-AZ worker pool", "my-cluster.workers-0"),
+		Entry("unprefixed worker pool", "workers"),
+	)
 })
 
 var _ = Describe("seaplaneClusterToString", func() {

@@ -128,6 +128,35 @@ Conditions:
 		Expect(npd.State).To(Equal("Provisioning"))
 		Expect(npd.CurrentReplicas).To(BeEmpty())
 	})
+
+	It("parses Platform API node pool conditions listing multiple machines", func() {
+		output := `
+ID:                                    autoscale-nt
+Cluster ID:                            2t63qi7a1shbrbh9etlq1kjcia07ib9t
+State:                                 Provisioning
+Autoscaling:                           Yes
+Desired replicas:
+ - Min replicas: 1
+ - Max replicas: 3
+Current replicas:
+Instance type:                         m5.2xlarge
+Conditions:
+ - Synced:    True   AllSynced: 1/1 desires applied successfully
+ - Ready:     Unknown  ReadyUnknown: * Machine autoscale-nt-2p7df-mw45x:
+  * NodeHealthy: Waiting for a Node with spec.providerID aws:///us-east-1c/i-041be47e18d732758 to exist
+* Machine autoscale-nt-2p7df-z5jvl:
+  * NodeHealthy: Waiting for a Node with spec.providerID aws:///us-east-1c/i-09c10389161bd9640 to exist
+`
+		m := &machinepoolService{ResourcesService: ResourcesService{client: &Client{Parser: NewParser()}}}
+		var buf bytes.Buffer
+		buf.WriteString(output)
+
+		npd, err := m.ReflectNodePoolDescription(buf)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(npd.ID).To(Equal("autoscale-nt"))
+		Expect(npd.State).To(Equal("Provisioning"))
+	})
 })
 
 var _ = Describe("Nodepool lookup", func() {
@@ -175,5 +204,44 @@ exit 1
 			errors.New("exit status 1: the server is currently unable to handle the request"),
 		)).To(BeTrue())
 		Expect(isTransientNodePoolPollError(errors.New("exit status 1: cluster not found"))).To(BeFalse())
+	})
+
+	It("identifies gateway and client timeouts as transient node pool polling errors", func() {
+		for _, message := range []string{
+			"exit status 1: 502 Bad Gateway",
+			"exit status 1: 503 Service Unavailable",
+			"exit status 1: 504 Gateway Timeout",
+			"context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+		} {
+			Expect(isTransientNodePoolPollError(errors.New(message))).To(BeTrue(), message)
+		}
+	})
+
+	It("reports the last observed node pool state when replicas never become ready", func() {
+		binDir := GinkgoT().TempDir()
+		script := filepath.Join(binDir, "rosa")
+		scriptContent := `#!/bin/sh
+cat <<'EOF'
+Name:                                  node-pool
+ID:                                    node-pool
+State:                                 Provisioning
+Desired replicas:                      1
+Current replicas:                      0
+EOF
+`
+		Expect(os.WriteFile(script, []byte(scriptContent), 0700)).To(Succeed())
+
+		originalPath := os.Getenv("PATH")
+		os.Setenv("PATH", binDir+":"+originalPath)
+		DeferCleanup(func() {
+			os.Setenv("PATH", originalPath)
+		})
+
+		service := NewMachinePoolService(NewClient())
+		err := service.WaitForNodePoolReplicasReady(
+			"cluster-id", "node-pool", false, time.Millisecond, 5*time.Millisecond)
+
+		Expect(err).To(MatchError(ContainSubstring("context deadline exceeded")))
+		Expect(err.Error()).To(ContainSubstring(`state="Provisioning" desired=1 current="0"`))
 	})
 })

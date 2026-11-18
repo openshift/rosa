@@ -33,8 +33,11 @@ var _ = Describe("List Platform API DNS domains", func() {
 		args.all, args.hostedCp = all, hostedCp
 		r, server := test.NewSeaplaneTestRuntime()
 		server.AppendHandlers(ghttp.CombineHandlers(
-			ghttp.VerifyRequest("GET", "/api/v0/dns_domains", ""),
-			ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]any{"items": []map[string]any{{"id": "abcd.0.example.com", "cluster_arch": "hcp", "user_defined": true, "reserved_at_timestamp": "2026-10-08T12:00:00Z"}}}),
+			ghttp.VerifyRequest("GET", "/api/v0/dns_reservations", ""),
+			ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]any{"items": []map[string]any{{
+				"metadata": map[string]any{"name": "rosa-1a2b3c4d", "creationTimestamp": "2026-10-08T12:00:00Z"},
+				"status":   map[string]any{"phase": "Ready", "baseDomain": "abcd.0.example.com"},
+			}}}),
 		))
 		server.AppendHandlers(ghttp.CombineHandlers(
 			ghttp.VerifyRequest("GET", "/api/v0/clusters", ""),
@@ -49,8 +52,8 @@ var _ = Describe("List Platform API DNS domains", func() {
 		Expect(listDNSDomainsV2(r, &buffer)).To(Succeed())
 		domains, err := rosacli.NewClient().OCMResource.ReflectDNSDomainList(buffer)
 		Expect(err).NotTo(HaveOccurred())
-		domain := domains.GetDNSDomain("abcd.0.example.com")
-		Expect(domain.ID).To(Equal("abcd.0.example.com"))
+		domain := domains.GetDNSDomain("rosa-1a2b3c4d")
+		Expect(domain.ID).To(Equal("rosa-1a2b3c4d"))
 		Expect(domain.Architecture).To(Equal("hcp"))
 		Expect(domain.UserDefined).To(Equal("Yes"))
 		Expect(domain.ClusterID).To(Equal("cluster-uid"))
@@ -59,7 +62,7 @@ var _ = Describe("List Platform API DNS domains", func() {
 	}, Entry("default", false, false), Entry("all", true, false), Entry("hosted-cp", false, true), Entry("all hosted-cp", true, true))
 	DescribeTable("preserves structured list output", func(format string, empty bool) {
 		r, server := test.NewSeaplaneTestRuntime()
-		body := `{"items":[{"id":"abcd.0.example.com","cluster_arch":"hcp","user_defined":true}]}`
+		body := `{"items":[{"metadata":{"name":"rosa-1a2b3c4d"},"status":{"phase":"Ready","baseDomain":"abcd.0.example.com"}}]}`
 		if empty {
 			body = `{"items":[]}`
 		}
@@ -78,7 +81,8 @@ var _ = Describe("List Platform API DNS domains", func() {
 			Expect(domains).To(BeEmpty())
 		} else {
 			Expect(domains).To(HaveLen(1))
-			Expect(domains[0].ID).To(Equal("abcd.0.example.com"))
+			Expect(domains[0].ID).To(Equal("rosa-1a2b3c4d"))
+			Expect(domains[0].BaseDomain).To(Equal("abcd.0.example.com"))
 			Expect(domains[0].UserDefined).To(BeTrue())
 		}
 	}, Entry("JSON", "json", false), Entry("YAML", "yaml", false), Entry("empty JSON", "json", true), Entry("empty YAML", "yaml", true))

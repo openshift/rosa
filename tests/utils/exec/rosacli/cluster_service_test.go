@@ -421,3 +421,17 @@ func prependPathEnv(prefix string) []string {
 
 	return append(envs, "PATH="+prefix)
 }
+
+var _ = Describe("Cluster deletion wait", func() {
+	DescribeTable("classifies deletion states",
+		func(state string, expected bool) {
+			Expect(clusterDeletionStarted(state)).To(Equal(expected))
+		},
+		Entry("empty state is transient", "", true),
+		Entry("deleting", "deleting", true),
+		Entry("uninstalling", constants.Uninstalling, true),
+		Entry("ready has not started", "ready", false),
+		Entry("installing has not started", "installing", false),
+		Entry("error has not started", "error", false),
+	)
+})

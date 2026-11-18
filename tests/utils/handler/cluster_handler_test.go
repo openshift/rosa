@@ -6,6 +6,7 @@ package handler
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,6 +20,36 @@ import (
 var _ = Describe("newClusterHandler", func() {
 	AfterEach(func() {
 		seaplane.Reset()
+	})
+
+	It("does not persist state for temporary handlers", func() {
+		tempDir := GinkgoT().TempDir()
+		clusterConfig := filepath.Join(tempDir, "cluster-config")
+		clusterDetail := filepath.Join(tempDir, "cluster-detail.json")
+		userData := filepath.Join(tempDir, "resources.json")
+
+		originalClusterConfig := config.Test.ClusterConfigFile
+		originalClusterDetail := config.Test.ClusterDetailFile
+		originalUserData := config.Test.UserDataFile
+		config.Test.ClusterConfigFile = clusterConfig
+		config.Test.ClusterDetailFile = clusterDetail
+		config.Test.UserDataFile = userData
+		DeferCleanup(func() {
+			config.Test.ClusterConfigFile = originalClusterConfig
+			config.Test.ClusterDetailFile = originalClusterDetail
+			config.Test.UserDataFile = originalUserData
+		})
+
+		handler, err := NewTempClusterHandler(nil, &Profile{
+			Region:        "us-east-1",
+			ClusterConfig: &ClusterConfig{},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(handler.(*clusterHandler).saveToFile()).To(Succeed())
+		for _, file := range []string{clusterConfig, clusterDetail, userData} {
+			_, err := os.Stat(file)
+			Expect(os.IsNotExist(err)).To(BeTrue(), "temporary handler wrote %s", file)
+		}
 	})
 
 	It("does not require shared account credentials for Seaplane resources", func() {
@@ -52,6 +83,26 @@ var _ = Describe("newClusterHandler", func() {
 			ClusterConfig: &ClusterConfig{AdditionalPrincipals: true},
 		})
 		Expect(err).NotTo(HaveOccurred())
+	})
+})
+
+var _ = Describe("seaplaneNodePoolTimeout", func() {
+	It("honours a configured NODEPOOL_TIMEOUT", func() {
+		Expect(seaplaneNodePoolTimeout(90)).To(Equal(90 * time.Minute))
+	})
+
+	It("falls back to the default when unset", func() {
+		Expect(seaplaneNodePoolTimeout(0)).
+			To(Equal(defaultSeaplaneNodePoolTimeoutMin * time.Minute))
+	})
+
+	It("falls back to the default for a negative value", func() {
+		Expect(seaplaneNodePoolTimeout(-5)).
+			To(Equal(defaultSeaplaneNodePoolTimeoutMin * time.Minute))
+	})
+
+	It("allows more than the previous fixed 20 minutes, which expired while provisioning", func() {
+		Expect(seaplaneNodePoolTimeout(0)).To(BeNumerically(">", 20*time.Minute))
 	})
 })
 
@@ -110,6 +161,23 @@ var _ = Describe("Seaplane node pool setup", func() {
 		_, err := seaplaneNodePoolReplicas(&ClusterConfig{Autoscale: true}, 1)
 		Expect(err).To(MatchError("seaplane e2e setup does not support autoscaled default node pools"))
 	})
+
+	It("compacts node pool conditions for timeout diagnostics", func() {
+		message := " - Synced: True AllSynced: 1/1 desires applied successfully\n" +
+			" - Ready: False NotReady: * Machine workers-0: NodeHealthy: waiting"
+		Expect(compactSeaplaneNodePoolConditions(message)).To(Equal(
+			"- Synced: True AllSynced: 1/1 desires applied successfully " +
+				"- Ready: False NotReady: * Machine workers-0: NodeHealthy: waiting"))
+	})
+
+	It("keeps Ready node pools ready when condition details are present", func() {
+		phase, summary := seaplaneNodePoolStatus(
+			" Ready ",
+			" - Synced: True AllSynced: 1/1 desires applied successfully")
+		Expect(phase).To(Equal("Ready"))
+		Expect(summary).To(Equal(
+			"Ready (- Synced: True AllSynced: 1/1 desires applied successfully)"))
+	})
 })
 
 var _ = Describe("GenerateClusterCreateFlags seaplane", func() {
@@ -162,6 +230,26 @@ var _ = Describe("GenerateClusterCreateFlags seaplane", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ch.profile.ClusterConfig.Name).To(Equal("seaplane-e2e-12345"))
 		Expect(flags).To(ContainElement("seaplane-e2e-12345"))
+	})
+
+	It("reuses generated Seaplane flags instead of preparing resources twice", func() {
+		seaplane.SetFromFlag("https://example.execute-api.us-east-1.amazonaws.com/prod")
+		GinkgoT().Setenv("CLUSTER_NAME", "seaplane-e2e-12345")
+		GinkgoT().Setenv("SEAPLANE_VERSION", "")
+		GinkgoT().Setenv("OCP_IMAGE", "quay.io/openshift-release-dev/ocp-release:5.0.0-rc.5-multi")
+		ch := &clusterHandler{
+			profile:          &Profile{Region: "us-east-1", ClusterConfig: &ClusterConfig{}},
+			clusterConfig:    &ClusterConfigure.ClusterConfig{},
+			clusterDetail:    &ClusterDetail{},
+			resourcesHandler: &resourcesHandler{persist: false, resources: &Resources{}},
+		}
+
+		first, err := ch.GenerateClusterCreateFlags()
+		Expect(err).NotTo(HaveOccurred())
+		first[0] = "mutated"
+		second, err := ch.GenerateClusterCreateFlags()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(second[0]).To(Equal(rosaAutoConfirmFlag))
 	})
 
 	It("passes the release image configured in the profile", func() {

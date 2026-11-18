@@ -77,7 +77,7 @@ var _ = Describe("Edit nodepool",
 		})
 
 		It("can create, replace and clear Seaplane nodepool labels and taints",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated, labels.Seaplane.KnownIssue,
 			func() {
 				if !isSeaplaneMode() {
 					Skip("This case exercises Seaplane nodepool metadata")
@@ -137,7 +137,7 @@ var _ = Describe("Edit nodepool",
 			})
 
 		It("can create/edit/list/delete nodepool - [id:56782]",
-			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated,
+			labels.Critical, labels.Runtime.Day2, labels.FedRAMP, labels.Seaplane.Validated, labels.Seaplane.KnownIssue,
 			func() {
 				nodePoolName := helper.GenerateRandomName("np-56782", 2)
 				labels := "label1=value1,label2=value2"

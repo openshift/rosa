@@ -73,6 +73,23 @@ var _ = Describe("runSeaplaneDescribe (machinepool)", func() {
 		runSeaplaneDescribe(t.RosaRuntime, &DescribeMachinepoolUserOptions{machinepool: "my-np"}, nil)
 	})
 
+	It("resolves a node pool by UID", func() {
+		ctrl := gomock.NewController(GinkgoT())
+		seaplaneClient, clusters, nodePools := newDescribeMPMocks(ctrl)
+
+		np := &v1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1.my-np", UID: types.UID("np-uid-1")},
+		}
+		clusters.EXPECT().List(gomock.Any(), gomock.Any()).Return(&v1alpha1.ClusterList{Items: []v1alpha1.Cluster{{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster1", UID: types.UID("cluster-uid")},
+		}}}, nil)
+		nodePools.EXPECT().List(gomock.Any(), gomock.Eq(platform.NodePoolListOptions{ClusterUID: "cluster-uid"})).Return(
+			&v1alpha1.NodePoolList{Items: []v1alpha1.NodePool{*np}}, nil)
+
+		t.RosaRuntime.SeaplaneClient = seaplaneClient
+		runSeaplaneDescribe(t.RosaRuntime, &DescribeMachinepoolUserOptions{machinepool: "np-uid-1"}, nil)
+	})
+
 	It("resolves node pool name from argv when machinepool option is empty", func() {
 		ctrl := gomock.NewController(GinkgoT())
 		seaplaneClient, clusters, nodePools := newDescribeMPMocks(ctrl)

@@ -54,6 +54,7 @@ var _ = Describe("Seaplane HCP cluster creation with disabled cluster capabiliti
 			labels.Runtime.Day1,
 			labels.Seaplane.Validated,
 			labels.Seaplane.One,
+			labels.Seaplane.Profile.DisableCapabilities,
 			func() {
 				flags, err := clusterHandler.GenerateClusterCreateFlags()
 				Expect(err).NotTo(HaveOccurred())

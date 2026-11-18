@@ -5,6 +5,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-online/ocm-common/pkg/test/vpc_client"
 
+	"github.com/openshift/rosa/pkg/seaplane"
 	ciConfig "github.com/openshift/rosa/tests/ci/config"
 	"github.com/openshift/rosa/tests/ci/labels"
 	"github.com/openshift/rosa/tests/utils/config"
@@ -203,7 +205,12 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 			Expect(err).ToNot(HaveOccurred(), out.String())
 
 			for _, tag := range tags {
-				Expect(description.Tags).Should(ContainSubstring(strings.Replace(tag, ":", "=", -1)))
+				// Platform API v2 returns tags with the same separator as submitted
+				if os.Getenv("SEAPLANE_URL") != "" || seaplane.Enabled() {
+					Expect(description.Tags).Should(ContainSubstring(tag))
+				} else {
+					Expect(description.Tags).Should(ContainSubstring(strings.Replace(tag, ":", "=", -1)))
+				}
 			}
 
 			By("Create machinepool with too many tags")
@@ -1078,7 +1085,14 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				Expect(err).ToNot(HaveOccurred())
 				defer rosaClient.MachinePool.DeleteMachinePool(clusterID, mpName)
 
-				if isSeaplane || shouldCheckNodePoolReplicas {
+				// Spot capacity has to be enabled for the cluster's AWS account. The
+				// ephemeral Seaplane accounts used by CI cannot launch Spot instances
+				// yet (ROSAENG-65791), so Spot node pools stay in Provisioning and never
+				// report observed replicas. Keep the create/describe/edit/delete checks
+				// here and restore the replica check once those accounts can launch Spot
+				// instances.
+				checkSpotReplicas := shouldCheckNodePoolReplicas && !isSeaplane
+				if checkSpotReplicas {
 					err = rosaClient.MachinePool.WaitForNodePoolReplicasReady(
 						clusterID, mpName, false, constants.NodePoolCheckPoll, constants.NodePoolCheckTimeout)
 					Expect(err).ToNot(HaveOccurred())
@@ -1088,7 +1102,7 @@ var _ = Describe("HCP Machine Pool", labels.Feature.Machinepool, func() {
 				description, err := rosaClient.MachinePool.DescribeMachinePool(clusterID, mpName)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(description.String()).To(ContainSubstring("Yes (on-demand)"))
-				if isSeaplane || shouldCheckNodePoolReplicas {
+				if checkSpotReplicas {
 					nodePoolDescription, err := rosaClient.MachinePool.ReflectNodePoolDescription(description)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(nodePoolDescription.CurrentReplicas).To(Equal("1"))

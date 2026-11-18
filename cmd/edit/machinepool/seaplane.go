@@ -138,7 +138,7 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 	if tagsChanged {
 		tags, err := rosaaws.ParseUserTags([]string{input.Tags}, rosaaws.UserTagOptions{})
 		if err != nil {
-			return fmt.Errorf("invalid machine pool AWS tags: %w", err)
+			return err
 		}
 		h.tags = tags
 		encodedTags, err := json.Marshal(tags)
@@ -157,11 +157,21 @@ func (h *seaplaneNodePoolUpdate) PreRequest(
 			return err
 		}
 		h.labels = labels
+		encodedLabels, err := json.Marshal(labels)
+		if err != nil {
+			return fmt.Errorf("failed to encode labels: %w", err)
+		}
+		input.Labels = string(encodedLabels)
 	}
 	if h.cmd.Flags().Changed("taints") {
 		taints, err := mpHelpers.ParseSeaplaneTaints(h.userOptions.taints)
 		if err != nil {
 			return err
+		}
+		if taints == nil {
+			// Keep an explicit clear distinct from "not supplied" so the generated
+			// update document emits an empty list and the API removes the taints.
+			taints = []hypershiftv1beta1.Taint{}
 		}
 		h.taints = taints
 	}

@@ -62,6 +62,13 @@ func PrintConfig(arg string) error {
 		"keyrings": true,
 	}
 
+	// IsNotValid reports a config without OCM credentials, but `rosa login
+	// --seaplane-url` writes a config that deliberately has none. Reading back
+	// such a setting must not be treated as an empty configuration.
+	validWithoutOCMCredentials := map[string]bool{
+		"seaplane_url": true,
+	}
+
 	cfg := &config.Config{}
 	var err error
 	if !skipConfigLoadMap[arg] {
@@ -72,7 +79,7 @@ func PrintConfig(arg string) error {
 		}
 		// If the configuration doesn't exist yet assume that all the configuration settings
 		// are empty:
-		if cfg == nil || config.IsNotValid(cfg) {
+		if cfg == nil || (config.IsNotValid(cfg) && !validWithoutOCMCredentials[arg]) {
 			fmt.Fprintf(Writer, "\n")
 			return nil
 		}
@@ -98,6 +105,8 @@ func PrintConfig(arg string) error {
 		fmt.Fprintf(Writer, "%s\n", cfg.URL)
 	case "fedramp":
 		fmt.Fprintf(Writer, "%v\n", cfg.FedRAMP)
+	case "seaplane_url":
+		fmt.Fprintf(Writer, "%s\n", cfg.SeaplaneURL)
 	default:
 		return fmt.Errorf("'%s' is not a supported setting", arg)
 	}

@@ -13,9 +13,9 @@ import (
 	v1alpha1 "github.com/openshift-online/rosa-seaplane-api/api/v1alpha1/public"
 	"github.com/openshift-online/rosa-seaplane-api/clientset/platform"
 
-	rosaaws "github.com/openshift/rosa/pkg/aws"
 	mpHelpers "github.com/openshift/rosa/pkg/helper/machinepools"
 	"github.com/openshift/rosa/pkg/ocm"
+	ocmOutput "github.com/openshift/rosa/pkg/ocm/output"
 	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 	"github.com/openshift/rosa/pkg/seaplane"
@@ -65,6 +65,7 @@ func runSeaplaneDescribe(r *rosa.Runtime, userOptions *DescribeMachinepoolUserOp
 	var np *v1alpha1.NodePool
 	for i := range nodePools.Items {
 		if nodePools.Items[i].Name == nodePoolName ||
+			string(nodePools.Items[i].UID) == nodePoolName ||
 			strings.TrimPrefix(nodePools.Items[i].Name, cluster.Name+".") == nodePoolName {
 			np = &nodePools.Items[i]
 			break
@@ -208,7 +209,7 @@ func seaplaneNodePoolToString(np *v1alpha1.NodePool, clusterName string) string 
 		}
 
 	}
-	tags = rosaaws.FormatUserTagsList(np.Spec.Tags)
+	tags = ocmOutput.PrintUserAwsTags(np.Spec.Tags)
 
 	// Autoscaling or fixed replicas (desired replicas)
 	autoscaling := "No"
