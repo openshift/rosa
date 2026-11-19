@@ -4,95 +4,90 @@
 package seaplane
 
 import (
-	"fmt"
-	"strings"
-
+	iam "github.com/openshift-online/rosa-seaplane-api/iam"
 	hypershiftv1beta1 "github.com/openshift/hypershift/api/hypershift/v1beta1"
 )
 
+// Role name suffixes are owned by the iam module (single source of truth for
+// seaplane V2 operator role definitions). These aliases preserve the
+// previously exported constants for existing callers.
 const (
-	SuffixIngress                = "ingress"
-	SuffixCloudControllerManager = "cloud-controller-manager"
-	SuffixEBSCSI                 = "ebs-csi"
-	SuffixImageRegistry          = "image-registry"
-	SuffixNetworkConfig          = "network-config"
-	SuffixControlPlaneOperator   = "control-plane-operator"
-	SuffixNodePoolManagement     = "node-pool-management"
-	SuffixWorkerRole             = "ROSA-Worker-Role"
+	SuffixIngress                = iam.SuffixIngress
+	SuffixCloudControllerManager = iam.SuffixCloudControllerManager
+	SuffixEBSCSI                 = iam.SuffixEBSCSI
+	SuffixImageRegistry          = iam.SuffixImageRegistry
+	SuffixNetworkConfig          = iam.SuffixNetworkConfig
+	SuffixControlPlaneOperator   = iam.SuffixControlPlaneOperator
+	SuffixNodePoolManagement     = iam.SuffixNodePoolManagement
+	SuffixWorkerRole             = iam.SuffixWorkerRole
 )
-
-var operatorRoleSuffixes = []string{
-	SuffixIngress,
-	SuffixCloudControllerManager,
-	SuffixEBSCSI,
-	SuffixImageRegistry,
-	SuffixNetworkConfig,
-	SuffixControlPlaneOperator,
-	SuffixNodePoolManagement,
-	SuffixWorkerRole,
-}
 
 // OperatorRoleSuffixes returns IAM role name suffixes (after "<prefix>-") for seaplane v2 HCP.
 func OperatorRoleSuffixes() []string {
-	return operatorRoleSuffixes
+	set := iam.DefaultDefinitionSet()
+	suffixes := make([]string, len(set.Roles))
+	for i, role := range set.Roles {
+		suffixes[i] = role.Name
+	}
+	return suffixes
+}
+
+// OperatorRoleDefinitions returns the canonical V2 operator role definitions
+// from the iam module (ROSAENG-75447).
+func OperatorRoleDefinitions() []iam.OperatorRoleSpec {
+	return iam.DefaultDefinitionSet().Roles
 }
 
 // ComputeRolesRef builds the AWSRolesRef from an operator roles prefix, AWS account ID, and
 // partition. Role names follow the convention established by the Platform API IAM CloudFormation
 // template.
 func ComputeRolesRef(prefix, accountID, partition string) hypershiftv1beta1.AWSRolesRef {
-	arn := func(suffix string) string {
-		return fmt.Sprintf("arn:%s:iam::%s:role/%s-%s", partition, accountID, prefix, suffix)
-	}
+	ref := iam.ComputeRolesRef(prefix, accountID, partition)
 	return hypershiftv1beta1.AWSRolesRef{
-		IngressARN:              arn(SuffixIngress),
-		KubeCloudControllerARN:  arn(SuffixCloudControllerManager),
-		StorageARN:              arn(SuffixEBSCSI),
-		ImageRegistryARN:        arn(SuffixImageRegistry),
-		NetworkARN:              arn(SuffixNetworkConfig),
-		ControlPlaneOperatorARN: arn(SuffixControlPlaneOperator),
-		NodePoolManagementARN:   arn(SuffixNodePoolManagement),
+		IngressARN:              ref.IngressARN,
+		KubeCloudControllerARN:  ref.KubeCloudControllerARN,
+		StorageARN:              ref.StorageARN,
+		ImageRegistryARN:        ref.ImageRegistryARN,
+		NetworkARN:              ref.NetworkARN,
+		ControlPlaneOperatorARN: ref.ControlPlaneOperatorARN,
+		NodePoolManagementARN:   ref.NodePoolManagementARN,
 	}
 }
 
 // ComputeInstanceProfile returns the worker node instance profile name for a given prefix.
 func ComputeInstanceProfile(prefix string) string {
-	return prefix + "-" + SuffixWorkerRole
+	return iam.ComputeInstanceProfile(prefix)
 }
 
 // OperatorRoleNames returns IAM role names created by seaplane v2 operator-roles create.
 func OperatorRoleNames(prefix string) []string {
-	names := make([]string, len(operatorRoleSuffixes))
-	for i, suffix := range operatorRoleSuffixes {
-		names[i] = prefix + "-" + suffix
+	return iam.RoleNames(prefix)
+}
+
+// toIAMRolesRef converts hypershift's AWSRolesRef to the iam module's
+// equivalent (identical fields; conversion is explicit because the structs
+// declare fields in a different order).
+func toIAMRolesRef(rolesRef hypershiftv1beta1.AWSRolesRef) iam.RolesRef {
+	return iam.RolesRef{
+		IngressARN:              rolesRef.IngressARN,
+		KubeCloudControllerARN:  rolesRef.KubeCloudControllerARN,
+		StorageARN:              rolesRef.StorageARN,
+		ImageRegistryARN:        rolesRef.ImageRegistryARN,
+		NetworkARN:              rolesRef.NetworkARN,
+		ControlPlaneOperatorARN: rolesRef.ControlPlaneOperatorARN,
+		NodePoolManagementARN:   rolesRef.NodePoolManagementARN,
 	}
-	return names
 }
 
 // InstanceProfileFromRolesRef derives the worker instance profile name from a cluster's
 // RolesRef by extracting the operator roles prefix from the NodePoolManagementARN.
 // Returns an empty string if the ARN is not set or cannot be parsed.
 func InstanceProfileFromRolesRef(rolesRef hypershiftv1beta1.AWSRolesRef) string {
-	prefix := OperatorRolesPrefixFromRolesRef(rolesRef)
-	if prefix == "" {
-		return ""
-	}
-	return ComputeInstanceProfile(prefix)
+	return iam.InstanceProfileFromRolesRef(toIAMRolesRef(rolesRef))
 }
 
 // OperatorRolesPrefixFromRolesRef extracts the operator-roles prefix from a cluster's
 // RolesRef (from the NodePoolManagementARN role name). Returns "" if unset/unparseable.
 func OperatorRolesPrefixFromRolesRef(rolesRef hypershiftv1beta1.AWSRolesRef) string {
-	arn := rolesRef.NodePoolManagementARN
-	slash := strings.LastIndex(arn, "/")
-	if slash < 0 {
-		return ""
-	}
-	roleName := arn[slash+1:]
-	nodePoolSuffix := "-" + SuffixNodePoolManagement
-	prefix, found := strings.CutSuffix(roleName, nodePoolSuffix)
-	if !found {
-		return ""
-	}
-	return prefix
+	return iam.OperatorRolesPrefixFromRolesRef(toIAMRolesRef(rolesRef))
 }
