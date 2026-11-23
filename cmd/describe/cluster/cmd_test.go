@@ -60,10 +60,16 @@ var (
 			now.Format("2006-01-02 15:04 MST") + `","state":"` +
 			state + `","version":"` +
 			version + `"}}`)
+	expectClusterWithUpgradeAndDescription = []byte(
+		`{"displayName":"displayname","id":"bar","kind":"Cluster","migrations":[],"name":"foo",` +
+			`"scheduledUpgrade":{"nextRun":"` +
+			now.Format("2006-01-02 15:04 MST") + `","state":"` +
+			state + `","stateDescription":"upgrade blocked: spec.pausedUntil is set","version":"` +
+			version + `"}}`)
 	clusterWithNameAndID, emptyCluster, clusterWithExternalAuthConfig, clusterWithAap, clusterWithKms *cmv1.Cluster
 	emptyUpgradePolicy, upgradePolicyWithVersionAndNextRun                                            *cmv1.UpgradePolicy
 	//nolint
-	emptyUpgradeState, upgradePolicyWithState *cmv1.UpgradePolicyState
+	emptyUpgradeState, upgradePolicyWithState, upgradePolicyWithStateAndDescription *cmv1.UpgradePolicyState
 
 	berr error
 
@@ -95,6 +101,11 @@ var _ = BeforeSuite(func() {
 	upgradePolicyWithVersionAndNextRun, berr = cmv1.NewUpgradePolicy().Version(version).NextRun(now).Build()
 	Expect(berr).NotTo(HaveOccurred())
 	upgradePolicyWithState, berr = cmv1.NewUpgradePolicyState().Value(cmv1.UpgradePolicyStateValue(state)).Build()
+	Expect(berr).NotTo(HaveOccurred())
+	upgradePolicyWithStateAndDescription, berr = cmv1.NewUpgradePolicyState().
+		Value(cmv1.UpgradePolicyStateValue(state)).
+		Description("upgrade blocked: spec.pausedUntil is set").
+		Build()
 	Expect(berr).NotTo(HaveOccurred())
 
 })
@@ -160,6 +171,12 @@ var _ = Describe("Cluster description", Ordered, func() {
 				func() *cmv1.Cluster { return clusterWithKms },
 				func() *cmv1.UpgradePolicy { return emptyUpgradePolicy },
 				func() *cmv1.UpgradePolicyState { return nil }, expectClusterWithEtcd, nil),
+
+			Entry("Prints stateDescription when upgrade state has a description",
+				func() *cmv1.Cluster { return clusterWithNameAndID },
+				func() *cmv1.UpgradePolicy { return upgradePolicyWithVersionAndNextRun },
+				func() *cmv1.UpgradePolicyState { return upgradePolicyWithStateAndDescription },
+				expectClusterWithUpgradeAndDescription, nil),
 		)
 
 		DescribeTable("When displaying clusters with output json",

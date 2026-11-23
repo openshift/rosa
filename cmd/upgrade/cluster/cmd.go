@@ -208,11 +208,15 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			return err
 		}
 		if scheduledUpgrade != nil {
-			r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
+			msg := fmt.Sprintf("There is already a %s upgrade to version %s on %s",
 				scheduledUpgrade.State().Value(),
 				scheduledUpgrade.Version(),
 				scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
 			)
+			if desc := scheduledUpgrade.State().Description(); desc != "" {
+				msg += fmt.Sprintf(" (%s)", desc)
+			}
+			r.Reporter.Warnf(msg)
 			return nil
 		}
 	} else {
@@ -221,11 +225,15 @@ func runWithRuntime(r *rosa.Runtime, cmd *cobra.Command) error {
 			return err
 		}
 		if scheduledUpgrade != nil {
-			r.Reporter.Warnf("There is already a %s upgrade to version %s on %s",
+			msg := fmt.Sprintf("There is already a %s upgrade to version %s on %s",
 				upgradeState.Value(),
 				scheduledUpgrade.Version(),
 				scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST"),
 			)
+			if desc := upgradeState.Description(); desc != "" {
+				msg += fmt.Sprintf(" (%s)", desc)
+			}
+			r.Reporter.Warnf(msg)
 			return nil
 		}
 	}
