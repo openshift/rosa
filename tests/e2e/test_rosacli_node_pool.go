@@ -655,7 +655,7 @@ var _ = Describe("Edit nodepool",
 				Expect(err).ToNot(HaveOccurred())
 				clusterVersion := clusterVersionInfo.RawID
 				clusterChannelGroup := clusterVersionInfo.ChannelGroup
-				versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, false)
+				versionList, err := versionService.ListAndReflectVersions(clusterChannelGroup, true)
 				Expect(err).ToNot(HaveOccurred())
 
 				clusterSemVer := semver.MustParse(clusterVersion)
@@ -664,6 +664,10 @@ var _ = Describe("Edit nodepool",
 				for {
 					lowerVersion, err := versionList.FindNearestBackwardOptionalVersion(lVersion, 1, false)
 					Expect(err).ToNot(HaveOccurred())
+					if lowerVersion == nil {
+						log.Logger.Warnf("No version lower than %s is available for node pools on this cluster", lVersion)
+						break
+					}
 					lVersion = lowerVersion.Version
 					if lowerVersion.AvailableUpgrades != "" {
 						upgrades := helper.ParseCommaSeparatedStrings(lowerVersion.AvailableUpgrades)
