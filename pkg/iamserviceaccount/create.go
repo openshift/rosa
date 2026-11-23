@@ -28,6 +28,7 @@ import (
 
 	rosaerrors "github.com/openshift/rosa/pkg/errors"
 	"github.com/openshift/rosa/pkg/fedramp"
+	"github.com/openshift/rosa/pkg/log"
 )
 
 // CreateIAMServiceAccountRequest contains the resolved inputs for creating
@@ -223,6 +224,8 @@ func (s *Service) CreateIAMServiceAccount(
 	client CreateIAMServiceAccountClient,
 	req CreateIAMServiceAccountRequest,
 ) (*CreateIAMServiceAccountResult, error) {
+	logger := log.FromContext(ctx)
+
 	// Validate the request
 	if err := req.Validate(); err != nil {
 		return nil, &rosaerrors.ValidationError{Err: fmt.Errorf("invalid request: %w", err)}
@@ -262,6 +265,7 @@ func (s *Service) CreateIAMServiceAccount(
 
 	// Create or update the IAM role
 	managedPolicies := false
+	logger.DebugContext(ctx, "ensuring IAM role", "role", roleName, "path", path)
 	roleARN, err := client.EnsureRole(
 		ctx,
 		roleName,
@@ -281,12 +285,14 @@ func (s *Service) CreateIAMServiceAccount(
 	if req.IsGovcloud {
 		roleARN = GetRoleARN(req.AccountID, roleName, path, req.Partition)
 	}
+	logger.InfoContext(ctx, "ensured IAM role", "role", roleName, "roleArn", roleARN)
 
 	// Attach managed policies
 	for _, policyARN := range req.PolicyARNs {
 		if err := client.AttachRolePolicy(ctx, roleName, policyARN); err != nil {
 			return nil, fmt.Errorf("failed to attach policy '%s' to role '%s': %w", policyARN, roleName, err)
 		}
+		logger.InfoContext(ctx, "attached managed policy", "role", roleName, "policyArn", policyARN)
 	}
 
 	// Attach inline policy if provided
@@ -296,6 +302,7 @@ func (s *Service) CreateIAMServiceAccount(
 		if err := client.PutRolePolicy(ctx, roleName, inlinePolicyName, *req.InlinePolicy); err != nil {
 			return nil, fmt.Errorf("failed to attach inline policy to role '%s': %w", roleName, err)
 		}
+		logger.InfoContext(ctx, "attached inline policy", "role", roleName, "policyName", inlinePolicyName)
 	}
 
 	return &CreateIAMServiceAccountResult{

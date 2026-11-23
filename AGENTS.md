@@ -62,6 +62,8 @@ match the change. Shared guidance is tool agnostic and lives in `guidelines/`.
   - Secret handling, gitleaks policy, and credential safety expectations.
 - `guidelines/error-conventions.md`
   - Error handling at the CLI/core boundary: wrapping, typed errors, CLI translation, exit codes, and diagnostic context.
+- `guidelines/structured-logging.md`
+  - Relationship between reporter output and structured logging, contextual fields and levels, workflow propagation, and the reporter migration path.
 
 ## Codebase Map
 
