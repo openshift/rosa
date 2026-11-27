@@ -46,7 +46,7 @@ unexport GOFLAGS
 
 # Version from the exact tag on HEAD; empty (uses the fallback in pkg/info/info.go)
 # when HEAD is not tagged. Named ROSA_VERSION (not VERSION) because base images such as
-# ubi9/go-toolset export a VERSION environment variable that would otherwise shadow this
+# ubi10/go-toolset export a VERSION environment variable that would otherwise shadow this
 # via `?=`, silently baking the Go toolset version into the CLI (see ROSAENG-67768).
 ROSA_VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null | sed 's/^v//')
 

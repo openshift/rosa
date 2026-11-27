@@ -25,11 +25,30 @@ custom images unless `clone: true`. Prow E2E runs inside `rosa-aws-cli` from
 
 Keep compilation, presubmits, E2E builds, and product images aligned:
 
-- Update the `go` directive in `go.mod`.
-- Update the `ubi9/go-toolset` tag in `Dockerfile`, `Dockerfile.clients`,
+- Update the `go` and `toolchain` directives in `go.mod`. Raising the `go`
+  directive also makes `go mod tidy` reflow the `require` blocks; commit that
+  reflow, because the presubmit `test` job runs `make verify`.
+- Update the `ubi10/go-toolset` tag in `Dockerfile`, `Dockerfile.clients`,
   `images/Dockerfile.e2e`, and `images/Dockerfile.konflux`.
+- Keep the `images/Dockerfile.konflux` runtime stage on the same RHEL major as
+  its builder stage: it reuses the builder's Python tree (`/awscli`) and Go
+  toolchain, so a mismatch breaks the bundled `aws` CLI.
+- Update `renovate.json` `gomod.constraints.go` so it allows the new `go`
+  directive, otherwise Renovate's gomod runs fail.
+- Drop `.govulncheck-ignore.yaml` stdlib entries the new toolchain fixes.
+  Confirm each one at `https://vuln.go.dev/ID/<GO-ID>.json` first.
+- Re-pin `.bingo` `golangci-lint` with `bingo get` when the current pin cannot
+  parse the new release (`export data version ... greater than maximum
+  supported version`). Never hand-edit `.bingo` files.
 - Match `.ci-operator.yaml` `build_root_image.tag` to an available
-  `ocp/builder:rhel-9-golang-*` for pipeline plumbing.
+  `ocp/builder:rhel-*-golang-*` for pipeline plumbing. `ocp/builder` publishes
+  no `golang-1.27` or `rhel-10-golang-*` tag yet, so it stays on
+  `rhel-9-golang-1.26-openshift-4.23`. No rosa ci-operator config sets
+  `binary_build_commands`, and every `tests:` entry runs with
+  `container.from: rosa-clients` rather than a build-root-derived `src` or
+  `root` image, so the build root only clones and drives image builds; each
+  image compiles with the `FROM` in its own Dockerfile. Move the tag forward
+  once a RHEL 10 / Go 1.27 builder exists.
 
 `images/Dockerfile.release` downloads a released binary and is not tied to
 the source Go version. Release-side ci-operator configs are under
