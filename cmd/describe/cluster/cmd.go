@@ -923,6 +923,9 @@ func formatCluster(cluster *cmv1.Cluster, scheduledUpgrade *cmv1.UpgradePolicy,
 		upgrade["version"] = scheduledUpgrade.Version()
 		upgrade["state"] = upgradeState.Value()
 		upgrade["nextRun"] = scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST")
+		if desc := upgradeState.Description(); desc != "" {
+			upgrade["stateDescription"] = desc
+		}
 		ret["scheduledUpgrade"] = upgrade
 	}
 	ret["displayName"] = displayName
@@ -963,6 +966,9 @@ func formatClusterHypershift(cluster *cmv1.Cluster,
 		upgrade["version"] = scheduledUpgrade.Version()
 		upgrade["state"] = scheduledUpgrade.State().Value()
 		upgrade["nextRun"] = scheduledUpgrade.NextRun().Format("2006-01-02 15:04 MST")
+		if desc := scheduledUpgrade.State().Description(); desc != "" {
+			upgrade["stateDescription"] = desc
+		}
 		ret["scheduledUpgrade"] = upgrade
 	}
 	ret["display_name"] = displayName
