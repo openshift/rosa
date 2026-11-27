@@ -33,6 +33,7 @@ import (
 	"github.com/openshift/rosa/pkg/iamserviceaccount"
 	"github.com/openshift/rosa/pkg/log"
 	iamServiceAccountOpts "github.com/openshift/rosa/pkg/options/iamserviceaccount"
+	"github.com/openshift/rosa/pkg/output"
 	"github.com/openshift/rosa/pkg/rosa"
 )
 
@@ -174,11 +175,28 @@ func CreateIamServiceAccountRunner(
 		// DefaultRunner already attached "command" to ctx.
 		ctx = log.WithLogger(ctx, log.FromContext(ctx).With("cluster", cluster.Name()))
 
-		adapter := rolebridge.New(r.AWSClient, r.Reporter)
+		// EnsureRole/AttachRolePolicy still take a reporter.Logger parameter
+		// directly and call Infof unconditionally on success (the legacy
+		// pattern guidelines/structured-logging.md's migration path
+		// describes). Under --output json/yaml that would print plain text
+		// to stdout ahead of the JSON result below, so route those calls to
+		// a discard reporter in that mode instead of r.Reporter.
+		roleReporter := r.Reporter
+		if output.HasFlag() {
+			roleReporter = discardReporter{}
+		}
+		adapter := rolebridge.New(r.AWSClient, roleReporter)
 		service := &iamserviceaccount.Service{}
 		result, err := service.CreateIAMServiceAccount(ctx, adapter, req)
 		if err != nil {
 			return err
+		}
+
+		if output.HasFlag() {
+			if err := output.Print(result); err != nil {
+				return fmt.Errorf("failed to print IAM service account result: %w", err)
+			}
+			return nil
 		}
 
 		r.Reporter.Infof("Created IAM role '%s' with ARN '%s' using OIDC '%s'",
@@ -189,6 +207,21 @@ func CreateIamServiceAccountRunner(
 
 		return nil
 	}
+}
+
+// discardReporter is a reporter.Logger that silences every call. It is
+// passed to rolebridge in place of r.Reporter when --output json/yaml is
+// set, so legacy pkg/aws methods that still take a reporter.Logger
+// parameter directly (see guidelines/structured-logging.md's migration
+// path) cannot print to stdout ahead of the JSON/YAML result.
+type discardReporter struct{}
+
+func (discardReporter) Debugf(string, ...any) {}
+func (discardReporter) Infof(string, ...any)  {}
+func (discardReporter) Warnf(string, ...any)  {}
+func (discardReporter) IsTerminal() bool      { return false }
+func (discardReporter) Errorf(format string, args ...any) error {
+	return fmt.Errorf(format, args...)
 }
 
 // resolveInlinePolicy returns the inline policy document, reading it from
