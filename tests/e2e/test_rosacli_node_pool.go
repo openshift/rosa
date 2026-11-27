@@ -470,7 +470,14 @@ var _ = Describe("Edit nodepool",
 
 				previousVersionsList, err := versionList.FilterVersionsLowerThan(clusterVersion)
 				Expect(err).ToNot(HaveOccurred())
-				if previousVersionsList.Len() <= 1 {
+
+				clusterSemVer, err := semver.NewVersion(clusterVersion)
+				Expect(err).ToNot(HaveOccurred())
+				previousVersionsList, err = previousVersionsList.FilterVersionsSameMajorAndEqualOrLowerThanMinor(
+					clusterSemVer.Major(), clusterSemVer.Minor(), false)
+				Expect(err).ToNot(HaveOccurred())
+
+				if previousVersionsList.Len() == 0 {
 					Skip("Skipping as no previous version is available for testing")
 				}
 				previousVersionsList.Sort(true)
