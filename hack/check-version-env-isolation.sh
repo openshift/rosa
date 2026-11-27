@@ -4,7 +4,7 @@
 
 # check-version-env-isolation.sh - Regression guard for ROSAENG-67768.
 #
-# Base images such as ubi9/go-toolset export a VERSION environment variable
+# Base images such as ubi10/go-toolset export a VERSION environment variable
 # (their own toolset version). This check asserts that an inherited VERSION
 # environment variable, or an inherited ROSA_VERSION environment variable,
 # never changes the linker flags the build computes. It only inspects

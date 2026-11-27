@@ -1,9 +1,12 @@
-FROM registry.access.redhat.com/ubi9/go-toolset:1.26.10-1792592174 AS builder
+FROM registry.access.redhat.com/ubi10/go-toolset:1.27.4-1795507689 AS builder
 COPY --chown=1001:0 . .
 
 RUN git config --global --add safe.directory /opt/app-root/src && \
     make release
 
+# Runtime base is deliberately decoupled from the builder above: the Makefile exports
+# CGO_ENABLED=0, so this stage only receives release zips of static binaries that it
+# never executes.
 FROM registry.access.redhat.com/ubi9/ubi-micro:latest
 LABEL cpe="cpe:/a:redhat:openshift_service_on_aws:1.2::el9"
 LABEL description="Red Hat OpenShift Service on AWS (ROSA) CLI"

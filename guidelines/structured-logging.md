@@ -93,7 +93,7 @@ layer exits.
 ## The `pkg/log` Package
 
 `pkg/log` is a small package built directly on the standard library
-`log/slog` (Go 1.26 in this module) rather than a new dependency or an
+`log/slog` (Go 1.27 in this module) rather than a new dependency or an
 extension of `pkg/logging`'s `logrus` setup (which exists for a different
 purpose, dumping raw outbound request and response traffic for the AWS SDK,
 the OCM SDK, and other outbound HTTP clients, and is left unchanged. See

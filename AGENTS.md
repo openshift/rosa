@@ -110,9 +110,13 @@ ROSA uses **OpenShift ci-operator** (config in `openshift/release`) and **Konflu
 
 Update these together so compile, presubmits, E2E builds, and product images stay aligned:
 
-- `go.mod` (`go` directive)
-- `Dockerfile`, `Dockerfile.clients`, `images/Dockerfile.e2e`, `images/Dockerfile.konflux` — `ubi9/go-toolset` tag
-- `.ci-operator.yaml` — `build_root_image.tag` (match an available `ocp/builder:rhel-9-golang-*` for pipeline plumbing; presubmit compile uses `Dockerfile.clients`)
+- `go.mod` — `go` and `toolchain` directives. Raising the `go` directive also makes `go mod tidy` reflow the `require` blocks, so commit that reflow (presubmit `test` runs `make verify`).
+- `Dockerfile`, `Dockerfile.clients`, `images/Dockerfile.e2e`, `images/Dockerfile.konflux` — `ubi10/go-toolset` tag
+- `images/Dockerfile.konflux` runtime stage — keep it on the same RHEL major as its builder; it reuses the builder's Python tree (`/awscli`) and Go toolchain.
+- `renovate.json` — `gomod.constraints.go` (must allow the new `go` directive, or Renovate's gomod runs fail)
+- `.govulncheck-ignore.yaml` — drop stdlib entries the new toolchain fixes; verify each ID at `https://vuln.go.dev/ID/<GO-ID>.json`
+- `.bingo/` — the pinned `golangci-lint` must support the new Go release, or `make lint` fails with `export data version ... greater than maximum supported version`. Re-pin with `bingo get`, never by hand.
+- `.ci-operator.yaml` — `build_root_image.tag` (match an available `ocp/builder:rhel-*-golang-*` for pipeline plumbing; presubmit compile uses `Dockerfile.clients`). `ocp/builder` currently publishes no `golang-1.27` or `rhel-10-golang-*` tag, so this stays on `rhel-9-golang-1.26-openshift-4.23`. That is safe because no `openshift/rosa` ci-operator config sets `binary_build_commands`, and every `tests:` entry runs with `container.from: rosa-clients` rather than a build-root-derived `src`/`root` image — so the build root only clones and drives image builds, and each image compiles with the `FROM` in its own Dockerfile. Move this tag forward once a RHEL 10 / Go 1.27 builder is published.
 
 Not tied to source Go version: `images/Dockerfile.release` (downloads a released CLI binary from GitHub).
 

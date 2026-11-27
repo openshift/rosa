@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/go-toolset:1.26.10-1792592174 AS builder
+FROM registry.access.redhat.com/ubi10/go-toolset:1.27.4-1795507689 AS builder
 WORKDIR /rosa
 USER root
 COPY . .
@@ -22,7 +22,11 @@ RUN make release
 # Gomega) so the runtime image can compile ./tests/e2e without network access.
 RUN GOTOOLCHAIN=auto go mod download
 
-FROM registry.access.redhat.com/ubi9/ubi:latest
+# Keep the runtime on the same RHEL major as the builder above: this stage reuses the
+# builder's Python tree (/awscli, installed with the builder's pip) and its Go toolchain,
+# so a RHEL 9 runtime under a RHEL 10 builder breaks `aws` (awscli >= 1.46 needs Python
+# >= 3.10, UBI 9 ships Python 3.9).
+FROM registry.access.redhat.com/ubi10/ubi:latest
 WORKDIR /rosa
 RUN mkdir /rosa/tests
 
