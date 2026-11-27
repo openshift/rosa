@@ -37,6 +37,9 @@ ignored_vulnerabilities:
   - id: GO-2026-6218
     module: stdlib
     reason: "Fixed in Go 1.26.6, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.6 image available. Remove once the toolchain image is bumped."
+  - id: GO-2026-6859
+    module: stdlib
+    reason: "Fixed in Go 1.26.11, but registry.access.redhat.com/ubi9/go-toolset does not yet have a 1.26.11 image available. Remove once the toolchain image is bumped."
   - id: GO-2026-6170
     module: github.com/lib/pq
     reason: "No fix available (fixed version: N/A)."
