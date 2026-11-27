@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/go-version v1.9.0
 	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
-	github.com/openshift-online/ocm-api-model/clientapi v0.0.474
+	github.com/openshift-online/ocm-api-model/clientapi v0.0.475
 	github.com/openshift-online/ocm-common v0.0.50
 	github.com/openshift-online/ocm-sdk-go v0.1.522
 	github.com/robfig/cron/v3 v3.0.1
