@@ -85,3 +85,28 @@ func (c *Client) ListAllOcpGates(version string) (versionGates []*cmv1.VersionGa
 func (c *Client) AcknowledgeGate(versionGates []*cmv1.VersionGate) (err error) {
 	return
 }
+
+func (c *Client) ListGateAgreements(clusterID string) ([]*cmv1.VersionGateAgreement, error) {
+	collection := c.ocm.ClustersMgmt().V1().
+		Clusters().
+		Cluster(clusterID).
+		GateAgreements()
+	page := 1
+	size := 100
+	var agreements []*cmv1.VersionGateAgreement
+	for {
+		response, err := collection.List().
+			Page(page).
+			Size(size).
+			Send()
+		if err != nil {
+			return nil, handleErr(response.Error(), err)
+		}
+		agreements = append(agreements, response.Items().Slice()...)
+		if response.Size() < size {
+			break
+		}
+		page++
+	}
+	return agreements, nil
+}

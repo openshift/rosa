@@ -291,6 +291,18 @@ func ChannelGroupFromChannel(channel string) string {
 	return channel[:idx]
 }
 
+func (c *Client) GetRawAvailableUpgrades(versionID string) ([]string, error) {
+	response, err := c.ocm.ClustersMgmt().V1().
+		Versions().
+		Version(versionID).
+		Get().
+		Send()
+	if err != nil {
+		return nil, handleErr(response.Error(), err)
+	}
+	return response.Body().AvailableUpgrades(), nil
+}
+
 func CreateVersionID(version string, channelGroup string) string {
 	versionID := fmt.Sprintf("%s%s", VersionPrefix, version)
 	if channelGroup != DefaultChannelGroup {
